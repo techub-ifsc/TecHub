@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #18191a;
+  background-color: #18191a;
 }
 
 .signup-page__title {
@@ -17,29 +17,32 @@
 }
 
 .signup-form {
+  box-sizing: border-box;
   width: 100%;
   max-width: 560px;
   padding: 2rem 2.25rem 2.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  background: #222426;
+  background-color: #222426;
   border-radius: 18px;
 }
 
 .signup-form__account-type {
+  min-width: 0;
   margin: 0;
   padding: 0;
-  border: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.875rem;
+  border: 0;
 }
 
 .signup-form__account-type legend {
   width: 100%;
-  margin-bottom: 0.875rem;
+  margin: 0 0 0.875rem;
+  padding: 0;
   color: #ffffff;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -47,28 +50,91 @@
 }
 
 .signup-form__account-options {
-  padding: 3px;
+  box-sizing: border-box;
+  padding: 4px;
   display: flex;
-  gap: 3px;
-  background: #1a1e1a;
-  border: 1px solid #2d2f33;
-  border-radius: 10px;
+  gap: 4px;
+  background-color: #151716;
+  border: 1px solid #34373a;
+  border-radius: 12px;
 }
 
-.signup-form button.signup-form__account-button {
-  padding: 0.5rem 1.75rem;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  box-shadow: none;
-  color: #9fa0a1;
+/* Estilo padrão dos botões Criador e Visitante */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button {
+  margin: 0;
+  padding: 0.625rem 1.75rem;
+  appearance: none;
+  background: #292c2e !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px;
+  box-shadow: none !important;
+  color: #b5b8bc !important;
+  font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 
-.signup-form button.signup-form__account-button.is-selected {
-  background: #78dc50;
-  color: #111111;
+/* Botão selecionado */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button.is-selected,
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button[aria-pressed="true"] {
+  background: #78dc50 !important;
+  border-color: #78dc50 !important;
+  color: #101310 !important;
+}
+
+/* Botão não selecionado */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button:not(.is-selected),
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button[aria-pressed="false"] {
+  background: #292c2e !important;
+  border-color: #383c40 !important;
+  color: #b5b8bc !important;
+}
+
+/* Hover do botão não selecionado */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button:not(.is-selected):hover,
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button[aria-pressed="false"]:hover {
+  background: #363b37 !important;
+  border-color: #78dc50 !important;
+  color: #ffffff !important;
+}
+
+/* Hover do botão selecionado */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button.is-selected:hover,
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button[aria-pressed="true"]:hover {
+  background: #88e663 !important;
+  border-color: #88e663 !important;
+  color: #101310 !important;
+}
+
+/* Clique nos botões */
+.signup-form
+  .signup-form__account-options
+  button.signup-form__account-button:active {
+  transform: translateY(1px);
 }
 
 .signup-form__field {
@@ -77,28 +143,43 @@
   gap: 0.4375rem;
 }
 
-.signup-form__field label {
+.signup-form .signup-form__field label {
+  width: auto;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  align-self: flex-start;
+  gap: 0.25rem;
   color: #9a9ea4;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-.signup-form__field label span {
+.signup-form .signup-form__field label span {
+  display: inline;
   color: #e53935;
 }
 
 .signup-form__field input {
+  box-sizing: border-box;
   width: 100%;
+  min-height: 46px;
+  margin: 0;
   padding: 0.75rem 0.875rem;
-  background: #1e2022;
+  background-color: #1e2022;
   border: 1.5px solid #33363a;
   border-radius: 9px;
   color: #ffffff;
+  font-family: inherit;
   font-size: 0.9375rem;
   outline: none;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
+}
+
+.signup-form__field input:hover {
+  border-color: #45494e;
 }
 
 .signup-form__field input:focus {
@@ -110,29 +191,37 @@
   border-color: #e53935;
 }
 
+.signup-form__field input.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgb(229 57 53 / 12%);
+}
+
 .signup-form__field input::placeholder {
-  color: #60646c;
+  color: #6f747c;
+  opacity: 1;
 }
 
 .signup-form__helper {
   color: #9fa0a1;
   font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .signup-form__error {
   color: #ff6b6b;
   font-size: 0.78rem;
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .signup-form__success {
   margin: 0;
   padding: 0.75rem;
-  background: rgb(120 220 80 / 10%);
+  background-color: rgb(120 220 80 / 10%);
   border: 1px solid #78dc50;
   border-radius: 8px;
   color: #9bea7b;
   font-size: 0.85rem;
+  line-height: 1.4;
   text-align: center;
 }
 
@@ -146,17 +235,37 @@
 
 .signup-form button.signup-form__submit {
   width: 170px;
+  margin: 0;
   padding: 0.8125rem;
-  background: #78dc50;
-  border: 0;
+  appearance: none;
+  background: #78dc50 !important;
+  border: 1px solid #78dc50 !important;
   border-radius: 10px;
-  color: #111111;
+  box-shadow: none;
+  color: #111111 !important;
+  font-family: inherit;
   font-size: 1rem;
   font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
 }
 
 .signup-form button.signup-form__submit:hover {
-  background: #6fd047;
+  background: #88e663 !important;
+  border-color: #88e663 !important;
+}
+
+.signup-form button.signup-form__submit:active {
+  transform: translateY(1px);
+}
+
+.signup-form button:focus-visible,
+.signup-form input:focus-visible {
+  outline: 3px solid rgb(120 220 80 / 40%);
+  outline-offset: 2px;
 }
 
 .signup-form__login {
@@ -167,11 +276,14 @@
 }
 
 .signup-form__login button {
+  margin: 0;
   padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   color: #ffffff;
+  font-family: inherit;
   font-size: inherit;
   font-weight: 500;
   text-decoration: underline;
@@ -199,7 +311,9 @@
     width: 100%;
   }
 
-  .signup-form button.signup-form__account-button {
+  .signup-form
+    .signup-form__account-options
+    button.signup-form__account-button {
     flex: 1;
     padding-inline: 0.75rem;
   }

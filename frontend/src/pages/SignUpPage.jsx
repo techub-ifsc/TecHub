@@ -1,57 +1,64 @@
-import { useState } from 'react';
-import './SignUpPage.css';
+import { useState } from "react";
+
+import "./SignUpPage.css";
 
 const initialForm = {
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
 };
 
 function validateForm(form) {
   const errors = {};
 
   if (!form.username.trim()) {
-    errors.username = 'O nome de usuário é obrigatório.';
+    errors.username = "O nome de usuário é obrigatório.";
   } else if (form.username.trim().length < 3) {
-    errors.username = 'Informe pelo menos 3 caracteres.';
+    errors.username = "Informe pelo menos 3 caracteres.";
   }
 
   if (!form.email.trim()) {
-    errors.email = 'O e-mail é obrigatório.';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Digite um e-mail válido.';
+    errors.email = "O e-mail é obrigatório.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    errors.email = "Digite um e-mail válido.";
   }
 
   if (!form.password) {
-    errors.password = 'A senha é obrigatória.';
+    errors.password = "A senha é obrigatória.";
   } else if (form.password.length < 8) {
-    errors.password = 'A senha deve ter pelo menos 8 caracteres.';
+    errors.password = "A senha deve ter pelo menos 8 caracteres.";
   } else if (
     !/[A-Za-z]/.test(form.password) ||
     !/[0-9]/.test(form.password)
   ) {
-    errors.password = 'A senha deve conter uma letra e um número.';
+    errors.password = "A senha deve conter pelo menos uma letra e um número.";
   }
 
   if (!form.confirmPassword) {
-    errors.confirmPassword = 'Confirme sua senha.';
+    errors.confirmPassword = "Confirme sua senha.";
   } else if (form.confirmPassword !== form.password) {
-    errors.confirmPassword = 'As senhas não coincidem.';
+    errors.confirmPassword = "As senhas não coincidem.";
   }
 
   return errors;
 }
 
 export default function SignUpPage() {
-  const [accountType, setAccountType] = useState('criador');
+  const [accountType, setAccountType] = useState("criador");
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
 
   function handleAccountType(type) {
     setAccountType(type);
-    setSuccessMessage('');
+
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      email: "",
+    }));
+
+    setSuccessMessage("");
   }
 
   function handleChange(event) {
@@ -64,30 +71,31 @@ export default function SignUpPage() {
 
     setErrors((currentErrors) => ({
       ...currentErrors,
-      [name]: '',
+      [name]: "",
     }));
 
-    setSuccessMessage('');
+    setSuccessMessage("");
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
     const validationErrors = validateForm(form);
+
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
-      setSuccessMessage('');
+      setSuccessMessage("");
       return;
     }
 
     setSuccessMessage(
-      'Dados validados com sucesso! A integração do cadastro será realizada em uma próxima Sprint.',
+      "Dados validados com sucesso! A integração do cadastro será realizada em uma próxima Sprint.",
     );
   }
 
   return (
-    <div className="signup-page">
+    <main className="signup-page">
       <h1 className="signup-page__title">Nova conta</h1>
 
       <form className="signup-form" onSubmit={handleSubmit} noValidate>
@@ -98,10 +106,10 @@ export default function SignUpPage() {
             <button
               type="button"
               className={`signup-form__account-button ${
-                accountType === 'criador' ? 'is-selected' : ''
+                accountType === "criador" ? "is-selected" : ""
               }`}
-              onClick={() => handleAccountType('criador')}
-              aria-pressed={accountType === 'criador'}
+              onClick={() => handleAccountType("criador")}
+              aria-pressed={accountType === "criador"}
             >
               Criador
             </button>
@@ -109,10 +117,10 @@ export default function SignUpPage() {
             <button
               type="button"
               className={`signup-form__account-button ${
-                accountType === 'visitante' ? 'is-selected' : ''
+                accountType === "visitante" ? "is-selected" : ""
               }`}
-              onClick={() => handleAccountType('visitante')}
-              aria-pressed={accountType === 'visitante'}
+              onClick={() => handleAccountType("visitante")}
+              aria-pressed={accountType === "visitante"}
             >
               Visitante
             </button>
@@ -121,7 +129,8 @@ export default function SignUpPage() {
 
         <div className="signup-form__field">
           <label htmlFor="username">
-            Nome de usuário <span aria-hidden="true">*</span>
+            Nome de usuário
+            <span aria-hidden="true">*</span>
           </label>
 
           <input
@@ -130,13 +139,21 @@ export default function SignUpPage() {
             type="text"
             value={form.username}
             onChange={handleChange}
-            className={errors.username ? 'is-invalid' : ''}
+            className={errors.username ? "is-invalid" : ""}
             aria-invalid={Boolean(errors.username)}
-            aria-describedby={errors.username ? 'username-error' : undefined}
+            aria-describedby={
+              errors.username ? "username-error" : undefined
+            }
+            autoComplete="username"
+            required
           />
 
           {errors.username && (
-            <span id="username-error" className="signup-form__error">
+            <span
+              id="username-error"
+              className="signup-form__error"
+              role="alert"
+            >
               {errors.username}
             </span>
           )}
@@ -144,11 +161,10 @@ export default function SignUpPage() {
 
         <div className="signup-form__field">
           <label htmlFor="email">
-            {accountType === 'criador'
-              ? 'E-mail institucional do IFSC'
-              : 'E-mail'}
-
-            <span aria-hidden="true"> *</span>
+            {accountType === "criador"
+              ? "E-mail institucional do IFSC"
+              : "E-mail"}
+            <span aria-hidden="true">*</span>
           </label>
 
           <input
@@ -158,15 +174,23 @@ export default function SignUpPage() {
             value={form.email}
             onChange={handleChange}
             placeholder={
-              accountType === 'criador' ? 'aluno@ifsc.edu.br' : 'voce@email.com'
+              accountType === "criador"
+                ? "aluno@ifsc.edu.br"
+                : "voce@email.com"
             }
-            className={errors.email ? 'is-invalid' : ''}
+            className={errors.email ? "is-invalid" : ""}
             aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? 'email-error' : undefined}
+            aria-describedby={errors.email ? "email-error" : undefined}
+            autoComplete="email"
+            required
           />
 
           {errors.email && (
-            <span id="email-error" className="signup-form__error">
+            <span
+              id="email-error"
+              className="signup-form__error"
+              role="alert"
+            >
               {errors.email}
             </span>
           )}
@@ -174,7 +198,8 @@ export default function SignUpPage() {
 
         <div className="signup-form__field">
           <label htmlFor="password">
-            Senha <span aria-hidden="true">*</span>
+            Senha
+            <span aria-hidden="true">*</span>
           </label>
 
           <input
@@ -183,13 +208,23 @@ export default function SignUpPage() {
             type="password"
             value={form.password}
             onChange={handleChange}
-            className={errors.password ? 'is-invalid' : ''}
+            className={errors.password ? "is-invalid" : ""}
             aria-invalid={Boolean(errors.password)}
-            aria-describedby="password-help"
+            aria-describedby={
+              errors.password ? "password-error" : "password-help"
+            }
+            autoComplete="new-password"
+            required
           />
 
           {errors.password ? (
-            <span className="signup-form__error">{errors.password}</span>
+            <span
+              id="password-error"
+              className="signup-form__error"
+              role="alert"
+            >
+              {errors.password}
+            </span>
           ) : (
             <span id="password-help" className="signup-form__helper">
               Mínimo de 8 caracteres, contendo pelo menos uma letra e um número.
@@ -199,7 +234,8 @@ export default function SignUpPage() {
 
         <div className="signup-form__field">
           <label htmlFor="confirmPassword">
-            Confirmar senha <span aria-hidden="true">*</span>
+            Confirmar senha
+            <span aria-hidden="true">*</span>
           </label>
 
           <input
@@ -208,19 +244,30 @@ export default function SignUpPage() {
             type="password"
             value={form.confirmPassword}
             onChange={handleChange}
-            className={errors.confirmPassword ? 'is-invalid' : ''}
+            className={errors.confirmPassword ? "is-invalid" : ""}
             aria-invalid={Boolean(errors.confirmPassword)}
+            aria-describedby={
+              errors.confirmPassword
+                ? "confirm-password-error"
+                : undefined
+            }
+            autoComplete="new-password"
+            required
           />
 
           {errors.confirmPassword && (
-            <span className="signup-form__error">
+            <span
+              id="confirm-password-error"
+              className="signup-form__error"
+              role="alert"
+            >
               {errors.confirmPassword}
             </span>
           )}
         </div>
 
         {successMessage && (
-          <p className="signup-form__success" role="status">
+          <p className="signup-form__success" role="status" aria-live="polite">
             {successMessage}
           </p>
         )}
@@ -231,13 +278,13 @@ export default function SignUpPage() {
           </button>
 
           <p className="signup-form__login">
-            Já possui uma conta?{' '}
+            Já possui uma conta?{" "}
             <button type="button" disabled>
               Entrar
             </button>
           </p>
         </div>
       </form>
-    </div>
+    </main>
   );
 }

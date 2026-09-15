@@ -1,33 +1,40 @@
-import { Routes, Route } from 'react-router-dom';
-import Header from './components/Header';
-import HomePage from './pages/HomePage';
-import SignUpPage from './pages/SignUpPage';
+import { Route, Routes } from "react-router-dom";
 
-import PrivateRoute from './components/PrivateRoute';
-import EmptyState from './components/EmptyState';
-import Catalog from './pages/Catalog';
-import ProductDetail from './pages/ProductDetail';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import Orders from './pages/Orders';
-import OrderDetail from './pages/OrderDetail';
-import Profile from './pages/Profile';
-import Favorites from './pages/Favorites';
+import EmptyState from "./components/EmptyState";
+import Header from "./components/Header";
+import PrivateRoute from "./components/PrivateRoute";
 
-// Define a estrutura global e mapeia as URLs para as telas da aplicação.
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import Favorites from "./pages/Favorites";
+import HomePage from "./pages/HomePage";
+import Login from "./pages/Login";
+import NewProjectPage from "./pages/NewProjectPage";
+import OrderDetail from "./pages/OrderDetail";
+import Orders from "./pages/Orders";
+import ProductDetail from "./pages/ProductDetail";
+import Profile from "./pages/Profile";
+import ProjectsPage from "./pages/ProjectsPage";
+import Register from "./pages/Register";
+import SignUpPage from "./pages/SignUpPage";
+
 export default function App() {
   return (
     <div className="app-shell">
       <Header />
-      <main className="app-content">
+
+      <div className="app-content">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
+
+          <Route path="/projetos" element={<ProjectsPage />} />
+          <Route path="/projeto/novo" element={<NewProjectPage />} />
+
+          <Route path="/cadastro" element={<SignUpPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/cadastro" element={<SignUpPage />} />
+
+          <Route path="/products/:id" element={<ProductDetail />} />
 
           <Route element={<PrivateRoute />}>
             <Route path="/cart" element={<Cart />} />
@@ -40,10 +47,16 @@ export default function App() {
 
           <Route
             path="*"
-            element={<EmptyState icon="compass" title="Página não encontrada" description="Verifique o endereço e tente novamente." />}
+            element={
+              <EmptyState
+                icon="compass"
+                title="Página não encontrada"
+                description="Verifique o endereço e tente novamente."
+              />
+            }
           />
         </Routes>
-      </main>
+      </div>
     </div>
   );
 }

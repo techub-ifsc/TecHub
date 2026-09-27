@@ -4,8 +4,8 @@
   --new-project-input: #1e2022;
   --new-project-border: #393c40;
   --new-project-border-hover: #50545a;
-  --new-project-green: #78dc50;
-  --new-project-green-hover: #89e767;
+  --new-project-green: var(--tc-green);
+  --new-project-green-hover: var(--tc-green-hover);
   --new-project-text: #ffffff;
   --new-project-muted: #a0a4a8;
   --new-project-placeholder: #686d74;
@@ -447,7 +447,7 @@
   display: inline-grid;
   place-items: center;
   appearance: none;
-  background: rgb(0 0 0 / 10%) !important;
+  background: var(--tc-remove-bg) !important;
   border: 0 !important;
   border-radius: 50%;
   box-shadow: none !important;
@@ -459,7 +459,7 @@
 }
 
 .new-project-card button.tag-remove-button:hover {
-  background: rgb(0 0 0 / 20%) !important;
+  background: var(--tc-remove-bg-hover) !important;
 }
 
 /* Colaboradores */
@@ -840,7 +840,7 @@
   padding: 0.75rem 1rem;
   appearance: none;
   border: 1px solid transparent !important;
-  border-radius: 9px;
+  border-radius: var(--tc-btn-radius);
   box-shadow: none !important;
   font-family: inherit;
   font-size: 0.875rem;
@@ -1151,7 +1151,7 @@
   justify-content: center;
   flex: 0 0 22px;
 
-  background: rgb(16 18 16 / 18%) !important;
+  background: var(--tc-remove-bg) !important;
   border: 0 !important;
   border-radius: 50% !important;
   box-shadow: none !important;

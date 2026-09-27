@@ -89,7 +89,7 @@
 }
 
 .signup-form button.signup-form__account-button.is-selected {
-  background-color: #78dc50 !important;
+  background-color: var(--tc-green) !important;
   color: #111111 !important;
 }
 
@@ -150,7 +150,7 @@
 }
 
 .signup-form__field input:focus {
-  border-color: #78dc50;
+  border-color: var(--tc-green);
   box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
 }
 
@@ -185,7 +185,7 @@
   padding: 0.75rem;
 
   background: rgb(120 220 80 / 10%);
-  border: 1px solid #78dc50;
+  border: 1px solid var(--tc-green);
   border-radius: 8px;
 
   color: #9bea7b;
@@ -212,9 +212,9 @@
   min-height: 46px;
   padding: 0.75rem 1rem;
 
-  background-color: #78dc50 !important;
-  border: 1px solid #78dc50 !important;
-  border-radius: 10px;
+  background-color: var(--tc-green) !important;
+  border: 1px solid var(--tc-green) !important;
+  border-radius: var(--tc-btn-radius);
   box-shadow: none !important;
 
   color: #101210 !important;
@@ -233,20 +233,20 @@
 }
 
 .signup-page .signup-form button.signup-form__submit:hover {
-  background-color: #5fd936 !important;
-  border-color: #5fd936 !important;
+  background-color: var(--tc-green-hover) !important;
+  border-color: var(--tc-green-hover) !important;
   color: #081006 !important;
 
   box-shadow:
     0 0 0 4px rgb(95 217 54 / 18%),
-    0 6px 18px rgb(0 0 0 / 20%) !important;
+    0 6px 18px var(--tc-remove-bg-hover) !important;
 
   transform: translateY(-2px);
 }
 
 .signup-page .signup-form button.signup-form__submit:active {
-  background-color: #52c52d !important;
-  border-color: #52c52d !important;
+  background-color: var(--tc-green-active) !important;
+  border-color: var(--tc-green-active) !important;
   box-shadow: none !important;
 
   transform: translateY(0);
@@ -279,11 +279,11 @@
 }
 
 .signup-form__login a:hover {
-  color: #78dc50;
+  color: var(--tc-green);
 }
 
 .signup-form__login a:focus-visible {
-  outline: 2px solid #78dc50;
+  outline: 2px solid var(--tc-green);
   outline-offset: 3px;
   border-radius: 2px;
 }

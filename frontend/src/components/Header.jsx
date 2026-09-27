@@ -13,15 +13,8 @@ export default function Header() {
   return (
     <header className="site-header">
       <div className="site-header__content">
-        <Link
-          to="/"
-          className="site-header__brand"
-          onClick={closeMenu}
-        >
-          <span
-            className="site-header__symbol"
-            aria-hidden="true"
-          >
+        <Link to="/" className="site-header__brand" onClick={closeMenu}>
+          <span className="site-header__symbol" aria-hidden="true">
             &lt;/&gt;
           </span>
 
@@ -31,26 +24,20 @@ export default function Header() {
         <button
           type="button"
           className="site-header__menu-button"
-          onClick={() =>
-            setMenuOpen((currentValue) => !currentValue)
-          }
+          onClick={() => setMenuOpen((currentValue) => !currentValue)}
           aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
           aria-expanded={menuOpen}
           aria-controls="site-header-menu"
         >
           <i
-            className={`fa-solid ${
-              menuOpen ? "fa-xmark" : "fa-bars"
-            }`}
+            className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"}`}
             aria-hidden="true"
           />
         </button>
 
         <div
           id="site-header-menu"
-          className={`site-header__menu${
-            menuOpen ? " is-open" : ""
-          }`}
+          className={`site-header__menu${menuOpen ? " is-open" : ""}`}
         >
           <nav
             className="site-header__navigation"
@@ -59,31 +46,29 @@ export default function Header() {
             <NavLink
               to="/projetos"
               className={({ isActive }) =>
-                `site-header__nav-item${
-                  isActive ? " is-active" : ""
-                }`
+                `site-header__nav-item${isActive ? " is-active" : ""}`
               }
               onClick={closeMenu}
             >
               Projetos
             </NavLink>
 
-            <button
-              type="button"
-              className="site-header__nav-item"
-              disabled
+            <NavLink
+              to="/criadores"
+              className={({ isActive }) =>
+                `site-header__nav-item${isActive ? " is-active" : ""}`
+              }
+              onClick={closeMenu}
             >
               Criadores
-            </button>
+            </NavLink>
           </nav>
 
           <div className="site-header__actions">
             <NavLink
               to="/login"
               className={({ isActive }) =>
-                `site-header__login${
-                  isActive ? " is-active" : ""
-                }`
+                `site-header__login${isActive ? " is-active" : ""}`
               }
               onClick={closeMenu}
             >
@@ -93,9 +78,7 @@ export default function Header() {
             <NavLink
               to="/cadastro"
               className={({ isActive }) =>
-                `site-header__signup${
-                  isActive ? " is-active" : ""
-                }`
+                `site-header__signup${isActive ? " is-active" : ""}`
               }
               onClick={closeMenu}
             >

@@ -1,10 +1,10 @@
-import { Link } from 'react-router-dom';
-import FeatureCard from '../components/FeatureCard';
-import logoTecHub from '../assets/LogoTecHub.svg';
-import RadarNetworkIcon from '../assets/RadarNetworkIcon.svg';
-import CheckShieldIcon from '../assets/CheckShieldIcon.svg';
-import GraduationIcon from '../assets/GraduationIcon.svg';
-import './HomePage.css';
+import { Link } from "react-router-dom";
+import FeatureCard from "../components/FeatureCard";
+import logoTecHub from "../assets/LogoTecHub.svg";
+import RadarNetworkIcon from "../assets/RadarNetworkIcon.svg";
+import CheckShieldIcon from "../assets/CheckShieldIcon.svg";
+import GraduationIcon from "../assets/GraduationIcon.svg";
+import "./HomePage.css";
 
 export default function HomePage() {
   return (
@@ -33,13 +33,9 @@ export default function HomePage() {
             Publique seu projeto
           </Link>
 
-          <button
-            type="button"
-            className="home-hero__secondary-button"
-            disabled
-          >
+          <Link to="/projetos" className="home-hero__secondary-button">
             Explore projetos
-          </button>
+          </Link>
         </div>
       </section>
 

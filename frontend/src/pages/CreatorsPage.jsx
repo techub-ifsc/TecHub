@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import "./CreatorsPage.css";
 
@@ -101,18 +102,14 @@ export default function CreatorsPage() {
     return CREATORS.filter((creator) => {
       const matchesSearch =
         !searchTerm ||
-        creator.name
-          .toLocaleLowerCase("pt-BR")
-          .includes(searchTerm) ||
+        creator.name.toLocaleLowerCase("pt-BR").includes(searchTerm) ||
         creator.skills.some((skill) =>
           skill.toLocaleLowerCase("pt-BR").includes(searchTerm),
         );
 
-      const matchesCourse =
-        !course || creator.course === course;
+      const matchesCourse = !course || creator.course === course;
 
-      const matchesPhase =
-        !phase || creator.phase === phase;
+      const matchesPhase = !phase || creator.phase === phase;
 
       return matchesSearch && matchesCourse && matchesPhase;
     });
@@ -134,12 +131,11 @@ export default function CreatorsPage() {
   return (
     <main className="creators-page">
       <section className="creators-page__hero">
-
         <h1>Encontre criadores</h1>
 
         <p>
-          Conheça estudantes, suas habilidades e os projetos
-          desenvolvidos no IFSC.
+          Conheça estudantes, suas habilidades e os projetos desenvolvidos no
+          IFSC.
         </p>
       </section>
 
@@ -148,10 +144,7 @@ export default function CreatorsPage() {
         aria-label="Filtros de criadores"
       >
         <div className="creators-page__search">
-          <i
-            className="fa-solid fa-magnifying-glass"
-            aria-hidden="true"
-          />
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
 
           <input
             type="search"
@@ -177,22 +170,14 @@ export default function CreatorsPage() {
           <label>
             <span>Curso</span>
 
-            <select
-              value={course}
-              onChange={handleCourseChange}
-            >
+            <select value={course} onChange={handleCourseChange}>
               <option value="">Todos os cursos</option>
 
-              {Object.keys(COURSE_PHASES).map(
-                (courseOption) => (
-                  <option
-                    key={courseOption}
-                    value={courseOption}
-                  >
-                    {courseOption}
-                  </option>
-                ),
-              )}
+              {Object.keys(COURSE_PHASES).map((courseOption) => (
+                <option key={courseOption} value={courseOption}>
+                  {courseOption}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -201,22 +186,15 @@ export default function CreatorsPage() {
 
             <select
               value={phase}
-              onChange={(event) =>
-                setPhase(event.target.value)
-              }
+              onChange={(event) => setPhase(event.target.value)}
               disabled={!course}
             >
               <option value="">
-                {course
-                  ? "Todas as fases"
-                  : "Selecione um curso"}
+                {course ? "Todas as fases" : "Selecione um curso"}
               </option>
 
               {phaseOptions.map((phaseOption) => (
-                <option
-                  key={phaseOption}
-                  value={phaseOption}
-                >
+                <option key={phaseOption} value={phaseOption}>
                   {phaseOption}
                 </option>
               ))}
@@ -247,9 +225,11 @@ export default function CreatorsPage() {
           aria-label="Criadores encontrados"
         >
           {filteredCreators.map((creator) => (
-            <article
+            <Link
+              to={`/criadores/${creator.id}`}
               className="creator-card"
               key={creator.id}
+              aria-label={`Abrir perfil de ${creator.name}`}
             >
               <div
                 className="creator-card__cover"
@@ -273,9 +253,7 @@ export default function CreatorsPage() {
 
                 <p>{creator.course}</p>
 
-                <span className="creator-card__phase">
-                  {creator.phase}
-                </span>
+                <span className="creator-card__phase">{creator.phase}</span>
 
                 <div
                   className="creator-card__skills"
@@ -286,41 +264,26 @@ export default function CreatorsPage() {
                   ))}
                 </div>
 
-                <button
-                  type="button"
-                  className="creator-card__portfolio"
-                  disabled
-                  title="Perfil disponível em uma próxima etapa"
-                >
+                <span className="creator-card__portfolio">
                   <i
-                    className="fa-solid fa-link"
+                    className="fa-solid fa-arrow-up-right-from-square"
                     aria-hidden="true"
                   />
-
-                  Ver portfólio
-                </button>
+                  Ver perfil
+                </span>
               </div>
-            </article>
+            </Link>
           ))}
         </section>
       ) : (
         <section className="creators-page__empty">
-          <i
-            className="fa-solid fa-user-group"
-            aria-hidden="true"
-          />
+          <i className="fa-solid fa-user-group" aria-hidden="true" />
 
           <h2>Nenhum criador encontrado</h2>
 
-          <p>
-            Tente alterar a busca ou remover os filtros
-            selecionados.
-          </p>
+          <p>Tente alterar a busca ou remover os filtros selecionados.</p>
 
-          <button
-            type="button"
-            onClick={clearFilters}
-          >
+          <button type="button" onClick={clearFilters}>
             Limpar filtros
           </button>
         </section>

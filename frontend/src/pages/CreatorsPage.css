@@ -240,6 +240,9 @@
   background-color: #18191a;
   border: 2px solid #36393d;
   border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
   transition:
     border-color 180ms ease,
     transform 180ms ease,
@@ -249,7 +252,15 @@
 .creator-card:hover {
   border-color: var(--tc-green, #78dc50);
   box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+  color: inherit;
+  text-decoration: none;
   transform: translateY(-4px);
+}
+
+.creator-card:focus-visible {
+  border-color: var(--tc-green, #78dc50);
+  outline: 3px solid rgb(120 220 80 / 25%);
+  outline-offset: 3px;
 }
 
 .creator-card__cover {
@@ -357,17 +368,22 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  appearance: none;
-  background: #292c2e !important;
-  border: 1px solid #404245 !important;
+  background-color: rgb(120 220 80 / 9%);
+  border: 1px solid var(--tc-green, #78dc50);
   border-radius: 8px;
-  box-shadow: none !important;
-  color: #a0a4a8 !important;
+  color: var(--tc-green, #78dc50);
   font-family: inherit;
   font-size: 0.8rem;
-  font-weight: 600;
-  cursor: not-allowed;
-  opacity: 0.7;
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.creator-card:hover .creator-card__portfolio {
+  background-color: var(--tc-green, #78dc50);
+  color: #111111;
 }
 
 .creators-page__empty {

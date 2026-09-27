@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import EmptyState from "./components/EmptyState";
 import Header from "./components/Header";
 
+import CreatorProfilePage from "./pages/CreatorProfilePage";
 import CreatorsPage from "./pages/CreatorsPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -38,6 +39,11 @@ export default function App() {
           <Route
             path="/criadores"
             element={<CreatorsPage />}
+          />
+
+          <Route
+            path="/criadores/:id"
+            element={<CreatorProfilePage />}
           />
 
           <Route

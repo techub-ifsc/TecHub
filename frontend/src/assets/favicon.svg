@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- < -->
+  <path
+    d="M20 18 L8 32 L20 46"
+    fill="none"
+    stroke="#8BD653"
+    stroke-width="6"
+    stroke-linecap="butt"
+    stroke-linejoin="miter"/>
+  <!-- / -->
+  <path
+    d="M36 10 L28 54"
+    fill="none"
+    stroke="#8BD653"
+    stroke-width="7"
+    stroke-linecap="butt"/>
+  <!-- > -->
+  <path
+    d="M44 18 L56 32 L44 46"
+    fill="none"
+    stroke="#8BD653"
+    stroke-width="6"
+    stroke-linecap="butt"
+    stroke-linejoin="miter"/>
+</svg>

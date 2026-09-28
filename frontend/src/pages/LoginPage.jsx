@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import "./LoginPage.css";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const INITIAL_FORM = {
   email: "",
   password: "",
@@ -70,7 +72,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3001/api/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

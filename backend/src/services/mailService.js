@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer'); precisa descomentar para funiconar
 
 // Cria o transportador de e-mails
 async function createTransporter() {

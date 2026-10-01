@@ -1,8 +1,8 @@
 import axiosClient from './axiosClient';
 
 // Envia os dados de cadastro e retorna o usuário e o token criados pela API.
-export async function registerUser({ name, email, password, role }) {
-  const { data } = await axiosClient.post('/auth/register', { name, email, password, role });
+export async function registerUser({ name, email, password, accountType }) {
+  const { data } = await axiosClient.post('/auth/register', { name, email, password, accountType });
   return data;
 }
 

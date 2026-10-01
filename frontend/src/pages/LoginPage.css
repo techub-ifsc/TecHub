@@ -89,7 +89,7 @@
 
 .login-form__field > input:focus,
 .login-form__password-wrapper:focus-within {
-  border-color: #78dc50;
+  border-color: var(--tc-green);
   box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
 }
 
@@ -158,11 +158,11 @@
 
 .login-form button.login-form__password-toggle:hover {
   background: rgb(120 220 80 / 8%) !important;
-  color: #78dc50 !important;
+  color: var(--tc-green) !important;
 }
 
 .login-form button.login-form__password-toggle:focus-visible {
-  outline: 2px solid #78dc50;
+  outline: 2px solid var(--tc-green);
   outline-offset: -4px;
 }
 
@@ -226,7 +226,7 @@
   padding: 0.75rem;
 
   background: rgb(120 220 80 / 10%);
-  border: 1px solid #78dc50;
+  border: 1px solid var(--tc-green);
   border-radius: 8px;
 
   color: #9bea7b;
@@ -253,9 +253,9 @@
   min-height: 46px;
   padding: 0.75rem 1rem;
 
-  background-color: #78dc50 !important;
-  border: 1px solid #78dc50 !important;
-  border-radius: 10px;
+  background-color: var(--tc-green) !important;
+  border: 1px solid var(--tc-green) !important;
+  border-radius: var(--tc-btn-radius);
   box-shadow: none !important;
 
   color: #101210 !important;
@@ -274,20 +274,20 @@
 }
 
 .login-page .login-form button.login-form__submit:hover {
-  background-color: #5fd936 !important;
-  border-color: #5fd936 !important;
+  background-color: var(--tc-green-hover) !important;
+  border-color: var(--tc-green-hover) !important;
   color: #081006 !important;
 
   box-shadow:
     0 0 0 4px rgb(95 217 54 / 18%),
-    0 6px 18px rgb(0 0 0 / 20%) !important;
+    0 6px 18px var(--tc-remove-bg-hover) !important;
 
   transform: translateY(-2px);
 }
 
 .login-page .login-form button.login-form__submit:active {
-  background-color: #52c52d !important;
-  border-color: #52c52d !important;
+  background-color: var(--tc-green-active) !important;
+  border-color: var(--tc-green-active) !important;
   box-shadow: none !important;
 
   transform: translateY(0);
@@ -317,11 +317,11 @@
 }
 
 .login-form__signup a:hover {
-  color: #78dc50;
+  color: var(--tc-green);
 }
 
 .login-form__signup a:focus-visible {
-  outline: 2px solid #78dc50;
+  outline: 2px solid var(--tc-green);
   outline-offset: 3px;
   border-radius: 2px;
 }

@@ -1,4 +1,6 @@
 const { z } = require('zod');
+const { ROLES, PUBLIC_ACCOUNT_TYPES } = require('../constants/roles');
+const { getCreatorAllowedDomains, isCreatorEmailAllowed } = require('../config/creatorDomain');
 
 // Regras compartilhadas pelo cadastro e pela troca de senha.
 // bcrypt considera no máximo 72 bytes: rejeitamos excedentes, sem truncar.
@@ -17,7 +19,19 @@ const registerSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório').max(100),
   email: emailSchema,
   password: passwordSchema,
-}).strict('Envie apenas name, email e password. O papel da conta é definido pelo servidor.');
+  accountType: z.enum(PUBLIC_ACCOUNT_TYPES, {
+    errorMap: () => ({ message: 'accountType deve ser visitor ou creator.' }),
+  }),
+}).strict('Envie apenas name, email, password e accountType.')
+  .superRefine((data, context) => {
+    if (data.accountType === ROLES.CREATOR && !isCreatorEmailAllowed(data.email)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['email'],
+        message: `Contas de criador exigem um destes domínios institucionais: ${getCreatorAllowedDomains().join(', ')}.`,
+      });
+    }
+  });
 
 const loginSchema = z.object({
   email: emailSchema,
@@ -37,4 +51,10 @@ const updateProfileSchema = z
     path: ['name'],
   });
 
-module.exports = { registerSchema, loginSchema, updateProfileSchema };
+module.exports = {
+  passwordSchema,
+  emailSchema,
+  registerSchema,
+  loginSchema,
+  updateProfileSchema,
+};

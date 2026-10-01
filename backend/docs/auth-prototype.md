@@ -1,192 +1,206 @@
-# Tech Hub — protótipo parcial de cadastro e login
+# Tech Hub — autenticação e perfis de usuário
 
-## Escopo e decisões
+## Resultado desta etapa
 
-Esta versão atende parcialmente RF-01-1 (cadastro), RF-02-1 (login), RNF02 (hash da senha) e preserva o rate limiting existente relacionado ao RNF06. US01 e US02 não estão concluídas. Confirmação de e-mail e domínio institucional foram explicitamente adiados para este protótipo.
+O backend usa agora os perfis próprios do Tech Hub:
 
-O backend mantém Express, CommonJS, Zod, Sequelize, bcryptjs e JWT. Não houve alteração em frontend, models, migrations, seeders ou esquema do banco. Não foi criada uma base de dados alternativa. A aplicação continua usando a integração Sequelize existente.
+- `visitor`: conta comum cadastrada; visitantes anônimos continuam podendo acessar rotas públicas.
+- `creator`: conta que pode publicar/administrar conteúdo; no cadastro público exige e-mail institucional.
+- `super_admin`: conta interna com acesso total às autorizações por perfil; não pode ser criada no cadastro público.
 
-Compatibilidade temporária com a tabela herdada:
-- Cadastro exige name porque o model e a tabela users atuais não aceitam nome vazio/nulo. É nome de exibição, não username.
-- O controller grava role=customer. Esse é o valor legado disponível para conta comum; não significa que o produto Tech Hub terá compradores.
-- A resposta e o JWT ainda apresentam customer. A migração para estudante/super-admin será alinhada com a equipe de banco.
-- Cadastro rejeita role e quaisquer campos extras. O cliente não pode cadastrar seller/admin.
-- Não alteramos os papéis ou o login de contas legadas já existentes.
-- Cadastro retorna token imediatamente, sem confirmar e-mail, somente por ser um protótipo parcial autorizado.
-- O JWT mantém JWT_EXPIRES_IN do ambiente, com padrão 1d. Isso não implementa sessão de 30 dias por inatividade nem revogação no logout.
+Os nomes persistidos no banco, enviados no JWT e devolvidos pela API permanecem em inglês. O frontend pode exibir `Visitante`, `Criador` e `Superadministrador` em português.
 
-## Arquivos
+Decisões temporárias registradas:
 
-Caminhos relativos à pasta backend do repositório:
+- os domínios de criador vêm de `CREATOR_ALLOWED_DOMAINS` e, nesta etapa, são `@ifsc.edu.br` e `@aluno.ifsc.edu.br`;
+- cada domínio é conferido como sufixo exato; outros subdomínios não são aceitos automaticamente;
+- a `main` atual grava o usuário e responde sem token; o login ainda está liberado porque a confirmação de e-mail não foi implementada;
+- a resposta de cadastro ainda menciona confirmação em 24 horas, mas o envio e a validação do e-mail estão comentados e não acontecem;
+- o frontend envia `accountType` com `visitor` ou `creator`; a API não aceita o campo `role`;
+- `super_admin` é criado apenas pela equipe usando um script interno e variáveis de ambiente;
+- o super-admin já ignora restrições de perfil. Fluxos administrativos específicos, como aprovação de projetos, ainda não foram criados.
 
-- src/validators/authValidators.js: normaliza e-mail no cadastro/login, exige letra e número na nova senha, rejeita campos extras no cadastro. Mesma política de nova senha usada pela troca de senha já existente.
-- src/controllers/authController.js: fixa o papel customer no servidor e responde 409/503 em falhas específicas de persistência sem devolver detalhes internos de SQL.
-- src/routes/authRoutes.js: preserva as rotas e o limitador existentes; documenta contrato e erros do protótipo.
-- src/config/swagger.js: atualiza os schemas de cadastro e de nova senha; mantém o restante da documentação.
-- package.json: acrescenta npm test.
-- test/auth.test.js: testes HTTP com banco simulado exclusivamente durante os testes.
-- docs/auth-prototype.md: este guia.
+## Fluxo de cadastro
 
-Não foi necessário um serviço/adaptador separado: a única compatibilidade de papel fica explícita no User.create do controller. O nome obrigatório permanece no validador.
+1. `POST /api/auth/register` passa pelo limitador de requisições.
+2. Zod valida `name`, `email`, `password` e `accountType` e rejeita qualquer campo extra.
+3. Se `accountType` for `creator`, o e-mail precisa terminar exatamente com o domínio configurado.
+4. O controller procura o e-mail normalizado para evitar duplicidade.
+5. O model `User` gera o hash bcrypt com custo 12 antes de salvar.
+6. A API devolve `message` e o usuário sem senha, sem JWT. O cliente deve chamar login para obter o token.
 
-## Como funciona o código
+O campo `role` nunca é copiado diretamente da requisição. O valor persistido vem do `accountType` já validado, impedindo a criação pública de `super_admin`.
 
-1. A rota recebe JSON e passa pelo limitador de requisições.
-2. O controller chama o schema Zod; ele rejeita entradas inválidas antes de gravar.
-3. O cadastro busca o e-mail normalizado. Se já existir, retorna 409.
-4. User.create usa o model existente. Seu hook beforeSave gera salt e hash bcrypt com custo 12.
-5. O controller chama toSafeJSON para excluir a senha/hash da resposta e assina um JWT com id e papel.
-6. O login procura o usuário e compara a senha com bcrypt; não descriptografa a senha.
-7. authenticate verifica o Bearer token e busca o usuário no banco antes de liberar /me.
+Exemplo de visitante:
 
-A senha não recebe trim: espaços fazem parte da credencial. Novas senhas têm ao menos 8 caracteres, uma letra (inclusive acentuada) e um número de 0 a 9. O limite técnico é 72 bytes UTF-8, para evitar truncamento silencioso no bcrypt. Acentos podem ocupar mais de um byte. Referência: https://github.com/dcodeIO/bcrypt.js/#security-considerations
+```json
+{
+  "name": "Maria Silva",
+  "email": "maria@example.com",
+  "password": "SenhaTeste123",
+  "accountType": "visitor"
+}
+```
 
-O login não reaplica a política de criação à senha existente: valida preenchimento e limite de 128 caracteres e faz a comparação. Isso preserva compatibilidade com contas legadas.
+Exemplo de criador durante a regra temporária:
 
-## Testar sem banco
+```json
+{
+  "name": "João Silva",
+  "email": "joao@aluno.ifsc.edu.br",
+  "password": "SenhaTeste123",
+  "accountType": "creator"
+}
+```
 
-No PowerShell, a partir da raiz do repositório TecHub:
+Resposta de sucesso: HTTP `201`. Esta é a resposta atual da `main`; ela ainda mostra uma mensagem de confirmação, mas nenhum e-mail é enviado neste fluxo.
 
-    cd backend
-    npm.cmd ci --ignore-scripts --no-audit --no-fund
-    npm.cmd test
+```json
+{
+  "message": "Cadastro realizado! Verifique seu e-mail em até 24 horas para ativar sua conta.",
+  "user": {
+    "id": "<uuid>",
+    "name": "Maria Silva",
+    "email": "maria@example.com",
+    "role": "visitor",
+    "createdAt": "<data ISO>",
+    "updatedAt": "<data ISO>"
+  }
+}
+```
 
-Node 18 ou superior é necessário para o executor de testes e fetch; a verificação desta entrega utilizou o Node instalado na máquina.
+Apesar do texto da mensagem, o backend ainda não envia o e-mail e o login não verifica confirmação. O token de sessão é obtido em `POST /api/auth/login`.
 
-Os testes abrem um servidor temporário local e substituem somente operações de persistência de User por memória, mantendo Zod, Express, controllers, model, hook bcrypt e JWT reais. Não leem credenciais para conectar ao banco, não criam tabelas e não deixam contas persistidas. A chave JWT de teste é aleatória e vale somente nesse processo.
+Erros principais:
 
-Eles verificam: validação e normalização, hash custo 12, token assinado, duplicidade, violação de unicidade retornada pelo banco simulado, rejeição de role/campos extras, login com sucesso, erro genérico, preservação dos espaços na senha, token ausente/inválido/expirado, usuário removido, banco/tabela indisponível e rate limit.
+- `400`: dados inválidos, `accountType` desconhecido, domínio de criador inválido, `role` ou outro campo extra;
+- `409`: e-mail já cadastrado;
+- `429`: limite de requisições excedido;
+- `503`: banco/tabela indisponível.
 
-A simulação não comprova o esquema real, a persistência após reinício nem concorrência no PostgreSQL. Essas verificações dependem do banco entregue pela equipe.
+## Login e perfil
 
-## Preparar teste manual com banco
+`POST /api/auth/login` continua recebendo `email` e `password`. O bcrypt compara a senha enviada com o hash; a senha original não é descriptografada. Credenciais incorretas sempre retornam o mesmo `401`, sem revelar se o e-mail existe.
 
-1. Solicite os dados de conexão e a confirmação de que a tabela users está pronta.
-2. No VS Code, crie o arquivo backend/.env a partir de backend/.env.example, se ainda não existir. Preserve um .env já configurado.
-3. Preencha DB_DIALECT, DB_HOST, DB_PORT, DB_NAME, DB_USER e DB_PASSWORD com os dados do Tech Hub. Não reutilize automaticamente o banco ecommerce do Órbita.
-4. Gere uma chave JWT para desenvolvimento com:
+`GET /api/auth/me` exige `Authorization: Bearer <JWT>` e devolve os dados seguros do usuário.
 
-       node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+`PATCH /api/auth/me` exige a senha atual. Um usuário `creator` não pode trocar seu e-mail por um endereço fora do domínio institucional, pois isso permitiria contornar a regra do cadastro. Trocar o e-mail não muda automaticamente o perfil de uma conta.
 
-   Coloque o resultado em JWT_SECRET. Não publique o .env.
-5. Configure PORT=3002 para evitar colisão com o Órbita em localhost:3001. Mantenha FRONTEND_URL conforme a URL combinada com o frontend.
-6. Execute:
+## Migração do banco
 
-       npm.cmd run dev
+Arquivo: `src/migrations/20260921000001-replace-ecommerce-user-roles.js`.
 
-7. Abra http://localhost:3002/api/docs e use as rotas abaixo.
+A migração:
 
-Não execute db:setup, migrations ou seeders herdados sem alinhar com a equipe de banco. O server.js testa a conexão antes de iniciar; a rota /api/health sozinha não comprova que a tabela users está pronta.
+- renomeia `customer` para `visitor`;
+- renomeia `seller` para `creator`;
+- adiciona `super_admin` ao ENUM;
+- muda o valor padrão para `visitor`;
+- preserva as contas existentes durante os renomes.
 
-Sem banco acessível, o servidor existente não sobe. Se a conexão funcionar mas users estiver ausente/incompatível, cadastro/login retornam 503 para a falha SQL. Falhas de integridade como duplicidade retornam 409. Não há fallback automático para dados em memória na aplicação.
+A reversão recusa continuar enquanto existir uma conta `super_admin`, evitando rebaixamento ou perda silenciosa de permissão.
 
-## 1. Cadastro
+Importante: esta migração foi preparada, mas não foi executada no Neon compartilhado nesta etapa. A equipe de banco deve revisar e autorizar a aplicação. Até a migração ser executada, o banco antigo rejeitará os novos valores de perfil.
 
-POST http://localhost:3002/api/auth/register
-Content-Type: application/json
+Com autorização da equipe, a partir da pasta `backend`:
 
-    {
-      "name": "Maria Silva",
-      "email": "maria@example.com",
-      "password": "SenhaTeste123"
-    }
+```powershell
+npm.cmd run db:migrate
+```
 
-Resposta esperada: 201.
+Depois, a verificação somente leitura pode ser executada:
 
-    {
-      "user": {
-        "id": "<uuid>",
-        "name": "Maria Silva",
-        "email": "maria@example.com",
-        "role": "customer",
-        "createdAt": "<data ISO>",
-        "updatedAt": "<data ISO>"
-      },
-      "token": "<JWT>"
-    }
+```powershell
+node scripts/check-db.cjs
+```
 
-Os valores entre sinais de menor/maior são ilustrativos. Cadastro persiste a conta no banco configurado. A API não devolve senha/hash. Não envie username, role, accountType ou confirmPassword.
+Ela espera exatamente `visitor`, `creator` e `super_admin` no ENUM atual.
 
-## 2. Login
+## Criação interna de super-admin
 
-POST http://localhost:3002/api/auth/login
-Content-Type: application/json
+Não existe rota HTTP para essa operação. Depois da migração, a equipe preenche temporariamente no `.env`:
 
-    {
-      "email": "maria@example.com",
-      "password": "SenhaTeste123"
-    }
+```dotenv
+SUPER_ADMIN_NAME=Nome da pessoa
+SUPER_ADMIN_EMAIL=email@exemplo.com
+SUPER_ADMIN_PASSWORD=UmaSenhaSegura123
+```
 
-Resposta esperada: 200, com o mesmo formato { user, token }. Copie o token para o próximo teste.
+E executa:
 
-## 3. Usuário autenticado
+```powershell
+npm.cmd run admin:create
+```
 
-GET http://localhost:3002/api/auth/me
-Authorization: Bearer <JWT>
+O script valida os dados, verifica duplicidade e usa o mesmo hook bcrypt do model. Ele não imprime a senha. Depois da criação, recomenda-se remover essas três variáveis do `.env`; a conta permanece no banco.
 
-Resposta esperada: 200 { "user": { ... } }, sem senha ou hash.
+## Configuração local
 
-No Swagger, clique em Authorize e cole somente o JWT; a interface acrescenta Bearer. Depois execute GET /auth/me.
+O arquivo `.env` real é local e não deve ser enviado ao GitHub. Acrescente nele:
 
-## 4. Testar erros
+```dotenv
+CREATOR_ALLOWED_DOMAINS=@ifsc.edu.br,@aluno.ifsc.edu.br
+```
 
-- Repita o cadastro com o mesmo e-mail, inclusive mudando maiúsculas/minúsculas: 409.
-- Envie senha abcdefgh, 12345678 ou Abc1234: 400.
-- Envie e-mail sem formato válido, nome ausente ou role: 400.
-- Faça login com senha errada ou e-mail inexistente: mesmo 401 e mensagem genérica.
-- Chame /me sem token ou com token inválido/expirado: 401.
-- Muitas chamadas de cadastro/login no mesmo IP: 429.
+O `.env.example` contém apenas nomes e exemplos seguros para orientar a equipe.
 
-Exemplo de erro de validação, mantendo o formato do Tech Hub:
+## Arquivos criados
 
-    {
-      "message": "Dados inválidos.",
-      "errors": [
-        {
-          "path": "password",
-          "message": "A senha deve conter pelo menos um número"
-        }
-      ]
-    }
+- `src/constants/roles.js`: fonte única dos perfis e dos tipos permitidos no cadastro público.
+- `src/config/creatorDomain.js`: lê e valida o domínio institucional do ambiente.
+- `src/migrations/20260921000001-replace-ecommerce-user-roles.js`: converte o ENUM e os perfis legados.
+- `scripts/create-super-admin.cjs`: cria uma conta administrativa internamente.
 
-Campos extras geram erro no objeto (path vazio), que a interface pode mostrar acima do formulário.
+## Arquivos modificados
 
-Credenciais incorretas:
+- `src/validators/authValidators.js`: exige `accountType`, valida o domínio do criador e exporta as regras reutilizadas pelo script.
+- `src/controllers/authController.js`: persiste o perfil validado e protege o e-mail institucional nas alterações de perfil.
+- `src/models/User.js`: define `visitor`, `creator` e `super_admin`, com padrão `visitor`.
+- `src/middlewares/auth.js`: permite que `super_admin` atravesse qualquer autorização por perfil.
+- `src/routes/categoryRoutes.js`, `productRoutes.js`, `orderRoutes.js` e `favoriteRoutes.js`: substituem as referências herdadas a `seller/customer` por `creator/visitor`.
+- `src/controllers/orderController.js`: trata `creator` e `super_admin` como perfis que podem consultar todos os registros no fluxo herdado.
+- `src/routes/authRoutes.js` e `src/config/swagger.js`: documentam o novo contrato de cadastro e seus erros.
+- `src/app.js`: ajusta apenas o título da documentação para Tech Hub.
+- `scripts/check-db.cjs`: verifica o novo ENUM.
+- `package.json`: adiciona o comando `admin:create`.
+- `.env.example`: documenta domínio e variáveis temporárias do script administrativo.
+- `test/auth.test.js`: cobre os novos perfis e preserva os testes anteriores de cadastro/login.
 
-    { "message": "E-mail ou senha inválidos." }
+Nenhum arquivo do frontend foi alterado.
 
-Serviço de contas indisponível:
+## Testes automatizados
 
-    { "message": "Serviço de contas indisponível. Tente novamente mais tarde." }
+Na pasta `backend`:
 
-O limitador atual compartilha 20 requisições por IP em 15 minutos entre cadastro, login e PATCH /me. Ele não é o bloqueio por conta após cinco senhas erradas exigido pelo PRD.
+```powershell
+npm.cmd test
+```
 
-## Dependências da equipe de banco
+Os testes usam persistência simulada em memória, mas executam Express, rotas, controllers, Zod, model, hook bcrypt, JWT e middleware reais. Eles não alteram o Neon.
 
-- Conexão própria do Tech Hub e confirmação do schema/tabela disponível; nesta cópia não há .env configurado.
-- Tabela users compatível com o model atual: UUID, name obrigatório até acordo contrário, email único normalizado, password com espaço para hash, role legado e timestamps.
-- Definição oficial de estudante/super-admin e migração do ENUM; não promover contas seller antigas automaticamente.
-- Possibilidade de criar conta sem nome até o preenchimento de perfil, conforme o PRD.
-- Fonte persistida dos domínios institucionais, administrável e com ao menos um domínio ativo.
-- Em features futuras: confirmação de e-mail, tentativas/bloqueio, suspensão e sessões revogáveis.
+Cobertura relevante:
 
-## Alinhamento com frontend e professor
+- visitante e criador são criados com o perfil correto;
+- criador aceita `@ifsc.edu.br` e `@aluno.ifsc.edu.br`, rejeitando domínios não configurados;
+- cadastro público rejeita `role` e `accountType=super_admin`;
+- criador não troca o e-mail para fora do domínio;
+- super-admin passa por autorizações de perfil;
+- hash bcrypt, JWT, login, `/me`, duplicidade, erros genéricos e rate limit continuam funcionando.
 
-A tela atual /cadastro ainda não chama a API e envia um conceito de username/tipo de conta que não corresponde a este contrato. A equipe de frontend deverá alinhar name, email e password temporários, tratar errors[].path e usar o Bearer token. A confirmação de senha fica na tela. O frontend precisa da URL/porta correta (3002 no exemplo).
+Esses testes não substituem o teste de integração no Neon depois que a migração for aplicada.
 
-O professor/equipe deve validar o adiamento dos critérios do PRD na entrega parcial, inclusive a exigência temporária de nome e o papel legado. A decisão técnica de expiração fixa versus inatividade permanece pendente.
+## Alinhamento necessário com frontend
 
-## Próximas features e limitações
+O formulário deve enviar os quatro campos exatos: `name`, `email`, `password` e `accountType`. Os valores aceitos em `accountType` são `visitor` e `creator`. Na `main` analisada, a tela ainda não envia `accountType` e mantém valores de interface em português; ela precisa mapear `criador` para `creator` e `visitante` para `visitor` no corpo da requisição. Sem esse alinhamento, a API rejeita o cadastro com `400`.
 
-- RN18/US21: domínio institucional dinâmico e sua administração.
-- RF-01-2: confirmação de e-mail de 24h, reenvio e bloqueio de acesso até confirmação.
-- RF-02-2: bloqueio por conta após cinco falhas por 15 minutos.
-- RF-02-3: sessão de 30 dias e logout com revogação imediata.
-- RF-12-2: username após confirmação, com unicidade e regras do portfólio.
-- US03/US04: seed inicial combinado com banco, convites de super-admin e primeiro acesso.
-- Suspensão/reativação, proteção das rotas conforme estado da conta, exclusão de conta e dados.
-- HTTPS no ambiente publicado, integração da proteção CSRF com a estratégia de sessão e logs/monitoramento. JWT Bearer atual não equivale por si só a atender todos os RNFs.
-- Recuperação de senha: detalhar escopo com o professor; o PRD a menciona em RNF06 sem especificar uma história completa.
-- 2FA: fora do escopo de US02 no PDF; não tratar como obrigação desta entrega.
+A interface não deve enviar `role`, nem oferecer `super_admin`. Deve tratar `errors[].path`, especialmente erros no caminho `email`, e armazenar/enviar o JWT conforme o fluxo já combinado.
 
-Esta versão é para desenvolvimento e validação do núcleo de autenticação. Não é a entrega integral do módulo de contas.
+## Decisões futuras
+
+- confirmar se a lista temporária de domínios continuará fixa ou será administrável no sistema;
+- decidir confirmação de e-mail e/ou aprovação antes de ativar um criador;
+- definir ações administrativas específicas do super-admin e auditoria dessas ações;
+- confirmar se outras rotas herdadas do e-commerce permanecerão no Tech Hub;
+- implementar confirmação de e-mail, recuperação de senha, bloqueio por tentativas, logout com revogação e demais histórias futuras do PRD.
+
+Esta etapa altera somente o backend de autenticação/perfis e a consistência das autorizações herdadas. Ela não cria os fluxos administrativos completos.

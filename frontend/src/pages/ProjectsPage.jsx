@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import "./ProjectsPage.css";
 
@@ -238,19 +239,13 @@ export default function ProjectsPage() {
       const matchesCourse =
         !selectedCourse || project.course === selectedCourse;
 
-      const matchesPhase =
-        !selectedPhase || project.phase === selectedPhase;
+      const matchesPhase = !selectedPhase || project.phase === selectedPhase;
 
       const matchesTags =
         selectedTags.length === 0 ||
         selectedTags.every((tag) => project.tags.includes(tag));
 
-      return (
-        matchesSearch &&
-        matchesCourse &&
-        matchesPhase &&
-        matchesTags
-      );
+      return matchesSearch && matchesCourse && matchesPhase && matchesTags;
     });
   }, [search, selectedCourse, selectedPhase, selectedTags]);
 
@@ -262,10 +257,7 @@ export default function ProjectsPage() {
   const visibleProjects = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 
-    return filteredProjects.slice(
-      startIndex,
-      startIndex + ITEMS_PER_PAGE,
-    );
+    return filteredProjects.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProjects, currentPage]);
 
   useEffect(() => {
@@ -316,10 +308,7 @@ export default function ProjectsPage() {
   }
 
   const hasActiveFilters =
-    search ||
-    selectedCourse ||
-    selectedPhase ||
-    selectedTags.length > 0;
+    search || selectedCourse || selectedPhase || selectedTags.length > 0;
 
   return (
     <main className="projects-page">
@@ -327,9 +316,7 @@ export default function ProjectsPage() {
         <header className="projects-page__header">
           <h1>Projetos</h1>
 
-          <p>
-            Conheça os projetos desenvolvidos pelos estudantes do IFSC.
-          </p>
+          <p>Conheça os projetos desenvolvidos pelos estudantes do IFSC.</p>
         </header>
 
         <div className="projects-page__search">
@@ -385,9 +372,7 @@ export default function ProjectsPage() {
               disabled={!selectedCourse}
             >
               <option value="">
-                {selectedCourse
-                  ? "Todas as fases"
-                  : "Selecione um curso"}
+                {selectedCourse ? "Todas as fases" : "Selecione um curso"}
               </option>
 
               {phaseOptions.map((phase) => (
@@ -398,10 +383,7 @@ export default function ProjectsPage() {
             </select>
           </div>
 
-          <div
-            className="projects-page__tag-filter"
-            ref={tagsContainerRef}
-          >
+          <div className="projects-page__tag-filter" ref={tagsContainerRef}>
             <label htmlFor="tag-filter">Tecnologias</label>
 
             <button
@@ -431,9 +413,7 @@ export default function ProjectsPage() {
                   <input
                     type="search"
                     value={tagSearch}
-                    onChange={(event) =>
-                      setTagSearch(event.target.value)
-                    }
+                    onChange={(event) => setTagSearch(event.target.value)}
                     placeholder="Buscar tecnologia"
                     aria-label="Buscar tecnologia"
                     autoFocus
@@ -476,9 +456,7 @@ export default function ProjectsPage() {
           </button>
         </div>
 
-        {(selectedCourse ||
-          selectedPhase ||
-          selectedTags.length > 0) && (
+        {(selectedCourse || selectedPhase || selectedTags.length > 0) && (
           <div
             className="projects-page__active-filters"
             aria-label="Filtros ativos"
@@ -534,9 +512,7 @@ export default function ProjectsPage() {
 
             <h2>Nenhum projeto encontrado</h2>
 
-            <p>
-              Tente alterar a busca ou remover alguns filtros.
-            </p>
+            <p>Tente alterar a busca ou remover alguns filtros.</p>
 
             <button type="button" onClick={clearFilters}>
               Limpar filtros
@@ -577,7 +553,11 @@ function FilterTag({ label, type, onRemove }) {
 
 function ProjectCard({ project }) {
   return (
-    <article className="project-card">
+    <Link
+      to={`/projetos/${project.id}`}
+      className="project-card"
+      aria-label={`Ver detalhes do projeto ${project.title}`}
+    >
       <div
         className="project-card__image"
         style={{ backgroundColor: project.color }}
@@ -610,17 +590,8 @@ function ProjectCard({ project }) {
             <span key={tag}>{tag}</span>
           ))}
         </div>
-
-        <button
-          type="button"
-          className="project-card__details"
-          disabled
-          title="A página de detalhes será adicionada posteriormente"
-        >
-          Ver projeto
-        </button>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -631,15 +602,9 @@ function Pagination({
   itemsPerPage,
   onPageChange,
 }) {
-  const startItem =
-    totalItems === 0
-      ? 0
-      : (currentPage - 1) * itemsPerPage + 1;
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
 
-  const endItem = Math.min(
-    currentPage * itemsPerPage,
-    totalItems,
-  );
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   const visiblePages = getVisiblePages(currentPage, totalPages);
 
@@ -653,10 +618,7 @@ function Pagination({
   }
 
   return (
-    <nav
-      className="projects-pagination"
-      aria-label="Paginação dos projetos"
-    >
+    <nav className="projects-pagination" aria-label="Paginação dos projetos">
       <div className="projects-pagination__buttons">
         <button
           type="button"
@@ -685,13 +647,9 @@ function Pagination({
             <button
               key={page}
               type="button"
-              className={
-                page === currentPage ? "is-current" : ""
-              }
+              className={page === currentPage ? "is-current" : ""}
               onClick={() => changePage(page)}
-              aria-current={
-                page === currentPage ? "page" : undefined
-              }
+              aria-current={page === currentPage ? "page" : undefined}
             >
               {page}
             </button>
@@ -720,8 +678,11 @@ function Pagination({
       </div>
 
       <p>
-        Mostrando <strong>{startItem}–{endItem}</strong> de{" "}
-        <strong>{totalItems}</strong> projetos
+        Mostrando{" "}
+        <strong>
+          {startItem}–{endItem}
+        </strong>{" "}
+        de <strong>{totalItems}</strong> projetos
       </p>
     </nav>
   );
@@ -729,10 +690,7 @@ function Pagination({
 
 function getVisiblePages(currentPage, totalPages) {
   if (totalPages <= 5) {
-    return Array.from(
-      { length: totalPages },
-      (_, index) => index + 1,
-    );
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
 
   if (currentPage <= 3) {
@@ -740,13 +698,7 @@ function getVisiblePages(currentPage, totalPages) {
   }
 
   if (currentPage >= totalPages - 2) {
-    return [
-      1,
-      "...",
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ];
+    return [1, "...", totalPages - 2, totalPages - 1, totalPages];
   }
 
   return [1, "...", currentPage, "...", totalPages];
@@ -784,13 +736,7 @@ function SearchIcon() {
       fill="none"
       aria-hidden="true"
     >
-      <circle
-        cx="11"
-        cy="11"
-        r="7"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
 
       <path
         d="m16.5 16.5 4 4"
@@ -833,10 +779,7 @@ function UserIcon() {
     >
       <circle cx="12" cy="8" r="4" fill="currentColor" />
 
-      <path
-        d="M4 20c0-4 3.6-7 8-7s8 3 8 7"
-        fill="currentColor"
-      />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="currentColor" />
     </svg>
   );
 }

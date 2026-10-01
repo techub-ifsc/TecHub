@@ -33,7 +33,7 @@
 }
 
 .site-header__symbol {
-  color: #7ee753;
+  color: var(--tc-green);
   font-family: monospace;
   font-size: 1.25rem;
   font-weight: 800;
@@ -92,7 +92,7 @@
 .site-header__nav-item.is-active {
   background: rgb(120 220 80 / 10%) !important;
   border-color: rgb(120 220 80 / 25%) !important;
-  color: #78dc50 !important;
+  color: var(--tc-green) !important;
 }
 
 .site-header__nav-item:disabled,
@@ -126,8 +126,8 @@
 }
 
 .site-header__signup {
-  background: #7ee753 !important;
-  border: 1px solid #7ee753 !important;
+  background: var(--tc-green) !important;
+  border: 1px solid var(--tc-green) !important;
   color: #111213 !important;
   cursor: pointer;
   transition:
@@ -137,8 +137,8 @@
 
 .site-header__signup:hover,
 .site-header__signup.is-active {
-  background: #8dec67 !important;
-  border-color: #8dec67 !important;
+  background: var(--tc-green-hover) !important;
+  border-color: var(--tc-green-hover) !important;
   color: #111213 !important;
 }
 
@@ -220,7 +220,7 @@
 
   background: transparent;
   border: 1px solid #ffffff;
-  border-radius: 6px;
+  border-radius: var(--tc-btn-radius);
 
   color: #ffffff;
   font-size: 0.875rem;
@@ -241,7 +241,7 @@
 }
 
 .site-header .site-header__login:focus-visible {
-  outline: 2px solid #78dc50;
+  outline: 2px solid var(--tc-green);
   outline-offset: 3px;
 }
 

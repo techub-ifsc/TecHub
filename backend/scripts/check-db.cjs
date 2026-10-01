@@ -9,12 +9,12 @@ async function main() {
     const expected = ['id', 'name', 'email', 'password', 'role', 'created_at', 'updated_at'];
     if (expected.some(name => !columns.some(c => c.column_name === name))) throw new Error('USERS_SCHEMA_INCOMPLETE');
     const [roles] = await sequelize.query("SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid JOIN pg_namespace n ON n.oid=t.typnamespace WHERE t.typname='enum_users_role' AND n.nspname='public'");
-    if (roles.length !== 2 || !['customer', 'seller'].every(role => roles.some(r => r.enumlabel === role))) throw new Error('ROLES_INCOMPLETE');
+    if (roles.length !== 3 || !['visitor', 'creator', 'super_admin'].every(role => roles.some(r => r.enumlabel === role))) throw new Error('ROLES_INCOMPLETE');
     const [migrations] = await sequelize.query('SELECT name FROM public."SequelizeMeta" ORDER BY name');
     console.log('Conexão PostgreSQL: OK');
     console.log(`SSL da sessão: ${ssl[0]?.ssl === true ? 'ATIVO' : 'NÃO CONFIRMADO'}`);
     console.log('Colunas de users: OK');
-    console.log('Perfis customer (Visitante) e seller (Criador): OK');
+    console.log('Perfis visitor, creator e super_admin: OK');
     console.log(`Migrations registradas: ${migrations.length}`);
   } catch (error) {
     const allowed = ['EXPECTED_POSTGRES', 'USERS_SCHEMA_INCOMPLETE', 'ROLES_INCOMPLETE'];

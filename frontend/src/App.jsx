@@ -2,21 +2,17 @@ import { Route, Routes } from "react-router-dom";
 
 import EmptyState from "./components/EmptyState";
 import Header from "./components/Header";
-import PrivateRoute from "./components/PrivateRoute";
+import Footer from "./components/Footer";
 
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import Favorites from "./pages/Favorites";
+import CreatorProfilePage from "./pages/CreatorProfilePage";
+import CreatorsPage from "./pages/CreatorsPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import NewProjectPage from "./pages/NewProjectPage";
-import OrderDetail from "./pages/OrderDetail";
-import Orders from "./pages/Orders";
-import ProductDetail from "./pages/ProductDetail";
-import Profile from "./pages/Profile";
+import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import Register from "./pages/Register";
 import SignUpPage from "./pages/SignUpPage";
+import ProfileEditPage from "./pages/ProfileEditPage";
 
 export default function App() {
   return (
@@ -27,23 +23,45 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
 
-          <Route path="/projetos" element={<ProjectsPage />} />
-          <Route path="/projeto/novo" element={<NewProjectPage />} />
+          <Route
+            path="/projetos"
+            element={<ProjectsPage />}
+          />
 
-          <Route path="/cadastro" element={<SignUpPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/projetos/:id"
+            element={<ProjectDetailsPage />}
+          />
 
-          <Route path="/register" element={<Register />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route
+            path="/projeto/novo"
+            element={<NewProjectPage />}
+          />
 
-          <Route element={<PrivateRoute />}>
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/orders/:id" element={<OrderDetail />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/favorites" element={<Favorites />} />
-          </Route>
+          <Route
+            path="/criadores"
+            element={<CreatorsPage />}
+          />
+
+          <Route
+            path="/criadores/:id/editar"
+            element={<ProfileEditPage />}
+          />
+          
+          <Route
+            path="/criadores/:id"
+            element={<CreatorProfilePage />}
+          />
+
+          <Route
+            path="/cadastro"
+            element={<SignUpPage />}
+          />
+
+          <Route
+            path="/login"
+            element={<LoginPage />}
+          />
 
           <Route
             path="*"
@@ -57,6 +75,8 @@ export default function App() {
           />
         </Routes>
       </main>
+      
+      <Footer />
     </div>
   );
 }

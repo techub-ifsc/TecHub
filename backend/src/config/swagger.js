@@ -3,10 +3,10 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const definition = {
   openapi: '3.0.3',
   info: {
-    title: 'E-commerce API',
+    title: 'Tech Hub API',
     version: '1.0.0',
     description:
-      'API REST para o e-commerce (Node.js, Express, Sequelize, PostgreSQL). ' +
+      'API REST do Tech Hub (Node.js, Express, Sequelize, PostgreSQL). ' +
       'Autenticação via JWT (`Authorization: Bearer <token>`).',
   },
   servers: [{ url: '/api', description: 'Servidor atual' }],
@@ -41,7 +41,7 @@ const definition = {
           id: { type: 'string', format: 'uuid' },
           name: { type: 'string' },
           email: { type: 'string', format: 'email' },
-          role: { type: 'string', enum: ['customer', 'seller'] },
+          role: { type: 'string', enum: ['visitor', 'creator', 'super_admin'] },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },
@@ -53,15 +53,24 @@ const definition = {
           token: { type: 'string' },
         },
       },
+      RegisterResponse: {
+        type: 'object',
+        required: ['message', 'user'],
+        properties: {
+          message: { type: 'string' },
+          user: { $ref: '#/components/schemas/User' },
+        },
+      },
       RegisterInput: {
         type: 'object',
-        required: ['name', 'email', 'password'],
+        required: ['name', 'email', 'password', 'accountType'],
         additionalProperties: false,
-        description: 'Protótipo parcial: name obrigatório por compatibilidade com users; role fixado em customer. Sem confirmação de e-mail ou restrição de domínio nesta etapa.',
+        description: 'Cadastro público de visitante ou criador. Criadores precisam usar o domínio institucional configurado pelo backend. super_admin é criado somente pelo script interno da equipe.',
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 100, example: 'Maria Silva' },
           email: { type: 'string', format: 'email', maxLength: 255, example: 'maria@example.com' },
           password: { type: 'string', format: 'password', minLength: 8, maxLength: 72, description: 'Ao menos uma letra e um número; máximo de 72 bytes UTF-8 (acentos podem ocupar mais de um byte).', example: 'SenhaTeste123' },
+          accountType: { type: 'string', enum: ['visitor', 'creator'], example: 'visitor', description: 'Perfil público escolhido no cadastro. Não use role.' },
         },
       },
       LoginInput: {
@@ -75,7 +84,7 @@ const definition = {
       UpdateProfileInput: {
         type: 'object',
         required: ['currentPassword'],
-        description: 'Ao menos um entre name, email ou password deve ser informado.',
+        description: 'Ao menos um entre name, email ou password deve ser informado. Um creator deve manter um e-mail do domínio institucional configurado.',
         properties: {
           name: { type: 'string', example: 'Maria Silva' },
           email: { type: 'string', format: 'email', example: 'maria@exemplo.com' },

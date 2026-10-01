@@ -1,42 +1,45 @@
-// Renderiza informações institucionais, contatos e atalhos no rodapé.
+import { Link } from "react-router-dom";
+
+import "./Footer.css";
+
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="site-footer">
-      <div className="footer-inner">
-        <div className="footer-brand">
-          <span className="navbar-brand-badge" aria-hidden="true">
-            <i className="fa-solid fa-atom" />
-          </span>
-          <div>
-            <strong>Órbita</strong>
-            <p>Boas escolhas colocam tudo em movimento.</p>
-          </div>
+      <div className="site-footer__content">
+        <div className="site-footer__identity">
+          <Link
+            to="/"
+            className="site-footer__brand"
+            aria-label="Ir para a página inicial do TecHub"
+          >
+            <span
+              className="site-footer__symbol"
+              aria-hidden="true"
+            >
+              &lt;/&gt;
+            </span>
+
+            <span>TecHub</span>
+          </Link>
+
+          <p>
+            Uma vitrine para projetos, talentos e experiências
+            desenvolvidas pela comunidade acadêmica do IFSC.
+          </p>
         </div>
 
-        <div className="footer-links">
-          <strong>Navegue</strong>
-          <a href="/">Produtos</a>
-          <a href="/orders">Meus pedidos</a>
-        </div>
+        <div className="site-footer__information">
+          <p>
+            © {currentYear} TecHub — IFSC Câmpus Lages
+          </p>
 
-        <div className="footer-contact">
-          <strong>Fale com a gente</strong>
-          <a href="mailto:contato@orbita.com.br">
-            <i className="fa-solid fa-envelope" aria-hidden="true" /> contato@orbita.com.br
-          </a>
-          <span>
-            <i className="fa-solid fa-phone" aria-hidden="true" /> (11) 4000-0000
-          </span>
-        </div>
-
-        <div className="footer-social" aria-label="Redes sociais">
-          <a href="#" aria-label="Instagram"><i className="fa-brands fa-instagram" /></a>
-          <a href="#" aria-label="Facebook"><i className="fa-brands fa-facebook-f" /></a>
-          <a href="#" aria-label="X"><i className="fa-brands fa-x-twitter" /></a>
+          <p>
+            Desenvolvido para valorizar projetos e criadores.
+          </p>
         </div>
       </div>
-
-      <p className="footer-copyright">© {new Date().getFullYear()} Órbita. Sua loja online, do jeito certo.</p>
     </footer>
   );
 }

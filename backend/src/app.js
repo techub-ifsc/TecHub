@@ -19,16 +19,28 @@ app.use((req, res, next) => {
   return helmet()(req, res, next);
 });
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
-  })
-);
+// FRONTEND_URL aceita várias origens separadas por vírgula; barras finais são ignoradas,
+// pois o navegador envia a origem sem elas.
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Requisições sem Origin (curl, server-to-server) não passam por CORS.
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'E-commerce API Docs' }));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Tech Hub API Docs' }));
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 
 app.use('/api', routes);

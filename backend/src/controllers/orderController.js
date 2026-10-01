@@ -2,6 +2,7 @@ const { sequelize, Order, OrderItem, CartItem, Product, User } = require('../mod
 const { getOrCreateCart } = require('./cartController');
 const { createOrderSchema, updateOrderStatusSchema } = require('../validators/orderValidators');
 const { ApiError } = require('../middlewares/errorHandler');
+const { ROLES } = require('../constants/roles');
 
 // Converte o carrinho em pedido dentro de uma transação e atualiza o estoque.
 async function createOrder(req, res, next) {
@@ -84,14 +85,15 @@ async function createOrder(req, res, next) {
   }
 }
 
-// Lista pedidos conforme o perfil: próprios para comprador e todos para vendedor.
+// Lista pedidos conforme o perfil: próprios para visitante e todos para criador/super-admin.
 async function listOrders(req, res, next) {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
     const offset = (page - 1) * limit;
 
-    const where = req.user.role === 'seller' ? {} : { userId: req.user.id };
+    const canSeeAllOrders = [ROLES.CREATOR, ROLES.SUPER_ADMIN].includes(req.user.role);
+    const where = canSeeAllOrders ? {} : { userId: req.user.id };
 
     const { rows, count } = await Order.findAndCountAll({
       where,
@@ -113,7 +115,7 @@ async function listOrders(req, res, next) {
   }
 }
 
-// Retorna um pedido quando o usuário é seu comprador ou possui perfil de vendedor.
+// Retorna um pedido quando o usuário é seu visitante ou possui perfil elevado.
 async function getOrder(req, res, next) {
   try {
     const order = await Order.findByPk(req.params.id, {
@@ -127,7 +129,8 @@ async function getOrder(req, res, next) {
       throw new ApiError(404, 'Pedido não encontrado.');
     }
 
-    if (req.user.role !== 'seller' && order.userId !== req.user.id) {
+    const canSeeAnyOrder = [ROLES.CREATOR, ROLES.SUPER_ADMIN].includes(req.user.role);
+    if (!canSeeAnyOrder && order.userId !== req.user.id) {
       throw new ApiError(403, 'Acesso negado a este pedido.');
     }
 
@@ -137,7 +140,7 @@ async function getOrder(req, res, next) {
   }
 }
 
-// Valida a transição e atualiza o status de um pedido pelo vendedor.
+// Valida a transição e atualiza o status de um pedido pelo criador/super-admin.
 async function updateStatus(req, res, next) {
   try {
     const data = updateOrderStatusSchema.parse(req.body);

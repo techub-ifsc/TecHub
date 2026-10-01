@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const categoryController = require('../controllers/categoryController');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { ROLES } = require('../constants/roles');
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.get('/', categoryController.list);
  * /categories:
  *   post:
  *     tags: [Categories]
- *     summary: Cria uma categoria (somente vendedor)
+ *     summary: Cria uma categoria (somente criador ou super-admin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
@@ -50,8 +51,8 @@ router.get('/', categoryController.list);
  *               properties:
  *                 category: { $ref: '#/components/schemas/Category' }
  *       403:
- *         description: Acesso restrito a vendedores
+ *         description: Acesso restrito a criadores e super-admins
  */
-router.post('/', authenticate, authorize('seller'), categoryController.create);
+router.post('/', authenticate, authorize(ROLES.CREATOR), categoryController.create);
 
 module.exports = router;

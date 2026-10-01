@@ -1647,3 +1647,114 @@ body {
   width: 100%;
   flex: 1;
 }
+/* ============ Botões do TecHub — padrão único ============ */
+/* Todas as páginas apontam para estes valores. Para mudar a cor ou o
+   arredondamento dos botões do site inteiro, altere aqui e só aqui. */
+:root {
+  --tc-green: #78dc50;
+  --tc-green-hover: #89e767;
+  --tc-green-active: #52c52d;
+
+  --tc-btn-radius: 8px;
+  --tc-btn-padding: 0.75rem 1rem;
+
+  --tc-remove-bg: rgb(16 18 16 / 15%);
+  --tc-remove-bg-hover: rgb(16 18 16 / 30%);
+}
+
+/* Padrão aplicado. O !important existe só para vencer a regra global de
+   botão herdada do Órbita (linha 124). Quando ela for removida na branch
+   chore/remove-orbita-legacy, dá para apagar todos os !important daqui. */
+
+/* Principal — ação positiva da tela */
+.home-hero__primary-button,
+.site-header__signup,
+.signup-form__submit,
+.login-form__submit,
+.submit-review,
+.projects-page__empty button {
+  background: var(--tc-green) !important;
+  border: 0 !important;
+  border-radius: var(--tc-btn-radius) !important;
+  box-shadow: none !important;
+  color: #101010 !important;
+  font-weight: 700;
+}
+
+.home-hero__primary-button:hover:not(:disabled),
+.site-header__signup:hover,
+.signup-form__submit:hover:not(:disabled),
+.login-form__submit:hover:not(:disabled),
+.submit-review:hover:not(:disabled),
+.projects-page__empty button:hover {
+  background: var(--tc-green-hover) !important;
+  color: #101010 !important;
+}
+
+/* Secundário — ação alternativa */
+.home-hero__secondary-button,
+.site-header__login,
+.save-draft {
+  background: #ffffff !important;
+  border: 0 !important;
+  border-radius: var(--tc-btn-radius) !important;
+  box-shadow: none !important;
+  color: #111111 !important;
+  font-weight: 700;
+}
+
+.home-hero__secondary-button:hover:not(:disabled),
+.site-header__login:hover:not(:disabled),
+.save-draft:hover:not(:disabled) {
+  background: #e9ebec !important;
+}
+
+/* Desabilitado — vale para qualquer botão do TecHub */
+.home-hero__primary-button:disabled,
+.home-hero__secondary-button:disabled,
+.site-header__login:disabled,
+.site-header__nav-item:disabled,
+.signup-form__submit:disabled,
+.login-form__submit:disabled,
+.action-button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.55 !important;
+}
+
+/* Remoção — o "x" de tags, colaboradores e arquivos */
+.tag-remove-button,
+.collaborator-remove-button,
+.upload-file-remove {
+  background: var(--tc-remove-bg) !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.tag-remove-button:hover,
+.collaborator-remove-button:hover,
+.upload-file-remove:hover {
+  background: var(--tc-remove-bg-hover) !important;
+}
+
+/* Demais botões das páginas do TecHub: a regra global do Órbita impõe
+   999px em tudo, e só perde onde a página usou !important no raio. Este
+   bloco normaliza o resto. Sai junto com a regra global. */
+.home-page button,
+.site-header button,
+.signup-page button,
+.login-page button,
+.projects-page button,
+.new-project-page button {
+  border-radius: var(--tc-btn-radius) !important;
+}
+
+/* Exceção: os botões de remover continuam redondos. */
+.new-project-page .tag-remove-button,
+.new-project-page .collaborator-remove-button,
+.new-project-page .upload-file-remove,
+.projects-page .projects-page__filter-tag button,
+.projects-page button[aria-label^="Remover"] {
+  border-radius: 50% !important;
+}

@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import EmptyState from "./components/EmptyState";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 
 import CreatorProfilePage from "./pages/CreatorProfilePage";
 import CreatorsPage from "./pages/CreatorsPage";
@@ -11,6 +12,7 @@ import NewProjectPage from "./pages/NewProjectPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import SignUpPage from "./pages/SignUpPage";
+import ProfileEditPage from "./pages/ProfileEditPage";
 
 export default function App() {
   return (
@@ -42,6 +44,11 @@ export default function App() {
           />
 
           <Route
+            path="/criadores/:id/editar"
+            element={<ProfileEditPage />}
+          />
+          
+          <Route
             path="/criadores/:id"
             element={<CreatorProfilePage />}
           />
@@ -68,6 +75,8 @@ export default function App() {
           />
         </Routes>
       </main>
+      
+      <Footer />
     </div>
   );
 }

@@ -1,0 +1,129 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content {
+  flex: 1;
+}
+
+.site-footer {
+  width: 100%;
+  margin-top: auto;
+  background-color: #151618;
+  border-top: 1px solid #303337;
+  color: #ffffff;
+}
+
+.site-footer__content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.4rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.site-footer__identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.site-footer__brand {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.55rem;
+  color: #ffffff;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 1.05rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.site-footer__brand:hover {
+  color: #ffffff;
+}
+
+.site-footer__brand:focus-visible {
+  outline: 3px solid rgb(120 220 80 / 35%);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.site-footer__symbol {
+  color: var(--tc-green, #78dc50);
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.site-footer__identity > p {
+  max-width: 520px;
+  margin: 0;
+  padding-left: 1.25rem;
+  border-left: 1px solid #34373a;
+  color: #92979d;
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.site-footer__information {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: right;
+}
+
+.site-footer__information p {
+  margin: 0;
+  color: #767b81;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.site-footer__information p:first-child {
+  color: #92979d;
+}
+
+@media (max-width: 850px) {
+  .site-footer__content {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .site-footer__information {
+    width: 100%;
+    padding-top: 1rem;
+    align-items: flex-start;
+    border-top: 1px solid #2b2e31;
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .site-footer__content {
+    padding: 1.25rem;
+  }
+
+  .site-footer__identity {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .site-footer__identity > p {
+    padding-left: 0;
+    border-left: 0;
+  }
+}

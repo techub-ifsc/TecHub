@@ -44,6 +44,16 @@ export default function Header() {
             aria-label="Navegação principal"
           >
             <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                `site-header__nav-item${isActive ? " is-active" : ""}`
+              }
+              onClick={closeMenu}
+            >
+              Início
+            </NavLink>
+            <NavLink
               to="/projetos"
               className={({ isActive }) =>
                 `site-header__nav-item${isActive ? " is-active" : ""}`

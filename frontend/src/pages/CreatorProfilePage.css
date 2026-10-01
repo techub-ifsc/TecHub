@@ -111,7 +111,7 @@
   font-weight: 800;
 }
 
-.creator-profile-page button.creator-profile-hero__edit {
+.creator-profile-page .creator-profile-hero__edit {
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -130,21 +130,25 @@
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   backdrop-filter: blur(8px);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
+    color 160ms ease,
     transform 160ms ease;
 }
 
-.creator-profile-page button.creator-profile-hero__edit:hover {
+.creator-profile-page .creator-profile-hero__edit:hover {
   background-color: rgb(25 30 35 / 92%) !important;
   border-color: var(--profile-green) !important;
+  color: var(--profile-green) !important;
+  text-decoration: none;
   transform: translateY(-2px);
 }
 
-.creator-profile-page button.creator-profile-hero__edit:focus-visible {
+.creator-profile-page .creator-profile-hero__edit:focus-visible {
   outline: 3px solid rgb(120 220 80 / 30%);
   outline-offset: 3px;
 }
@@ -691,7 +695,7 @@
     height: 150px;
   }
 
-  .creator-profile-page button.creator-profile-hero__edit {
+  .creator-profile-page .creator-profile-hero__edit {
     top: 0.75rem;
     right: 0.75rem;
   }

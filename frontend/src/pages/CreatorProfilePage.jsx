@@ -59,11 +59,7 @@ const PROFILE = {
   id: 1,
   name: "Antoni Ferraz",
   initials: "AF",
-  course: "Ciência da Computação",
-  phase: "8ª Fase",
   profileSlug: "/p/antoni-ferraz",
-  conclusion: "2026/2",
-  status: "Em formação",
   campus: "IFSC Câmpus Lages",
   course: "Ciência da Computação",
   phase: "8ª Fase",
@@ -111,7 +107,6 @@ export default function CreatorProfilePage() {
 
   const [activeTab, setActiveTab] = useState("autor");
   const [copyFeedback, setCopyFeedback] = useState("");
-  const [editFeedback, setEditFeedback] = useState("");
 
   const filteredProjects = PROJECTS.filter((project) => {
     if (activeTab === "todos") {
@@ -140,16 +135,6 @@ export default function CreatorProfilePage() {
     }
   }
 
-  function handleEditProfile() {
-    setEditFeedback(
-      "A edição do perfil será integrada ao sistema de autenticação em uma próxima etapa.",
-    );
-
-    window.setTimeout(() => {
-      setEditFeedback("");
-    }, 3500);
-  }
-
   return (
     <main className="creator-profile-page">
       <div className="creator-profile-page__container">
@@ -163,14 +148,13 @@ export default function CreatorProfilePage() {
             <section className="creator-profile-hero">
               <div className="creator-profile-hero__cover" />
 
-              <button
-                type="button"
+              <Link
+                to={`/criadores/${id}/editar`}
                 className="creator-profile-hero__edit"
-                onClick={handleEditProfile}
               >
                 <i className="fa-solid fa-pen" aria-hidden="true" />
                 Editar perfil
-              </button>
+              </Link>
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
@@ -209,12 +193,6 @@ export default function CreatorProfilePage() {
                   {copyFeedback}
                 </span>
               </div>
-
-              {editFeedback && (
-                <p className="creator-profile-edit-feedback" role="status">
-                  {editFeedback}
-                </p>
-              )}
             </section>
 
             <section className="creator-profile-card creator-profile-bio">

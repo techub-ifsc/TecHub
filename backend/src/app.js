@@ -40,7 +40,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'E-commerce API Docs' }));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Tech Hub API Docs' }));
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 
 app.use('/api', routes);

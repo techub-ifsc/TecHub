@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const orderController = require('../controllers/orderController');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { ROLES } = require('../constants/roles');
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.post('/', orderController.createOrder);
  * /orders:
  *   get:
  *     tags: [Orders]
- *     summary: Lista pedidos (o comprador vê os próprios; o vendedor vê todos)
+ *     summary: Lista pedidos (o visitante vê os próprios; criador e super-admin veem todos)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
@@ -66,7 +67,7 @@ router.get('/', orderController.listOrders);
  * /orders/{id}:
  *   get:
  *     tags: [Orders]
- *     summary: Retorna um pedido (o comprador só acessa o próprio; vendedor acessa qualquer um)
+ *     summary: Retorna um pedido (visitante só acessa o próprio; criador e super-admin acessam qualquer um)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -94,7 +95,7 @@ router.get('/:id', orderController.getOrder);
  * /orders/{id}/status:
  *   patch:
  *     tags: [Orders]
- *     summary: Autoriza/atualiza o status de um pedido (somente vendedor)
+ *     summary: Autoriza/atualiza o status de um pedido (criador ou super-admin)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -116,10 +117,10 @@ router.get('/:id', orderController.getOrder);
  *               properties:
  *                 order: { $ref: '#/components/schemas/Order' }
  *       403:
- *         description: Acesso restrito a vendedores
+ *         description: Acesso restrito a criadores e super-admins
  *       404:
  *         description: Pedido não encontrado
  */
-router.patch('/:id/status', authorize('seller'), orderController.updateStatus);
+router.patch('/:id/status', authorize(ROLES.CREATOR), orderController.updateStatus);
 
 module.exports = router;

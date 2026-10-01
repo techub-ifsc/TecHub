@@ -18,8 +18,8 @@ const authLimiter = rateLimit({
  * /auth/register:
  *   post:
  *     tags: [Auth]
- *     summary: Cadastro básico Tech Hub (protótipo parcial)
- *     description: Exige nome por compatibilidade com a tabela herdada. Papel customer fixado pelo servidor. Retorna JWT sem confirmação de e-mail; domínio institucional ainda não validado.
+ *     summary: Cadastra um visitante ou criador no Tech Hub
+ *     description: Exige nome por compatibilidade com a tabela herdada. accountType aceita visitor ou creator; creator exige e-mail institucional. super_admin nunca é criado por esta rota. A resposta atual contém message e user, sem JWT. O envio/validação de e-mail ainda não está ativo; o login continua disponível.
  *     requestBody:
  *       required: true
  *       content:
@@ -27,12 +27,12 @@ const authLimiter = rateLimit({
  *           schema: { $ref: '#/components/schemas/RegisterInput' }
  *     responses:
  *       201:
- *         description: Conta criada e JWT emitido (sem confirmação de e-mail neste protótipo)
+ *         description: Conta criada; retorna message e user. Obtenha o JWT pela rota de login.
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/AuthResponse' }
+ *             schema: { $ref: '#/components/schemas/RegisterResponse' }
  *       400:
- *         description: Campos inválidos ou extras (incluindo role)
+ *         description: Campos inválidos, domínio não permitido ou campos extras (incluindo role)
  *       429:
  *         description: Limite de requisições por IP excedido
  *       503:

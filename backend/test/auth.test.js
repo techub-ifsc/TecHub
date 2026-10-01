@@ -5,12 +5,15 @@ const { randomBytes } = require('node:crypto');
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = randomBytes(48).toString('hex');
 process.env.JWT_EXPIRES_IN = '1d';
+process.env.CREATOR_ALLOWED_DOMAINS = '@ifsc.edu.br,@aluno.ifsc.edu.br';
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../src/models');
 const { errorHandler } = require('../src/middlewares/errorHandler');
+const { authorize } = require('../src/middlewares/auth');
+const { ROLES } = require('../src/constants/roles');
 
 let server;
 let baseUrl;
@@ -29,6 +32,11 @@ beforeEach(async (t) => {
     await User.runHooks('beforeSave', user, {});
     rows.set(user.id, user);
     return user;
+  });
+  t.mock.method(User.prototype, 'save', async function save() {
+    await User.runHooks('beforeSave', this, {});
+    rows.set(this.id, this);
+    return this;
   });
 
   // Cada teste recebe um rate limiter novo para evitar dependência entre testes.
@@ -53,11 +61,16 @@ afterEach(async (t) => {
   t.mock.restoreAll();
 });
 
-const account = () => ({ name: 'Maria Silva', email: 'maria@example.com', password: 'SenhaTeste123' });
+const account = () => ({
+  name: 'Maria Silva',
+  email: 'maria@example.com',
+  password: 'SenhaTeste123',
+  accountType: 'visitor',
+});
 
-async function request(path, body, token) {
+async function request(path, body, token, method) {
   const response = await fetch(baseUrl + path, {
-    method: body === undefined ? 'GET' : 'POST',
+    method: method || (body === undefined ? 'GET' : 'POST'),
     headers: {
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: 'Bearer ' + token } : {}),
@@ -67,21 +80,24 @@ async function request(path, body, token) {
   return { status: response.status, body: await response.json(), headers: response.headers };
 }
 
-test('cadastro grava hash bcrypt custo 12 e retorna usuario seguro com JWT', async () => {
+test('cadastro grava perfil e hash bcrypt; login retorna usuario seguro com JWT', async () => {
   const input = { ...account(), name: ' Maria Silva ', email: ' MARIA@EXAMPLE.COM ' };
   const result = await request('/register', input);
   assert.equal(result.status, 201);
   assert.equal(result.body.user.name, 'Maria Silva');
   assert.equal(result.body.user.email, 'maria@example.com');
-  assert.equal(result.body.user.role, 'customer');
+  assert.equal(result.body.user.role, 'visitor');
   assert.equal(Object.hasOwn(result.body.user, 'password'), false);
   const stored = rows.get(result.body.user.id);
   assert.notEqual(stored.password, input.password);
   assert.equal(bcrypt.getRounds(stored.password), 12);
   assert.equal(await bcrypt.compare(input.password, stored.password), true);
-  const payload = jwt.verify(result.body.token, process.env.JWT_SECRET);
+  // A main responde o cadastro com mensagem; a sessão é obtida pelo login.
+  assert.equal(Object.hasOwn(result.body, 'token'), false);
+  const login = await request('/login', { email: input.email, password: input.password });
+  const payload = jwt.verify(login.body.token, process.env.JWT_SECRET);
   assert.equal(payload.sub, stored.id);
-  assert.equal(payload.role, 'customer');
+  assert.equal(payload.role, 'visitor');
   assert.equal(payload.exp - payload.iat, 86400);
   assert.equal(Object.hasOwn(payload, 'password'), false);
 });
@@ -129,13 +145,88 @@ test('cadastro aceita letras acentuadas e o limite exato de 72 bytes', async () 
   assert.equal(Buffer.byteLength(password), 72);
 });
 
-test('cadastro nao permite escolher papel ou enviar campos estranhos', async () => {
-  for (const role of ['customer', 'seller', 'admin', 'super_admin', 'student']) {
+test('cadastro de creator aceita os dominios institucionais configurados', async () => {
+  const creator = await request('/register', {
+    ...account(),
+    email: ' MARIA@IFSC.EDU.BR ',
+    accountType: 'creator',
+  });
+  assert.equal(creator.status, 201);
+  assert.equal(creator.body.user.email, 'maria@ifsc.edu.br');
+  assert.equal(creator.body.user.role, 'creator');
+
+  const external = await request('/register', {
+    ...account(),
+    email: 'criador@example.com',
+    accountType: 'creator',
+  });
+  assert.equal(external.status, 400);
+  assert.equal(external.body.message, 'Dados inválidos.');
+
+  const student = await request('/register', {
+    ...account(),
+    email: 'criador@aluno.ifsc.edu.br',
+    accountType: 'creator',
+  });
+  assert.equal(student.status, 201);
+  assert.equal(student.body.user.role, 'creator');
+
+  const unknownSubdomain = await request('/register', {
+    ...account(),
+    email: 'criador@outro.ifsc.edu.br',
+    accountType: 'creator',
+  });
+  assert.equal(unknownSubdomain.status, 400);
+});
+
+test('cadastro publico nao aceita role, super_admin ou campos estranhos', async () => {
+  for (const role of ['customer', 'seller', 'visitor', 'creator', 'admin', 'super_admin']) {
     const result = await request('/register', { ...account(), role });
+    assert.equal(result.status, 400);
+  }
+  for (const accountType of ['customer', 'seller', 'admin', 'super_admin', 'student']) {
+    const result = await request('/register', { ...account(), accountType });
     assert.equal(result.status, 400);
   }
   assert.equal((await request('/register', { ...account(), username: 'maria' })).status, 400);
   assert.equal(rows.size, 0);
+});
+
+test('creator nao pode trocar o perfil para email fora do dominio institucional', async () => {
+  const registered = await request('/register', {
+    ...account(),
+    email: 'maria@ifsc.edu.br',
+    accountType: 'creator',
+  });
+  const login = await request('/login', {
+    email: 'maria@ifsc.edu.br',
+    password: account().password,
+  });
+  const result = await request(
+    '/me',
+    { email: 'maria@example.com', currentPassword: account().password },
+    login.body.token,
+    'PATCH'
+  );
+  assert.equal(result.status, 400);
+  assert.match(result.body.message, /domínios institucionais/);
+});
+
+test('super_admin passa pelas autorizacoes de perfil, mas visitor nao', () => {
+  const run = (role) => {
+    let nextCalled = false;
+    let status;
+    authorize(ROLES.CREATOR)(
+      { user: { role } },
+      { status(code) { status = code; return this; }, json() {} },
+      () => { nextCalled = true; }
+    );
+    return { nextCalled, status };
+  };
+
+  assert.deepEqual(run(ROLES.CREATOR), { nextCalled: true, status: undefined });
+  assert.deepEqual(run(ROLES.SUPER_ADMIN), { nextCalled: true, status: undefined });
+  assert.deepEqual(run(ROLES.VISITOR), { nextCalled: false, status: 403 });
 });
 
 test('login autentica, aceita email normalizado e permite consultar /me', async () => {

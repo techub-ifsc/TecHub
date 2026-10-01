@@ -1,6 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const sequelize = require('../config/database');
+const { ROLES } = require('../constants/roles');
 
 class User extends Model {
   // Compara uma senha em texto puro com o hash armazenado no banco.
@@ -41,9 +42,9 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('customer', 'seller'),
+      type: DataTypes.ENUM(...Object.values(ROLES)),
       allowNull: false,
-      defaultValue: 'customer',
+      defaultValue: ROLES.VISITOR,
     },
     // isEmailVerified: {
     //   type: DataTypes.BOOLEAN,

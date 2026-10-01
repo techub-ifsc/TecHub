@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const productController = require('../controllers/productController');
 const { authenticate, authorize } = require('../middlewares/auth');
+const { ROLES } = require('../constants/roles');
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.get('/:id', productController.getById);
  * /products:
  *   post:
  *     tags: [Products]
- *     summary: Cria um produto (somente vendedor)
+ *     summary: Cria um produto (somente criador ou super-admin)
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
@@ -85,16 +86,16 @@ router.get('/:id', productController.getById);
  *               properties:
  *                 product: { $ref: '#/components/schemas/Product' }
  *       403:
- *         description: Acesso restrito a vendedores
+ *         description: Acesso restrito a criadores e super-admins
  */
-router.post('/', authenticate, authorize('seller'), productController.create);
+router.post('/', authenticate, authorize(ROLES.CREATOR), productController.create);
 
 /**
  * @openapi
  * /products/{id}:
  *   put:
  *     tags: [Products]
- *     summary: Atualiza um produto (somente vendedor)
+ *     summary: Atualiza um produto (somente criador ou super-admin)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -116,18 +117,18 @@ router.post('/', authenticate, authorize('seller'), productController.create);
  *               properties:
  *                 product: { $ref: '#/components/schemas/Product' }
  *       403:
- *         description: Acesso restrito a vendedores
+ *         description: Acesso restrito a criadores e super-admins
  *       404:
  *         description: Produto não encontrado
  */
-router.put('/:id', authenticate, authorize('seller'), productController.update);
+router.put('/:id', authenticate, authorize(ROLES.CREATOR), productController.update);
 
 /**
  * @openapi
  * /products/{id}:
  *   delete:
  *     tags: [Products]
- *     summary: Remove um produto (somente vendedor)
+ *     summary: Remove um produto (somente criador ou super-admin)
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -138,10 +139,10 @@ router.put('/:id', authenticate, authorize('seller'), productController.update);
  *       204:
  *         description: Produto removido
  *       403:
- *         description: Acesso restrito a vendedores
+ *         description: Acesso restrito a criadores e super-admins
  *       404:
  *         description: Produto não encontrado
  */
-router.delete('/:id', authenticate, authorize('seller'), productController.remove);
+router.delete('/:id', authenticate, authorize(ROLES.CREATOR), productController.remove);
 
 module.exports = router;

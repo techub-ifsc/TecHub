@@ -1,5 +1,6 @@
 const { verifyToken } = require('../utils/jwt');
 const { User } = require('../models');
+const { ROLES } = require('../constants/roles');
 
 // Autentica a requisição pelo token Bearer e disponibiliza o usuário em req.user.
 async function authenticate(req, res, next) {
@@ -33,10 +34,19 @@ async function authenticate(req, res, next) {
 // Cria um middleware que permite acesso somente aos perfis informados.
 function authorize(...roles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
       return res.status(403).json({ message: 'Acesso negado para este recurso.' });
     }
-    next();
+
+    // Decisão do projeto: super_admin possui permissão total no sistema.
+    if (req.user.role === ROLES.SUPER_ADMIN) {
+      return next();
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Acesso negado para este recurso.' });
+    }
+    return next();
   };
 }
 

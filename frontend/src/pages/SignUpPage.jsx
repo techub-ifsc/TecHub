@@ -12,6 +12,12 @@ const INITIAL_FORM = {
   confirmPassword: "",
 };
 
+// A tela usa os rótulos em português; a API espera "creator" / "visitor".
+const ACCOUNT_TYPE_API = {
+  criador: "creator",
+  visitante: "visitor",
+};
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateForm(form) {
@@ -55,7 +61,7 @@ function validateForm(form) {
 }
 
 export default function SignUpPage() {
-  const [accountType, setAccountType] = useState("criador");
+  const [accountType, setAccountType] = useState("creator");
   const [form, setForm] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -116,6 +122,7 @@ export default function SignUpPage() {
           name: form.username,
           email: form.email.trim().toLowerCase(),
           password: form.password,
+          accountType: ACCOUNT_TYPE_API[accountType],
         }),
       });
 
@@ -168,20 +175,20 @@ export default function SignUpPage() {
           <div className="signup-form__account-options">
             <button
               type="button"
-              className={`signup-form__account-button ${accountType === "criador" ? "is-selected" : ""
+              className={`signup-form__account-button ${accountType === "creator" ? "is-selected" : ""
                 }`}
-              onClick={() => handleAccountType("criador")}
-              aria-pressed={accountType === "criador"}
+              onClick={() => handleAccountType("creator")}
+              aria-pressed={accountType === "creator"}
             >
               Criador
             </button>
 
             <button
               type="button"
-              className={`signup-form__account-button ${accountType === "visitante" ? "is-selected" : ""
+              className={`signup-form__account-button ${accountType === "visitor" ? "is-selected" : ""
                 }`}
-              onClick={() => handleAccountType("visitante")}
-              aria-pressed={accountType === "visitante"}
+              onClick={() => handleAccountType("visitor")}
+              aria-pressed={accountType === "visitor"}
             >
               Visitante
             </button>
@@ -222,7 +229,7 @@ export default function SignUpPage() {
 
         <div className="signup-form__field">
           <label htmlFor="email">
-            {accountType === "criador"
+            {accountType === "creator"
               ? "E-mail institucional do IFSC"
               : "E-mail"}
 
@@ -236,7 +243,7 @@ export default function SignUpPage() {
             value={form.email}
             onChange={handleChange}
             placeholder={
-              accountType === "criador"
+              accountType === "creator"
                 ? "aluno@ifsc.edu.br"
                 : "voce@email.com"
             }

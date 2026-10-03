@@ -621,36 +621,111 @@ export default function NewProjectPage() {
     setFeedbackMessage("Rascunho salvo neste navegador.");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const projectData = getProjectData();
-    const validationErrors = validateForm(projectData);
+    setErrors({});
+    setFeedbackMessage("");
+    setFeedbackType("");
 
+    const projectData = {
+      title,
+      descriptionHtml,
+      descriptionText,
+      course,
+      phase,
+      tags,
+      collaborators,
+      github,
+      liveUrl,
+      status,
+      files,
+    };
+
+    const validationErrors = validateForm(projectData);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
       setFeedbackType("error");
-      setFeedbackMessage(
-        "Revise os campos destacados antes de enviar o projeto.",
-      );
-
+      setFeedbackMessage("Revise os campos destacados antes de enviar o projeto.");
       const firstInvalidField = document.querySelector(".field-error");
-
-      firstInvalidField?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-
+      firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    setFeedbackType("success");
-    setFeedbackMessage(
-      "Projeto validado com sucesso! A integração com o backend será realizada na próxima etapa.",
-    );
+    try {
+      setFeedbackType("");
+      setFeedbackMessage("Enviando projeto...");
 
-    console.log("Projeto pronto para envio:", projectData);
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        title: title.trim(),
+        description: descriptionText.trim(),
+        major: course || null,
+        semester: phase ? Number(phase) : 0,
+        technologies: tags,
+        collaborators: collaborators,
+        githubURL: github.trim() || null,
+        liveURL: liveUrl.trim() || null,
+        status: status || null,
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const backendErrors = {};
+          data.errors.forEach((issue) => {
+            const field = Array.isArray(issue.path) ? issue.path[0] : issue.path;
+            if (field === "description") backendErrors.description = issue.message;
+            else if (field === "major") backendErrors.course = issue.message;
+            else if (field === "semester") backendErrors.phase = issue.message;
+            else if (field === "technologies") backendErrors.tags = issue.message;
+            else if (field === "githubURL") backendErrors.github = issue.message;
+            else if (field === "liveURL") backendErrors.liveUrl = issue.message;
+            else if (field) backendErrors[field] = issue.message;
+          });
+          setErrors(backendErrors);
+          setFeedbackType("error");
+          setFeedbackMessage("Existem inconsistências nos dados do projeto.");
+          return;
+        }
+
+        setFeedbackType("error");
+        setFeedbackMessage(data.message || "Erro ao cadastrar projeto.");
+        return;
+      }
+
+      setFeedbackType("success");
+      setFeedbackMessage("Projeto criado com sucesso!");
+
+      setTitle("");
+      setDescriptionHtml("");
+      setDescriptionText("");
+      setCourse("");
+      setPhase("");
+      setTagInput("");
+      setTags([]);
+      setCollaboratorInput("");
+      setCollaborators([]);
+      setGithub("");
+      setLiveUrl("");
+      setStatus("Em design");
+      setFiles([]);
+    } catch (err) {
+      setFeedbackType("error");
+      setFeedbackMessage("Não foi possível conectar ao servidor.");
+    }
   }
 
   return (

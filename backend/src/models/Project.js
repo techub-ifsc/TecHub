@@ -1,9 +1,9 @@
 const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-class Product extends Model { }
+class Project extends Model { }
 
-Product.init(
+Project.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -17,7 +17,7 @@ Product.init(
     },
     description: {
       type: DataTypes.STRING(500),
-      allowNull: false,
+      allowNull: true,
       validate: { notEmpty: true, len: [1, 500] },
     },
     major: {
@@ -40,53 +40,35 @@ Product.init(
       allowNull: true,
       defaultValue: [],
     },
-    githubLink: {
+    githubURL: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: true,
       validate: { notEmpty: true, len: [1, 100] },
     },
-    demoLink: {
+    liveURL: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: true,
       validate: { notEmpty: true, len: [1, 100] },
     },
     // pictures
     //videos
+    // imageUrl: {
+    //   type: DataTypes.STRING(500),
+    //   allowNull: true,
+    //   field: 'image_url',
+    // },
 
     status: {
       type: DataTypes.ENUM(Object.values(STATUS)),
       allowNull: true,
     },
-
-
-    price: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      validate: { min: 0 },
-    },
-    stock: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-      validate: { min: 0 },
-    },
-    imageUrl: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
-      field: 'image_url',
-    },
-    categoryId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      field: 'category_id',
-    },
   },
   {
     sequelize,
-    modelName: 'Product',
-    tableName: 'products',
+    modelName: 'Project',
+    tableName: 'projects',
     underscored: true,
   }
 );
 
-module.exports = Product;
+module.exports = Project;

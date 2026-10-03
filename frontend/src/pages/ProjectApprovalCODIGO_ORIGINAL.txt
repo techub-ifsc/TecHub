@@ -1,0 +1,1266 @@
+import React, { useState } from "react";
+
+/* =========================================================
+   ÍCONES
+========================================================= */
+
+function CheckIcon({ color = "#9EE64D", size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M3.2 8.2L6.5 11.2L12.8 4.8"
+        stroke={color}
+        strokeWidth="1.44"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BanIcon({ color = "#E76A6A", size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="5.5"
+        stroke={color}
+        strokeWidth="1.2"
+      />
+
+      <path
+        d="M4 4L12 12"
+        stroke={color}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="5.4"
+        stroke="#9EE64D"
+        strokeWidth="1.2"
+      />
+
+      <path
+        d="M8 4.8V8L10.16 9.44"
+        stroke="#9EE64D"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/* =========================================================
+   BOTÃO REPROVAR
+========================================================= */
+
+function RejectButton({ selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        border
+        border-[#E76A6A]
+        flex
+        items-center
+        justify-center
+        gap-[8px]
+        min-w-[184px]
+        w-[184px]
+        px-[20px]
+        py-[10px]
+        rounded-[6px]
+        cursor-pointer
+        transition-all
+        duration-200
+        ${
+          selected
+            ? "bg-[#2B1C1C]"
+            : "bg-transparent hover:bg-[#211919]"
+        }
+      `}
+    >
+      <BanIcon />
+
+      <span
+        className="
+          text-[#E76A6A]
+          text-[12px]
+          font-semibold
+          uppercase
+          tracking-[0.3px]
+          whitespace-nowrap
+        "
+      >
+        [ Reprovar ]
+      </span>
+    </button>
+  );
+}
+
+/* =========================================================
+   BOTÃO APROVAR
+========================================================= */
+
+function ApproveButton({ selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        border
+        border-[#5D8F31]
+        flex
+        items-center
+        justify-center
+        gap-[8px]
+        min-w-[184px]
+        w-[184px]
+        px-[20px]
+        py-[10px]
+        rounded-[6px]
+        cursor-pointer
+        transition-all
+        duration-200
+        ${
+          selected
+            ? "bg-[#9EE64D]"
+            : "bg-transparent hover:bg-[#182016]"
+        }
+      `}
+    >
+      <CheckIcon
+        color={selected ? "#17200F" : "#9EE64D"}
+      />
+
+      <span
+        className={`
+          text-[12px]
+          font-semibold
+          uppercase
+          tracking-[0.3px]
+          whitespace-nowrap
+          ${
+            selected
+              ? "text-[#17200F]"
+              : "text-[#9EE64D]"
+          }
+        `}
+      >
+        [ Aprovar ]
+      </span>
+    </button>
+  );
+}
+
+/* =========================================================
+   APP
+========================================================= */
+
+export default function App() {
+  const [decision, setDecision] = useState(null);
+  const [observation, setObservation] = useState("");
+  const [showProject, setShowProject] = useState(false);
+
+  /* =======================================================
+     CONFIRMAR DECISÃO
+  ======================================================= */
+
+  const handleConfirm = () => {
+    if (!decision) {
+      alert("Selecione Aprovar ou Reprovar.");
+      return;
+    }
+
+    if (
+      decision === "reprovar" &&
+      observation.trim() === ""
+    ) {
+      alert("O motivo da reprovação é obrigatório.");
+      return;
+    }
+
+    if (decision === "aprovar") {
+      alert("Projeto aprovado com sucesso!");
+      return;
+    }
+
+    if (decision === "reprovar") {
+      alert(
+        `Projeto reprovado com sucesso!\n\nMotivo:\n${observation}`
+      );
+    }
+  };
+
+  return (
+    <div
+      className="
+        min-h-screen
+        w-full
+        bg-[#111312]
+        text-white
+        flex
+        flex-col
+      "
+    >
+
+      {/* =====================================================
+          NAVBAR
+      ===================================================== */}
+
+      <header
+        className="
+          w-full
+          bg-[#151715]
+          border-b
+          border-[#30342F]
+        "
+      >
+        <div
+          className="
+            max-w-[1184px]
+            h-[56px]
+            mx-auto
+            px-[32px]
+            flex
+            items-center
+            justify-between
+          "
+        >
+
+          {/* LOGO + MENU */}
+
+          <div className="flex items-center gap-[40px]">
+
+            {/* LOGO */}
+
+            <div className="flex items-center gap-[8px]">
+
+              <div
+                className="
+                  w-[20px]
+                  h-[20px]
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <CheckIcon />
+              </div>
+
+              <span
+                className="
+                  text-white
+                  text-[14px]
+                  font-semibold
+                "
+              >
+                TechHub
+              </span>
+
+            </div>
+
+            {/* MENU */}
+
+            <nav className="flex items-center gap-[28px]">
+
+              <button
+                type="button"
+                className="
+                  bg-transparent
+                  border-none
+                  p-0
+                  text-[#858B85]
+                  text-[12px]
+                  cursor-pointer
+                  transition-colors
+                  duration-200
+                  hover:text-white
+                "
+              >
+                Início
+              </button>
+
+              <button
+                type="button"
+                className="
+                  bg-transparent
+                  border-none
+                  p-0
+                  text-[#858B85]
+                  text-[12px]
+                  cursor-pointer
+                  transition-colors
+                  duration-200
+                  hover:text-white
+                "
+              >
+                Projetos
+              </button>
+
+              <button
+                type="button"
+                className="
+                  bg-transparent
+                  border-none
+                  p-0
+                  text-white
+                  text-[12px]
+                  cursor-pointer
+                "
+              >
+                Revisões
+              </button>
+
+              <button
+                type="button"
+                className="
+                  bg-transparent
+                  border-none
+                  p-0
+                  text-[#858B85]
+                  text-[12px]
+                  cursor-pointer
+                  transition-colors
+                  duration-200
+                  hover:text-white
+                "
+              >
+                Alunos
+              </button>
+
+            </nav>
+
+          </div>
+
+          {/* ÁREA ADMINISTRATIVA */}
+
+          <div
+            className="
+              border
+              border-[#45662A]
+              rounded-[6px]
+              px-[12px]
+              py-[6px]
+            "
+          >
+            <span
+              className="
+                text-[#9EE64D]
+                text-[12px]
+                font-medium
+              "
+            >
+              Área administrativa
+            </span>
+          </div>
+
+        </div>
+      </header>
+
+      {/* =====================================================
+          CONTEÚDO
+      ===================================================== */}
+
+      <main
+        className="
+          max-w-[1184px]
+          w-full
+          mx-auto
+          px-[32px]
+          py-[40px]
+        "
+      >
+
+        {/* BREADCRUMB */}
+
+        <div
+          className="
+            flex
+            items-center
+            gap-[8px]
+            mb-[16px]
+          "
+        >
+
+          <span
+            className="
+              text-[#858B85]
+              text-[12px]
+            "
+          >
+            Administração
+          </span>
+
+          <span
+            className="
+              text-[#5D625D]
+              text-[12px]
+            "
+          >
+            /
+          </span>
+
+          <span
+            className="
+              text-[#C3C8C3]
+              text-[12px]
+            "
+          >
+            Revisão de projeto
+          </span>
+
+        </div>
+
+        {/* ===================================================
+            PAINEL PRINCIPAL
+        =================================================== */}
+
+        <section
+          className="
+            w-full
+            bg-[#1A1D1B]
+            border
+            border-[#30342F]
+            rounded-[12px]
+            overflow-hidden
+            shadow-[0px_18px_50px_rgba(0,0,0,0.22)]
+          "
+        >
+
+          {/* =================================================
+              CABEÇALHO
+          ================================================= */}
+
+          <div
+            className="
+              px-[32px]
+              py-[20px]
+              border-b
+              border-[#30342F]
+              flex
+              items-center
+              justify-between
+            "
+          >
+
+            {/* TÍTULO */}
+
+            <div>
+
+              <h1
+                className="
+                  text-white
+                  text-[14px]
+                  font-semibold
+                  uppercase
+                  tracking-[2.24px]
+                "
+              >
+                Painel de revisão
+              </h1>
+
+              <p
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                  mt-[6px]
+                "
+              >
+                Administração do projeto
+              </p>
+
+            </div>
+
+            {/* INFORMAÇÕES */}
+
+            <div
+              className="
+                flex
+                items-center
+                gap-[32px]
+              "
+            >
+
+              <p
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                "
+              >
+                Projeto:{" "}
+                <span
+                  className="
+                    text-[#E8EBE8]
+                    font-medium
+                  "
+                >
+                  Sistema TechHub
+                </span>
+              </p>
+
+              <p
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                "
+              >
+                Aluno:{" "}
+                <span
+                  className="
+                    text-[#E8EBE8]
+                    font-medium
+                  "
+                >
+                  Antônio Ferraz
+                </span>
+              </p>
+
+              {/* VISUALIZAR */}
+
+              <button
+                type="button"
+                onClick={() => setShowProject(true)}
+                className="
+                  bg-[#9EE64D]
+                  text-[#17200F]
+                  text-[12px]
+                  font-semibold
+                  px-[12px]
+                  py-[8px]
+                  rounded-[6px]
+                  cursor-pointer
+                  hover:opacity-80
+                  transition
+                "
+              >
+                Visualizar projeto
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              STATUS
+          ================================================= */}
+
+          <div
+            className="
+              bg-[#171A18]
+              border-b
+              border-[#30342F]
+              px-[32px]
+              py-[16px]
+              flex
+              items-center
+              justify-between
+            "
+          >
+
+            {/* STATUS */}
+
+            <div className="flex items-center gap-[8px]">
+
+              <span
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                "
+              >
+                Status do projeto:
+              </span>
+
+              <div
+                className="
+                  bg-[#9EE64D]
+                  flex
+                  items-center
+                  gap-[6px]
+                  px-[12px]
+                  py-[6px]
+                  rounded-full
+                "
+              >
+
+                <CheckIcon
+                  color="#17200F"
+                />
+
+                <span
+                  className="
+                    text-[#17200F]
+                    text-[12px]
+                    font-semibold
+                  "
+                >
+                  Em análise
+                </span>
+
+              </div>
+
+            </div>
+
+            {/* DATA */}
+
+            <div className="flex items-center gap-[8px]">
+
+              <span
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                "
+              >
+                Data de envio:
+              </span>
+
+              <span
+                className="
+                  text-[#C3C8C3]
+                  text-[12px]
+                  font-medium
+                "
+              >
+                15/10/2026 às 14:30
+              </span>
+
+              <span
+                className="
+                  text-[#5D625D]
+                  text-[12px]
+                "
+              >
+                •
+              </span>
+
+              <span
+                className="
+                  text-[#858B85]
+                  text-[12px]
+                "
+              >
+                3ª Fase
+              </span>
+
+            </div>
+
+            {/* PRAZO */}
+
+            <div
+              className="
+                bg-[#22301B]
+                border
+                border-[#5D8F31]
+                rounded-[6px]
+                px-[12px]
+                py-[8px]
+                flex
+                items-center
+                gap-[8px]
+              "
+            >
+
+              <ClockIcon />
+
+              <span
+                className="
+                  text-[#9EE64D]
+                  text-[12px]
+                  font-semibold
+                "
+              >
+                Prazo restante: 3 dias
+              </span>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              ÁREA DE DECISÃO
+          ================================================= */}
+
+          <div
+            className="
+              px-[32px]
+              py-[36px]
+            "
+          >
+
+            {/* BOTÕES */}
+
+            <div
+              className="
+                flex
+                items-center
+                justify-center
+                gap-[12px]
+              "
+            >
+
+              <RejectButton
+                selected={decision === "reprovar"}
+                onClick={() => {
+                  setDecision("reprovar");
+                }}
+              />
+
+              <ApproveButton
+                selected={decision === "aprovar"}
+                onClick={() => {
+                  setDecision("aprovar");
+                }}
+              />
+
+            </div>
+
+            {/* =================================================
+                OBSERVAÇÃO
+            ================================================= */}
+
+            <div
+              className="
+                w-full
+                mt-[28px]
+              "
+            >
+
+              {/* TÍTULO */}
+
+              <div
+                className="
+                  text-center
+                  mb-[12px]
+                "
+              >
+
+                <p
+                  className="
+                    text-[#C3C8C3]
+                    text-[14px]
+                    font-medium
+                  "
+                >
+                  {decision === "reprovar"
+                    ? "Explique o motivo da reprovação (obrigatório)"
+                    : "Adicione uma observação para o aluno (opcional)"}
+                </p>
+
+              </div>
+
+              {/* TEXTAREA */}
+
+              <textarea
+                value={observation}
+                onChange={(event) =>
+                  setObservation(event.target.value)
+                }
+                placeholder={
+                  decision === "reprovar"
+                    ? "Digite o motivo da reprovação..."
+                    : "Digite uma observação para o aluno..."
+                }
+                className="
+                  w-full
+                  min-h-[236px]
+                  bg-[#121614]
+                  border
+                  border-[#30342F]
+                  rounded-[8px]
+                  px-[16px]
+                  py-[12px]
+                  text-[#E8EBE8]
+                  placeholder:text-[#5D625D]
+                  text-[14px]
+                  leading-[22px]
+                  resize-none
+                  outline-none
+                  focus:border-[#5D8F31]
+                  transition
+                "
+              />
+
+            </div>
+
+            {/* =================================================
+                BOTÃO FINAL
+            ================================================= */}
+
+            <div
+              className="
+                flex
+                justify-center
+                pt-[20px]
+              "
+            >
+
+              <button
+                type="button"
+                disabled={!decision}
+                onClick={handleConfirm}
+                className={`
+                  w-full
+                  max-w-[576px]
+                  h-[44px]
+                  rounded-[6px]
+                  flex
+                  items-center
+                  justify-center
+                  gap-[8px]
+                  px-[20px]
+                  text-[14px]
+                  font-semibold
+                  text-white
+                  transition-all
+                  duration-200
+                  ${
+                    !decision
+                      ? "bg-[#383C38] opacity-50 cursor-not-allowed"
+                      : decision === "reprovar"
+                      ? "bg-[#BA3434] hover:bg-[#CE4141] cursor-pointer"
+                      : "bg-[#5D8F31] hover:bg-[#6FA63D] cursor-pointer"
+                  }
+                `}
+              >
+
+                {decision === "reprovar" && (
+                  <BanIcon color="white" />
+                )}
+
+                {decision === "aprovar" && (
+                  <CheckIcon color="white" />
+                )}
+
+                {!decision && (
+                  <span>
+                    [ Selecione uma decisão ]
+                  </span>
+                )}
+
+                {decision === "reprovar" && (
+                  <span>
+                    [ Confirmar reprovação ]
+                  </span>
+                )}
+
+                {decision === "aprovar" && (
+                  <span>
+                    [ Confirmar aprovação ]
+                  </span>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </main>
+
+      {/* =====================================================
+          MODAL - DADOS DO PROJETO
+      ===================================================== */}
+
+      {showProject && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[100]
+            bg-black/70
+            flex
+            items-center
+            justify-center
+            px-[24px]
+          "
+          onClick={() => setShowProject(false)}
+        >
+
+          <div
+            className="
+              w-full
+              max-w-[672px]
+              bg-[#1A1D1B]
+              border
+              border-[#30342F]
+              rounded-[12px]
+              overflow-hidden
+              shadow-[0px_20px_60px_rgba(0,0,0,0.45)]
+            "
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            {/* ===============================================
+                CABEÇALHO DO MODAL
+            =============================================== */}
+
+            <div
+              className="
+                px-[24px]
+                py-[20px]
+                border-b
+                border-[#30342F]
+                flex
+                items-start
+                justify-between
+              "
+            >
+
+              <div>
+
+                <p
+                  className="
+                    text-[#F1F3F1]
+                    text-[15px]
+                    font-semibold
+                    uppercase
+                    tracking-[2px]
+                  "
+                >
+                  Dados do projeto
+                </p>
+
+                <p
+                  className="
+                    text-[#858B85]
+                    text-[12px]
+                    mt-[5px]
+                  "
+                >
+                  Informações enviadas pelo aluno
+                </p>
+
+              </div>
+
+              {/* FECHAR */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowProject(false)
+                }
+                className="
+                  w-[32px]
+                  h-[32px]
+                  flex
+                  items-center
+                  justify-center
+                  rounded-[6px]
+                  border
+                  border-[#30342F]
+                  bg-transparent
+                  text-[#858B85]
+                  text-[20px]
+                  leading-none
+                  cursor-pointer
+                  hover:text-white
+                  hover:bg-[#232724]
+                  transition
+                "
+              >
+                ×
+              </button>
+
+            </div>
+
+            {/* ===============================================
+                CONTEÚDO
+            =============================================== */}
+
+            <div
+              className="
+                px-[24px]
+                py-[24px]
+              "
+            >
+
+              {/* INFORMAÇÕES */}
+
+              <div
+                className="
+                  grid
+                  grid-cols-2
+                  gap-x-[48px]
+                  gap-y-[22px]
+                "
+              >
+
+                {/* NOME */}
+
+                <div>
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[6px]
+                    "
+                  >
+                    Nome do projeto
+                  </p>
+
+                  <p
+                    className="
+                      text-[#DDE1DD]
+                      text-[14px]
+                      font-semibold
+                    "
+                  >
+                    Sistema TechHub
+                  </p>
+
+                </div>
+
+                {/* ALUNO */}
+
+                <div>
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[6px]
+                    "
+                  >
+                    Aluno responsável
+                  </p>
+
+                  <p
+                    className="
+                      text-[#DDE1DD]
+                      text-[14px]
+                      font-semibold
+                    "
+                  >
+                    Antônio Ferraz
+                  </p>
+
+                </div>
+
+                {/* CURSO */}
+
+                <div>
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[6px]
+                    "
+                  >
+                    Curso
+                  </p>
+
+                  <p
+                    className="
+                      text-[#DDE1DD]
+                      text-[14px]
+                    "
+                  >
+                    Ciência da Computação
+                  </p>
+
+                </div>
+
+                {/* FASE */}
+
+                <div>
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[6px]
+                    "
+                  >
+                    Fase atual
+                  </p>
+
+                  <p
+                    className="
+                      text-[#DDE1DD]
+                      text-[14px]
+                    "
+                  >
+                    3ª Fase
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* DIVISÓRIA */}
+
+              <div
+                className="
+                  border-t
+                  border-[#30342F]
+                  mt-[24px]
+                  pt-[22px]
+                "
+              >
+
+                {/* DESCRIÇÃO */}
+
+                <div>
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[8px]
+                    "
+                  >
+                    Descrição
+                  </p>
+
+                  <p
+                    className="
+                      text-[#D3D7D3]
+                      text-[14px]
+                      leading-[23px]
+                    "
+                  >
+                    Plataforma acadêmica criada para
+                    conectar estudantes, projetos e
+                    oportunidades de colaboração em
+                    tecnologia.
+                  </p>
+
+                </div>
+
+                {/* TECNOLOGIAS */}
+
+                <div className="mt-[24px]">
+
+                  <p
+                    className="
+                      text-[#858B85]
+                      text-[14px]
+                      mb-[10px]
+                    "
+                  >
+                    Tecnologias utilizadas
+                  </p>
+
+                  <div
+                    className="
+                      flex
+                      flex-wrap
+                      gap-[8px]
+                    "
+                  >
+
+                    <span
+                      className="
+                        bg-[#1D3014]
+                        border
+                        border-[#507F29]
+                        text-[#9EE64D]
+                        px-[11px]
+                        py-[6px]
+                        rounded-full
+                        text-[12px]
+                        font-medium
+                      "
+                    >
+                      React
+                    </span>
+
+                    <span
+                      className="
+                        bg-[#1D3014]
+                        border
+                        border-[#507F29]
+                        text-[#9EE64D]
+                        px-[11px]
+                        py-[6px]
+                        rounded-full
+                        text-[12px]
+                        font-medium
+                      "
+                    >
+                      TypeScript
+                    </span>
+
+                    <span
+                      className="
+                        bg-[#1D3014]
+                        border
+                        border-[#507F29]
+                        text-[#9EE64D]
+                        px-[11px]
+                        py-[6px]
+                        rounded-full
+                        text-[12px]
+                        font-medium
+                      "
+                    >
+                      Node.js
+                    </span>
+
+                    <span
+                      className="
+                        bg-[#1D3014]
+                        border
+                        border-[#507F29]
+                        text-[#9EE64D]
+                        px-[11px]
+                        py-[6px]
+                        rounded-full
+                        text-[12px]
+                        font-medium
+                      "
+                    >
+                      PostgreSQL
+                    </span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  );
+}

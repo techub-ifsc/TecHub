@@ -13,6 +13,7 @@ import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import SignUpPage from "./pages/SignUpPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
+import ProjectApprovalPage from "./pages/ProjectApprovalPage";
 
 export default function App() {
   return (
@@ -61,6 +62,11 @@ export default function App() {
           <Route
             path="/login"
             element={<LoginPage />}
+          />
+
+          <Route
+            path="/admin/projetos/:id/aprovacao"
+            element={<ProjectApprovalPage />}
           />
 
           <Route

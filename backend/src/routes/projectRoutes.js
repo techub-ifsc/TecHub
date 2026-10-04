@@ -1,8 +1,8 @@
 const { Router } = require('express');
 const router = Router();
 const projectController = require('../controllers/projectController');
-
 const { authenticate } = require('../middlewares/auth');
+
 /**
  * @openapi
  * /projects:
@@ -38,5 +38,66 @@ const { authenticate } = require('../middlewares/auth');
  *         description: Não autenticado. Token ausente ou inválido.
  */
 router.post('/', authenticate, projectController.create);
+
+/**
+ * @openapi
+ * /projects:
+ *   get:
+ *     summary: Lista todos os projetos cadastrados
+ *     tags:
+ *       - Projects
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número da página para paginação
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Quantidade de projetos por página
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Termo para busca por título
+ *       - in: query
+ *         name: major
+ *         schema:
+ *           type: string
+ *         description: Filtrar por curso
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filtrar por status
+ *     responses:
+ *       200:
+ *         description: Lista de projetos retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                   example: 1
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 1
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get('/', projectController.list);
 
 module.exports = router;

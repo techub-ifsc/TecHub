@@ -9,39 +9,54 @@ const sequelize = require('../config/database'); // Ajuste o caminho se seu sequ
 // Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 100);
-    const offset = (page - 1) * limit;
+    const { page = 1, limit = 10, search, major, status } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
 
     const where = {};
-    if (req.query.categoryId) {
-      where.categoryId = req.query.categoryId;
-    }
-    if (req.query.search) {
-      where.name = { [likeOperator()]: `%${req.query.search}%` };
+    if (major) where.major = major;
+    if (status) where.status = status;
+    if (search) {
+      const { Op } = require('sequelize');
+      where.title = { [Op.iLike]: `%${search}%` };
     }
 
-    const { rows, count } = await Project.findAndCountAll({
+    const { count, rows: projects } = await Project.findAndCountAll({
       where,
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name', 'slug'] }],
-      order: [['createdAt', 'DESC']], 
-      limit,
-      offset,
+      include: [
+        {
+          model: ProjectTechnology,
+          as: 'technologies',
+          attributes: ['name'],
+        },
+        {
+          model: ProjectCollaborator,
+          as: 'collaborators',
+          attributes: ['userId', 'contribution'],
+        },
+      ],
+      limit: Number(limit),
+      offset: Number(offset),
+      order: [['created_at', 'DESC']],
+      distinct: true, // Garante que a contagem seja correta mesmo com includes
     });
 
-    const counts = await Favorite.findAll({
-      attributes: ['projectId', [Favorite.sequelize.fn('COUNT', Favorite.sequelize.col('id')), 'count']],
-      where: { projectId: rows.map((project) => project.id) },
-      group: ['projectId'],
-      raw: true,
+    // Formata o retorno para deixar tecnologias como um array simples de strings
+    const formattedProjects = projects.map((p) => {
+      const json = p.toJSON();
+      return {
+        ...json,
+        technologies: (json.technologies || []).map((t) => t.name),
+      };
     });
-    const countByProject = Object.fromEntries(counts.map((item) => [item.projectId, Number(item.count)]));
 
-    res.json({
-      projects: rows.map((project) => ({ ...project.toJSON(), favoriteCount: countByProject[project.id] || 0 })),
-      pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) },
+    return res.status(200).json({
+      total: count,
+      page: Number(page),
+      totalPages: Math.ceil(count / Number(limit)),
+      projects: formattedProjects,
     });
   } catch (err) {
+    console.error('>>> ERRO AO LISTAR PROJETOS:', err);
     next(err);
   }
 }

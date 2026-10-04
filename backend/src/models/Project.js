@@ -2,6 +2,8 @@ const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 const { MAJORS } = require('../constants/majors');
 const { STATUS } = require('../constants/status');
+const ProjectTechnology = require('./ProjectTechnology');
+const ProjectCollaborator = require('./ProjectCollaborator');
 
 class Project extends Model { }
 
@@ -31,17 +33,6 @@ Project.init(
       allowNull: true,
       defaultValue: 0,
     },
-    // technologies: {
-    //   type: DataTypes.ARRAY(DataTypes.STRING),
-    //   allowNull: true,
-    //   defaultValue: [],
-    // },
-    // collaborators:
-    // {
-    //   type: DataTypes.ARRAY(DataTypes.STRING),
-    //   allowNull: true,
-    //   defaultValue: [],
-    // },
     githubURL: {
       type: DataTypes.STRING(100),
       allowNull: true,
@@ -79,5 +70,13 @@ Project.init(
     underscored: true,
   }
 );
+Project.hasMany(ProjectTechnology, {
+  foreignKey: 'project_id',
+  as: 'technologies',
+});
 
+Project.hasMany(ProjectCollaborator, {
+  foreignKey: 'project_id',
+  as: 'collaborators',
+});
 module.exports = Project;

@@ -2,7 +2,8 @@ const { z } = require('zod');
 
 // Importe as constantes MAJORS e STATUS se estiverem em outro arquivo,
 // ou mantenha os arrays com os valores válidos:
-// const { MAJORS, STATUS } = require('../constants/projectConstants');
+const { MAJORS } = require('../constants/majors');
+const { STATUS } = require('../constants/status');
 
 const createProjectSchema = z.object({
   title: z
@@ -39,9 +40,17 @@ const createProjectSchema = z.object({
     .default([]),
 
   collaborators: z
-    .array(z.string().trim().min(1, 'O nome do colaborador não pode ser vazio'))
-    .optional()
-    .nullable()
+    .array(
+      z.union([
+        // Opção 1: Objeto completo com userId e contribution
+        z.object({
+          userId: z.string().uuid('ID de usuário inválido'),
+          contribution: z.string().max(100).optional(),
+        }),
+        // Opção 2: Apenas o UUID do usuário diretamente como string
+        z.string().uuid('ID de usuário inválido'),
+      ])
+    )
     .default([]),
 
   githubURL: z

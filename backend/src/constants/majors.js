@@ -3,3 +3,7 @@ const MAJORS = Object.freeze({
   TI: 'Técnico em Informática para Internet',
   TDS: 'Técnico em Desenvolvimento de Sistemas',
 });
+
+module.exports = {
+  MAJORS,
+};

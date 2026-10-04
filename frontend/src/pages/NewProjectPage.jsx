@@ -95,17 +95,19 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
+// Usando o UUID fornecido para o primeiro usuário de teste
 const MOCK_COLLABORATORS = [
-  { id: 1, name: "Antoni Ferraz", color: "#3a5a8a" },
-  { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
-  { id: 3, name: "Marcio Zunique", color: "#555555" },
-  { id: 4, name: "Lucas Mendes", color: "#4a7a5a" },
+  { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
+  { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
+  { id: "b2222222-2222-2222-2222-222222222222", name: "Marcio Zunique", color: "#555555" },
+  { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
 ];
 
+// O backend espera exatamente estes valores definidos nas constantes/Zod
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
-  "Concluído",
+  "Concluido",
   "Pausado",
 ];
 
@@ -118,7 +120,6 @@ const COLLABORATOR_RULES = [
 function isValidUrl(value) {
   try {
     const url = new URL(value);
-
     return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
@@ -129,7 +130,6 @@ function formatFileSize(bytes) {
   if (bytes < 1024 * 1024) {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
-
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
@@ -141,7 +141,6 @@ function validateForm({
   tags,
   github,
   liveUrl,
-  files,
 }) {
   const errors = {};
 
@@ -170,17 +169,11 @@ function validateForm({
   }
 
   if (github.trim() && !isValidUrl(github.trim())) {
-    errors.github =
-      "Informe uma URL válida, começando com http:// ou https://.";
+    errors.github = "Informe uma URL válida, começando com http:// ou https://.";
   }
 
   if (liveUrl.trim() && !isValidUrl(liveUrl.trim())) {
-    errors.liveUrl =
-      "Informe uma URL válida, começando com http:// ou https://.";
-  }
-
-  if (files.length === 0) {
-    errors.files = "Adicione pelo menos uma imagem ou vídeo do projeto.";
+    errors.liveUrl = "Informe uma URL válida, começando com http:// ou https://.";
   }
 
   return errors;
@@ -206,7 +199,6 @@ export default function NewProjectPage() {
   });
 
   const [title, setTitle] = useState("");
-
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [descriptionText, setDescriptionText] = useState("");
 
@@ -224,7 +216,6 @@ export default function NewProjectPage() {
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
-
   const [status, setStatus] = useState("Em design");
 
   const [files, setFiles] = useState([]);
@@ -237,7 +228,7 @@ export default function NewProjectPage() {
   const phaseOptions = course
     ? Array.from(
         { length: COURSE_PHASES[course] },
-        (_, index) => `${index + 1}ª Fase`,
+        (_, index) => `${index + 1}ª Fase`
       )
     : [];
 
@@ -246,9 +237,7 @@ export default function NewProjectPage() {
 
     return TECHNOLOGY_OPTIONS.filter((technology) => {
       const matchesSearch = technology.toLowerCase().includes(search);
-
       const isNotSelected = !tags.includes(technology);
-
       return matchesSearch && isNotSelected;
     }).slice(0, 10);
   }, [tagInput, tags]);
@@ -256,17 +245,13 @@ export default function NewProjectPage() {
   const collaboratorSuggestions = useMemo(() => {
     const search = collaboratorInput.trim().toLowerCase();
 
-    if (!search) {
-      return [];
-    }
+    if (!search) return [];
 
     return MOCK_COLLABORATORS.filter((person) => {
       const matchesSearch = person.name.toLowerCase().includes(search);
-
       const isNotSelected = !collaborators.some(
-        (collaborator) => collaborator.id === person.id,
+        (collaborator) => collaborator.id === person.id
       );
-
       return matchesSearch && isNotSelected;
     });
   }, [collaboratorInput, collaborators]);
@@ -289,7 +274,6 @@ export default function NewProjectPage() {
     }
 
     document.addEventListener("mousedown", handleOutsideClick);
-
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
@@ -323,7 +307,6 @@ export default function NewProjectPage() {
     }
 
     document.addEventListener("selectionchange", handleSelectionChange);
-
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
@@ -334,7 +317,6 @@ export default function NewProjectPage() {
       ...currentErrors,
       [field]: "",
     }));
-
     setFeedbackMessage("");
     setFeedbackType("");
   }
@@ -368,7 +350,6 @@ export default function NewProjectPage() {
 
   function handleEditorBeforeInput(event) {
     const isInsertion = event.nativeEvent.inputType?.startsWith("insert");
-
     if (isInsertion && descriptionText.length >= MAX_DESCRIPTION_LENGTH) {
       event.preventDefault();
     }
@@ -376,44 +357,20 @@ export default function NewProjectPage() {
 
   function handleEditorPaste(event) {
     event.preventDefault();
-
     const pastedText = event.clipboardData.getData("text/plain");
     const availableCharacters = MAX_DESCRIPTION_LENGTH - descriptionText.length;
-
     const acceptedText = pastedText.slice(0, availableCharacters);
-
     document.execCommand("insertText", false, acceptedText);
   }
 
   function applyEditorCommand(command, value = null) {
-  editorRef.current?.focus();
-  document.execCommand(command, false, value);
-  updateEditorState();
-
-  setActiveFormats({
-    bold: document.queryCommandState("bold"),
-    italic: document.queryCommandState("italic"),
-    underline: document.queryCommandState("underline"),
-    strikeThrough:
-      document.queryCommandState("strikeThrough"),
-    unorderedList:
-      document.queryCommandState("insertUnorderedList"),
-    orderedList:
-      document.queryCommandState("insertOrderedList"),
-    justifyLeft:
-      document.queryCommandState("justifyLeft"),
-    justifyCenter:
-      document.queryCommandState("justifyCenter"),
-    justifyRight:
-      document.queryCommandState("justifyRight"),
-  });
-}
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    updateEditorState();
+  }
 
   function updateEditorState() {
-    if (!editorRef.current) {
-      return;
-    }
-
+    if (!editorRef.current) return;
     setDescriptionHtml(editorRef.current.innerHTML);
     setDescriptionText(editorRef.current.innerText);
     clearFieldError("description");
@@ -429,19 +386,13 @@ export default function NewProjectPage() {
   function handleTagKeyDown(event) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-
-      setActiveTagIndex((currentIndex) =>
-        Math.min(currentIndex + 1, filteredTags.length - 1),
-      );
-
+      setActiveTagIndex((curr) => Math.min(curr + 1, filteredTags.length - 1));
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-
-      setActiveTagIndex((currentIndex) => Math.max(currentIndex - 1, 0));
-
+      setActiveTagIndex((curr) => Math.max(curr - 1, 0));
       return;
     }
 
@@ -452,7 +403,6 @@ export default function NewProjectPage() {
 
     if (event.key === "Enter") {
       event.preventDefault();
-
       if (filteredTags.length > 0) {
         addTag(filteredTags[activeTagIndex] ?? filteredTags[0]);
       }
@@ -461,33 +411,30 @@ export default function NewProjectPage() {
 
   function addTag(technology) {
     if (!TECHNOLOGY_OPTIONS.includes(technology)) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: "Selecione uma tecnologia apresentada na lista.",
       }));
-
       return;
     }
 
     if (tags.includes(technology)) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: "Essa tecnologia já foi adicionada.",
       }));
-
       return;
     }
 
     if (tags.length >= MAX_TAGS) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: `Você pode adicionar no máximo ${MAX_TAGS} tecnologias.`,
       }));
-
       return;
     }
 
-    setTags((currentTags) => [...currentTags, technology]);
+    setTags((curr) => [...curr, technology]);
     setTagInput("");
     setTagsOpen(false);
     setActiveTagIndex(0);
@@ -495,26 +442,18 @@ export default function NewProjectPage() {
   }
 
   function removeTag(tagToRemove) {
-    setTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
-
-    setTagInput("");
+    setTags((curr) => curr.filter((t) => t !== tagToRemove));
     clearFieldError("tags");
   }
 
   function addCollaborator(person) {
-    setCollaborators((currentCollaborators) => [
-      ...currentCollaborators,
-      person,
-    ]);
-
+    setCollaborators((curr) => [...curr, person]);
     setCollaboratorInput("");
     setCollaboratorsOpen(false);
   }
 
   function removeCollaborator(id) {
-    setCollaborators((currentCollaborators) =>
-      currentCollaborators.filter((collaborator) => collaborator.id !== id),
-    );
+    setCollaborators((curr) => curr.filter((c) => c.id !== id));
   }
 
   function addFiles(fileList) {
@@ -538,7 +477,7 @@ export default function NewProjectPage() {
 
       const isDuplicate = [...files, ...acceptedFiles].some(
         (savedFile) =>
-          savedFile.name === file.name && savedFile.size === file.size,
+          savedFile.name === file.name && savedFile.size === file.size
       );
 
       if (isDuplicate) {
@@ -555,23 +494,20 @@ export default function NewProjectPage() {
     }
 
     if (acceptedFiles.length > 0) {
-      setFiles((currentFiles) => [...currentFiles, ...acceptedFiles]);
-
+      setFiles((curr) => [...curr, ...acceptedFiles]);
       clearFieldError("files");
     }
 
     if (rejectedMessages.length > 0) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         files: rejectedMessages.join(" "),
       }));
     }
   }
 
   function removeFile(position) {
-    setFiles((currentFiles) =>
-      currentFiles.filter((_, index) => index !== position),
-    );
+    setFiles((curr) => curr.filter((_, idx) => idx !== position));
   }
 
   function handleDrop(event) {
@@ -580,45 +516,24 @@ export default function NewProjectPage() {
     addFiles(event.dataTransfer.files);
   }
 
-  function getProjectData() {
-    return {
+  function handleSaveDraft() {
+    const draft = {
       title: title.trim(),
       description: descriptionHtml,
       descriptionText: descriptionText.trim(),
       course,
       phase,
       tags,
-      collaborators: collaborators.map(({ id, name }) => ({
-        id,
-        name,
-      })),
+      collaborators,
       github: github.trim(),
       liveUrl: liveUrl.trim(),
       status,
-      files,
-    };
-  }
-
-  function handleSaveDraft() {
-    const draft = getProjectData();
-
-    const storableDraft = {
-      ...draft,
-      files: files.map((file) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      })),
       savedAt: new Date().toISOString(),
     };
 
-    localStorage.setItem(
-      "techub:new-project-draft",
-      JSON.stringify(storableDraft),
-    );
-
+    localStorage.setItem("techub:new-project-draft", JSON.stringify(draft));
     setFeedbackType("success");
-    setFeedbackMessage("Rascunho salvo neste navegador.");
+    setFeedbackMessage("Rascunho salvo localmente neste navegador.");
   }
 
   async function handleSubmit(event) {
@@ -630,16 +545,12 @@ export default function NewProjectPage() {
 
     const projectData = {
       title,
-      descriptionHtml,
       descriptionText,
       course,
       phase,
       tags,
-      collaborators,
       github,
       liveUrl,
-      status,
-      files,
     };
 
     const validationErrors = validateForm(projectData);
@@ -648,7 +559,7 @@ export default function NewProjectPage() {
     if (Object.keys(validationErrors).length > 0) {
       setFeedbackType("error");
       setFeedbackMessage("Revise os campos destacados antes de enviar o projeto.");
-      const firstInvalidField = document.querySelector(".field-error");
+      const firstInvalidField = document.querySelector(".is-invalid");
       firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -657,21 +568,28 @@ export default function NewProjectPage() {
       setFeedbackType("");
       setFeedbackMessage("Enviando projeto...");
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("techub_token");
 
+      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
+      const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
+
+      // Monta o payload conforme o contrato do Backend/Zod
       const payload = {
         title: title.trim(),
         description: descriptionText.trim(),
         major: course || null,
-        semester: phase ? Number(phase) : 0,
+        semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        collaborators: collaborators,
+        // Envia o objeto no formato esperado: { userId, contribution }
+        collaborators: collaborators.map((c) => ({
+          userId: c.id,
+        })),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/projects`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -697,7 +615,7 @@ export default function NewProjectPage() {
           });
           setErrors(backendErrors);
           setFeedbackType("error");
-          setFeedbackMessage("Existem inconsistências nos dados do projeto.");
+          setFeedbackMessage("Existem inconsistências nos dados informados.");
           return;
         }
 
@@ -709,20 +627,11 @@ export default function NewProjectPage() {
       setFeedbackType("success");
       setFeedbackMessage("Projeto criado com sucesso!");
 
-      setTitle("");
-      setDescriptionHtml("");
-      setDescriptionText("");
-      setCourse("");
-      setPhase("");
-      setTagInput("");
-      setTags([]);
-      setCollaboratorInput("");
-      setCollaborators([]);
-      setGithub("");
-      setLiveUrl("");
-      setStatus("Em design");
-      setFiles([]);
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     } catch (err) {
+      console.error(err);
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
     }
@@ -747,9 +656,7 @@ export default function NewProjectPage() {
             maxLength={100}
             value={title}
             onChange={handleTitleChange}
-            className={
-              errors.title ? "project-input is-invalid" : "project-input"
-            }
+            className={errors.title ? "project-input is-invalid" : "project-input"}
             placeholder="Digite o título do projeto"
             aria-invalid={Boolean(errors.title)}
             aria-describedby={errors.title ? "title-error" : "title-counter"}
@@ -782,110 +689,98 @@ export default function NewProjectPage() {
                 : "description-container"
             }
           >
-<div
-  className="project-toolbar"
-  role="toolbar"
-  aria-label="Formatação da descrição"
->
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Negrito"
-      icon="fa-bold"
-      active={activeFormats.bold}
-      onClick={() => applyEditorCommand("bold")}
-    />
+            <div
+              className="project-toolbar"
+              role="toolbar"
+              aria-label="Formatação da descrição"
+            >
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Negrito"
+                  icon="fa-bold"
+                  active={activeFormats.bold}
+                  onClick={() => applyEditorCommand("bold")}
+                />
+                <EditorButton
+                  label="Itálico"
+                  icon="fa-italic"
+                  active={activeFormats.italic}
+                  onClick={() => applyEditorCommand("italic")}
+                />
+                <EditorButton
+                  label="Sublinhado"
+                  icon="fa-underline"
+                  active={activeFormats.underline}
+                  onClick={() => applyEditorCommand("underline")}
+                />
+                <EditorButton
+                  label="Tachado"
+                  icon="fa-strikethrough"
+                  active={activeFormats.strikeThrough}
+                  onClick={() => applyEditorCommand("strikeThrough")}
+                />
+              </div>
 
-    <EditorButton
-      label="Itálico"
-      icon="fa-italic"
-      active={activeFormats.italic}
-      onClick={() => applyEditorCommand("italic")}
-    />
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-    <EditorButton
-      label="Sublinhado"
-      icon="fa-underline"
-      active={activeFormats.underline}
-      onClick={() => applyEditorCommand("underline")}
-    />
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Lista com marcadores"
+                  icon="fa-list-ul"
+                  active={activeFormats.unorderedList}
+                  onClick={() => applyEditorCommand("insertUnorderedList")}
+                />
+                <EditorButton
+                  label="Lista numerada"
+                  icon="fa-list-ol"
+                  active={activeFormats.orderedList}
+                  onClick={() => applyEditorCommand("insertOrderedList")}
+                />
+              </div>
 
-    <EditorButton
-      label="Tachado"
-      icon="fa-strikethrough"
-      active={activeFormats.strikeThrough}
-      onClick={() => applyEditorCommand("strikeThrough")}
-    />
-  </div>
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-  <span className="project-toolbar-divider" aria-hidden="true" />
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Alinhar à esquerda"
+                  icon="fa-align-left"
+                  active={activeFormats.justifyLeft}
+                  onClick={() => applyEditorCommand("justifyLeft")}
+                />
+                <EditorButton
+                  label="Centralizar"
+                  icon="fa-align-center"
+                  active={activeFormats.justifyCenter}
+                  onClick={() => applyEditorCommand("justifyCenter")}
+                />
+                <EditorButton
+                  label="Alinhar à direita"
+                  icon="fa-align-right"
+                  active={activeFormats.justifyRight}
+                  onClick={() => applyEditorCommand("justifyRight")}
+                />
+              </div>
 
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Lista com marcadores"
-      icon="fa-list-ul"
-      active={activeFormats.unorderedList}
-      onClick={() =>
-        applyEditorCommand("insertUnorderedList")
-      }
-    />
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-    <EditorButton
-      label="Lista numerada"
-      icon="fa-list-ol"
-      active={activeFormats.orderedList}
-      onClick={() =>
-        applyEditorCommand("insertOrderedList")
-      }
-    />
-  </div>
-
-  <span className="project-toolbar-divider" aria-hidden="true" />
-
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Alinhar à esquerda"
-      icon="fa-align-left"
-      active={activeFormats.justifyLeft}
-      onClick={() => applyEditorCommand("justifyLeft")}
-    />
-
-    <EditorButton
-      label="Centralizar"
-      icon="fa-align-center"
-      active={activeFormats.justifyCenter}
-      onClick={() => applyEditorCommand("justifyCenter")}
-    />
-
-    <EditorButton
-      label="Alinhar à direita"
-      icon="fa-align-right"
-      active={activeFormats.justifyRight}
-      onClick={() => applyEditorCommand("justifyRight")}
-    />
-  </div>
-
-  <span className="project-toolbar-divider" aria-hidden="true" />
-
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Remover formatação"
-      icon="fa-eraser"
-      onClick={() => applyEditorCommand("removeFormat")}
-    />
-
-    <EditorButton
-      label="Desfazer"
-      icon="fa-rotate-left"
-      onClick={() => applyEditorCommand("undo")}
-    />
-
-    <EditorButton
-      label="Refazer"
-      icon="fa-rotate-right"
-      onClick={() => applyEditorCommand("redo")}
-    />
-  </div>
-</div>
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Remover formatação"
+                  icon="fa-eraser"
+                  onClick={() => applyEditorCommand("removeFormat")}
+                />
+                <EditorButton
+                  label="Desfazer"
+                  icon="fa-rotate-left"
+                  onClick={() => applyEditorCommand("undo")}
+                />
+                <EditorButton
+                  label="Refazer"
+                  icon="fa-rotate-right"
+                  onClick={() => applyEditorCommand("redo")}
+                />
+              </div>
+            </div>
 
             <div
               ref={editorRef}
@@ -925,16 +820,13 @@ export default function NewProjectPage() {
 
             <select
               id="project-course"
-              className={
-                errors.course ? "project-select is-invalid" : "project-select"
-              }
+              className={errors.course ? "project-select is-invalid" : "project-select"}
               value={course}
               onChange={handleCourseChange}
               aria-invalid={Boolean(errors.course)}
               required
             >
               <option value="">Selecione o curso</option>
-
               {Object.keys(COURSE_PHASES).map((courseOption) => (
                 <option key={courseOption} value={courseOption}>
                   {courseOption}
@@ -959,9 +851,7 @@ export default function NewProjectPage() {
 
             <select
               id="project-phase"
-              className={
-                errors.phase ? "project-select is-invalid" : "project-select"
-              }
+              className={errors.phase ? "project-select is-invalid" : "project-select"}
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
@@ -974,7 +864,6 @@ export default function NewProjectPage() {
               <option value="">
                 {course ? "Selecione a fase" : "Selecione primeiro o curso"}
               </option>
-
               {phaseOptions.map((phaseOption) => (
                 <option key={phaseOption} value={phaseOption}>
                   {phaseOption}
@@ -1005,7 +894,6 @@ export default function NewProjectPage() {
           >
             <div className="tags-search">
               <i className="fa-solid fa-tag toolbar-icon" aria-hidden="true" />
-
               <input
                 id="technology-input"
                 type="text"
@@ -1064,7 +952,6 @@ export default function NewProjectPage() {
                 {tags.map((tag) => (
                   <span key={tag} className="tag">
                     {tag}
-
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
@@ -1098,11 +985,7 @@ export default function NewProjectPage() {
 
           <div className="tags-container">
             <div className="tags-search">
-              <i
-                className="fa-solid fa-users toolbar-icon"
-                aria-hidden="true"
-              />
-
+              <i className="fa-solid fa-users toolbar-icon" aria-hidden="true" />
               <input
                 id="collaborator-input"
                 type="text"
@@ -1131,13 +1014,10 @@ export default function NewProjectPage() {
                       >
                         <span
                           className="collaborator-suggestion-avatar"
-                          style={{
-                            backgroundColor: person.color,
-                          }}
+                          style={{ backgroundColor: person.color }}
                         >
                           {person.name.charAt(0)}
                         </span>
-
                         {person.name}
                       </button>
                     </li>
@@ -1166,16 +1046,12 @@ export default function NewProjectPage() {
 
                     <div
                       className="collaborator-avatar"
-                      style={{
-                        backgroundColor: collaborator.color,
-                      }}
+                      style={{ backgroundColor: collaborator.color }}
                     >
                       {collaborator.name.charAt(0)}
                     </div>
 
-                    <span className="collaborator-name">
-                      {collaborator.name}
-                    </span>
+                    <span className="collaborator-name">{collaborator.name}</span>
                   </div>
                 ))}
               </div>
@@ -1197,7 +1073,6 @@ export default function NewProjectPage() {
 
             <div className="external-link-field">
               <GithubIcon />
-
               <input
                 id="github-url"
                 type="url"
@@ -1207,9 +1082,7 @@ export default function NewProjectPage() {
                   setGithub(event.target.value);
                   clearFieldError("github");
                 }}
-                className={
-                  errors.github ? "project-input is-invalid" : "project-input"
-                }
+                className={errors.github ? "project-input is-invalid" : "project-input"}
                 aria-invalid={Boolean(errors.github)}
               />
             </div>
@@ -1228,7 +1101,6 @@ export default function NewProjectPage() {
 
             <div className="external-link-field">
               <ExternalLinkIcon />
-
               <input
                 id="live-url"
                 type="url"
@@ -1238,9 +1110,7 @@ export default function NewProjectPage() {
                   setLiveUrl(event.target.value);
                   clearFieldError("liveUrl");
                 }}
-                className={
-                  errors.liveUrl ? "project-input is-invalid" : "project-input"
-                }
+                className={errors.liveUrl ? "project-input is-invalid" : "project-input"}
                 aria-invalid={Boolean(errors.liveUrl)}
               />
             </div>
@@ -1256,15 +1126,12 @@ export default function NewProjectPage() {
         <div className="form-field">
           <span className="form-label">
             Galeria do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
           </span>
 
           <label
-            className={`upload-area ${
-              dragOver ? "drag-over" : ""
-            } ${errors.files ? "is-invalid" : ""}`}
+            className={`upload-area ${dragOver ? "drag-over" : ""} ${
+              errors.files ? "is-invalid" : ""
+            }`}
             onDragOver={(event) => {
               event.preventDefault();
               setDragOver(true);
@@ -1287,30 +1154,21 @@ export default function NewProjectPage() {
 
             <div className="upload-text">
               <p className="upload-title">Adicionar fotos ou vídeos</p>
-
               <p className="upload-helper">
                 Até {MAX_FILES} arquivos de no máximo 20 MB cada
               </p>
             </div>
           </label>
 
-          {errors.files && (
-            <span className="field-error" role="alert">
-              {errors.files}
-            </span>
-          )}
-
           {files.length > 0 && (
             <ul className="upload-file-list">
               {files.map((file, index) => (
                 <li key={`${file.name}-${file.size}`} className="upload-file">
                   <i className="fa-solid fa-paperclip" aria-hidden="true" />
-
                   <span className="upload-file-information">
                     <strong>{file.name}</strong>
                     <small>{formatFileSize(file.size)}</small>
                   </span>
-
                   <button
                     type="button"
                     className="upload-file-remove"
@@ -1344,7 +1202,6 @@ export default function NewProjectPage() {
                   <span className="status-radio">
                     {active && <span className="status-radio-inner" />}
                   </span>
-
                   {option}
                 </button>
               );
@@ -1371,7 +1228,7 @@ export default function NewProjectPage() {
           </button>
 
           <button type="submit" className="action-button submit-review">
-            Enviar para revisão
+            Enviar para a revisão
           </button>
         </div>
 
@@ -1387,20 +1244,13 @@ export default function NewProjectPage() {
   );
 }
 
-function EditorButton({
-  label,
-  icon,
-  onClick,
-  active,
-}) {
+function EditorButton({ label, icon, onClick, active }) {
   const hasActiveState = typeof active === "boolean";
 
   return (
     <button
       type="button"
-      className={`project-toolbar-button ${
-        active ? "is-active" : ""
-      }`}
+      className={`project-toolbar-button ${active ? "is-active" : ""}`}
       data-tooltip={label}
       aria-label={label}
       aria-pressed={hasActiveState ? active : undefined}
@@ -1410,10 +1260,7 @@ function EditorButton({
       }}
       onClick={onClick}
     >
-      <i
-        className={`fa-solid ${icon}`}
-        aria-hidden="true"
-      />
+      <i className={`fa-solid ${icon}`} aria-hidden="true" />
     </button>
   );
 }

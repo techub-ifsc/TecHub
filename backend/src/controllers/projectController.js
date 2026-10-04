@@ -1,7 +1,10 @@
-const { Project, Category, Favorite } = require('../models');
 const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidators');
+const ProjectTechnology = require('../models/ProjectTechnology');
+const ProjectCollaborator = require('../models/ProjectCollaborator');
 const { ApiError } = require('../middlewares/errorHandler');
 const { likeOperator } = require('../utils/db');
+const Project = require('../models/Project');
+const sequelize = require('../config/database'); // Ajuste o caminho se seu sequelize vier de ../models/index ou ../config/database
 
 // Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
@@ -61,15 +64,64 @@ async function getById(req, res, next) {
 
 // Valida e cadastra um novo projeto.
 async function create(req, res, next) {
+  const transaction = await sequelize.transaction();
+
   try {
     const data = createProjectSchema.parse(req.body);
-    const project = await Project.create(data);
-    res.status(201).json({ project });
+    const { technologies, collaborators, ...projectData } = data;
+
+    const ownerId = req.user?.id || req.userId;
+
+    // 1. Cria o registro principal do projeto
+    const project = await Project.create(
+      {
+        ...projectData,
+        ownerId,
+      },
+      { transaction }
+    );
+
+    // 2. Insere as tecnologias
+    if (Array.isArray(technologies) && technologies.length > 0) {
+      const techRecords = technologies.map((techName) => ({
+        projectId: project.id,
+        name: techName.trim(),
+      }));
+
+      await ProjectTechnology.bulkCreate(techRecords, { transaction });
+    }
+
+    // 3. Insere os colaboradores
+    if (Array.isArray(collaborators) && collaborators.length > 0) {
+      const collaboratorRecords = collaborators.map((item) => {
+        // Trata caso venha objeto { userId, contribution } ou string com o próprio userId
+        const isObject = typeof item === 'object' && item !== null;
+        return {
+          projectId: project.id,
+          userId: isObject ? item.userId : item,
+          contribution: isObject ? (item.contribution || null) : null,
+        };
+      });
+
+      await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
+    }
+
+    // 4. Confirma todas as operações
+    await transaction.commit();
+
+    return res.status(201).json({
+      project: {
+        ...project.toJSON(),
+        technologies: technologies || [],
+        collaborators: collaborators || [],
+      },
+    });
   } catch (err) {
+    await transaction.rollback();
+    console.error('>>> ERRO DETALHADO NO CREATE PROJECT:', err);
     next(err);
   }
 }
-
 // Valida e atualiza um produto existente.
 async function update(req, res, next) {
   try {

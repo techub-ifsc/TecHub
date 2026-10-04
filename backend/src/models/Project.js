@@ -1,5 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
+const { MAJORS } = require('../constants/majors');
+const { STATUS } = require('../constants/status');
 
 class Project extends Model { }
 
@@ -29,25 +31,27 @@ Project.init(
       allowNull: true,
       defaultValue: 0,
     },
-    technologies: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-      defaultValue: [],
-    },
-    collaborators:
-    {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-      defaultValue: [],
-    },
+    // technologies: {
+    //   type: DataTypes.ARRAY(DataTypes.STRING),
+    //   allowNull: true,
+    //   defaultValue: [],
+    // },
+    // collaborators:
+    // {
+    //   type: DataTypes.ARRAY(DataTypes.STRING),
+    //   allowNull: true,
+    //   defaultValue: [],
+    // },
     githubURL: {
       type: DataTypes.STRING(100),
       allowNull: true,
+      field: 'github_url', // <-- Força o nome da coluna no PostgreSQL a ser github_url
       validate: { notEmpty: true, len: [1, 100] },
     },
     liveURL: {
       type: DataTypes.STRING(100),
       allowNull: true,
+      field: 'live_url', // <-- Força o nome da coluna no PostgreSQL a ser live_url
       validate: { notEmpty: true, len: [1, 100] },
     },
     // pictures
@@ -61,6 +65,11 @@ Project.init(
     status: {
       type: DataTypes.ENUM(Object.values(STATUS)),
       allowNull: true,
+    },
+    ownerId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'owner_id',
     },
   },
   {

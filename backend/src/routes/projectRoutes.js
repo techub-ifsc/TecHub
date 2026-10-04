@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const router = Router();
+const projectController = require('../controllers/projectController');
 
+const { authenticate } = require('../middlewares/auth');
 /**
  * @openapi
  * /projects:
@@ -35,4 +37,6 @@ const router = Router();
  *       401:
  *         description: Não autenticado. Token ausente ou inválido.
  */
-router.post('/', authMiddleware, projectController.create);
+router.post('/', authenticate, projectController.create);
+
+module.exports = router;

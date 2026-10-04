@@ -4,3 +4,7 @@ const STATUS = Object.freeze({
   COMPLETED: 'Concluido',
   PAUSED: 'Pausado'
 });
+
+module.exports = {
+  STATUS,
+};

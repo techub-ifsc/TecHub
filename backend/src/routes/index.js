@@ -6,6 +6,7 @@ const categoryRoutes = require('./categoryRoutes');
 const cartRoutes = require('./cartRoutes');
 const orderRoutes = require('./orderRoutes');
 const favoriteRoutes = require('./favoriteRoutes');
+const projectRoutes = require('./projectRoutes');
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/categories', categoryRoutes);
 router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/favorites', favoriteRoutes);
+router.use('/projects', projectRoutes);
 
 module.exports = router;

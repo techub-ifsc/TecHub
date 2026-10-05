@@ -102,6 +102,27 @@ router.get('/', projectController.list);
 
 /**
  * @openapi
+ * /projects/collaborators/search:
+ *   get:
+ *     summary: Busca criadores reais para adicionar como colaboradores
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema: { type: string, minLength: 2, maxLength: 100 }
+ *     responses:
+ *       200:
+ *         description: Até 10 usuários, apenas com ID e nome.
+ *       401:
+ *         description: Não autenticado.
+ */
+// Precisa vir antes de /:id para não interpretar "collaborators" como UUID.
+router.get('/collaborators/search', authenticate, projectController.searchCollaborators);
+
+/**
+ * @openapi
  * /projects/{id}:
  *   get:
  *     summary: Busca um projeto com tecnologias, colaboradores e mídias
@@ -204,6 +225,11 @@ router.get('/:id', projectController.getById);
  *                   - Concluído
  *                   - Pausado
  *                 example: Concluído
+ *               media:
+ *                 type: array
+ *                 description: Lista final de mídias. Quando omitida, a galeria atual é mantida.
+ *                 items:
+ *                   $ref: '#/components/schemas/ProjectMediaInput'
  *     responses:
  *       200:
  *         description: Projeto atualizado com sucesso.
@@ -212,7 +238,7 @@ router.get('/:id', projectController.getById);
  *       401:
  *         description: Não autenticado.
  *       403:
- *         description: Não autorizado (apenas o dono pode editar).
+ *         description: Somente dono ou colaborador pode editar; apenas o dono gerencia colaboradores.
  *       404:
  *         description: Projeto não encontrado.
  *       500:

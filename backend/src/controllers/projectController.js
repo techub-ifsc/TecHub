@@ -6,6 +6,7 @@ const ProjectMedia = require('../models/ProjectMedia');
 const User = require('../models/User');
 const { ApiError } = require('../middlewares/errorHandler');
 const { likeOperator } = require('../utils/db');
+const { ROLES } = require('../constants/roles');
 const Project = require('../models/Project');
 const sequelize = require('../config/database');
 
@@ -42,6 +43,13 @@ async function list(req, res, next) {
           as: 'collaborators',
           attributes: ['userId', 'contribution'],
         },
+        {
+          model: ProjectMedia,
+          as: 'media',
+          where: { isCover: true },
+          required: false,
+          attributes: ['url'],
+        },
       ],
       limit: Number(limit),
       offset: Number(offset),
@@ -55,6 +63,7 @@ async function list(req, res, next) {
       return {
         ...json,
         technologies: (json.technologies || []).map((t) => t.name),
+        coverUrl: json.media?.[0]?.url || null,
       };
     });
 
@@ -93,8 +102,20 @@ async function getById(req, res, next) {
       throw new ApiError(404, 'Projeto não encontrado.');
     }
     const json = project.toJSON();
+    const collaboratorIds = (json.collaborators || []).map((item) => item.userId);
+    const users = collaboratorIds.length
+      ? await User.findAll({ where: { id: collaboratorIds }, attributes: ['id', 'name'] })
+      : [];
+    const nameById = new Map(users.map((user) => [user.id, user.name]));
     res.json({
-      project: { ...json, technologies: (json.technologies || []).map((t) => t.name) },
+      project: {
+        ...json,
+        technologies: (json.technologies || []).map((t) => t.name),
+        collaborators: (json.collaborators || []).map((item) => ({
+          ...item,
+          name: nameById.get(item.userId) || 'Colaborador',
+        })),
+      },
     });
   } catch (err) {
     next(err);
@@ -171,144 +192,131 @@ async function create(req, res, next) {
     next(err);
   }
 }
-// Valida e atualiza um produto existente.
+// Edita um projeto e suas relações dentro de uma única transação.
 async function update(req, res, next) {
-  const transaction = await sequelize.transaction();
-
   try {
     const { id } = req.params;
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
     const userId = req.user?.id || req.userId;
+    const result = await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Projeto não encontrado.');
 
-    // 1. Localiza o projeto
-    const project = await Project.findByPk(id, { transaction });
-    if (!project) {
-      await transaction.rollback();
-      return res.status(404).json({ message: 'Projeto não encontrado.' });
-    }
-
-    // 2. Validação de autorização: Apenas o dono (ou super_admin) pode editar
-    if (project.ownerId !== userId && req.user?.role !== 'super_admin') {
-      await transaction.rollback();
-      return res.status(403).json({ message: 'Você não tem permissão para editar este projeto.' });
-    }
-
-    // 3. Valida os dados enviados
-    const data = updateProjectSchema.parse(req.body);
-    const { technologies, collaborators, ...projectData } = data;
-
-    // 4. Atualiza os dados principais do projeto
-    await project.update(projectData, { transaction });
-
-    // 5. Se enviou nova lista de tecnologias, sincroniza (apaga as antigas e insere as novas)
-    if (Array.isArray(technologies)) {
-      await ProjectTechnology.destroy({
-        where: { projectId: project.id },
+      const isOwner = project.ownerId === userId;
+      const isCollaborator = !isOwner && await ProjectCollaborator.findOne({
+        where: { projectId: id, userId },
         transaction,
       });
-
-      if (technologies.length > 0) {
-        const techRecords = technologies.map((techName) => ({
-          projectId: project.id,
-          name: techName.trim(),
-        }));
-        await ProjectTechnology.bulkCreate(techRecords, { transaction });
+      if (!isOwner && !isCollaborator) {
+        throw new ApiError(403, 'Você não tem permissão para editar este projeto.');
       }
-    }
 
-    // 6. Se enviou nova lista de colaboradores, sincroniza
-    if (Array.isArray(collaborators)) {
-      await ProjectCollaborator.destroy({
-        where: { projectId: project.id },
+      const data = updateProjectSchema.parse(req.body);
+      const { technologies, collaborators, media, ...projectData } = data;
+      if (!isOwner && collaborators !== undefined) {
+        throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
+      }
+
+      await project.update(projectData, { transaction });
+
+      if (technologies !== undefined) {
+        await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+        if (technologies?.length) {
+          await ProjectTechnology.bulkCreate(
+            technologies.map((name) => ({ projectId: id, name: name.trim() })),
+            { transaction }
+          );
+        }
+      }
+
+      if (collaborators !== undefined) {
+        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+        if (collaborators.length) {
+          await ProjectCollaborator.bulkCreate(
+            collaborators.map((item) => ({
+              projectId: id,
+              userId: typeof item === 'string' ? item : item.userId,
+              contribution: typeof item === 'string' ? null : (item.contribution || null),
+            })),
+            { transaction }
+          );
+        }
+      }
+
+      // Campo ausente preserva a galeria. Campo presente é a lista final desejada.
+      if (media !== undefined) {
+        await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+        await ProjectMedia.bulkCreate(
+          media.map((item) => ({ ...item, projectId: id })),
+          { transaction }
+        );
+      }
+
+      const updatedProject = await Project.findByPk(id, {
         transaction,
+        include: [
+          { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
+          { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
+          { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
+        ],
       });
-
-      if (collaborators.length > 0) {
-        const collaboratorRecords = collaborators.map((item) => {
-          const isObject = typeof item === 'object' && item !== null;
-          return {
-            projectId: project.id,
-            userId: isObject ? item.userId : item,
-            contribution: isObject ? (item.contribution || null) : null,
-          };
-        });
-        await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
-      }
-    }
-
-    await transaction.commit();
-
-    // 7. Retorna o projeto atualizado com suas associações
-    const updatedProject = await Project.findByPk(project.id, {
-      include: [
-        { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
-        { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
-      ],
+      const json = updatedProject.toJSON();
+      return { ...json, technologies: (json.technologies || []).map((t) => t.name) };
     });
-
-    const json = updatedProject.toJSON();
     return res.status(200).json({
       message: 'Projeto atualizado com sucesso.',
-      project: {
-        ...json,
-        technologies: (json.technologies || []).map((t) => t.name),
-      },
+      project: result,
     });
   } catch (err) {
-    await transaction.rollback();
-    console.error('>>> ERRO AO ATUALIZAR PROJETO:', err);
     next(err);
   }
 }
 
-// Lembre-se de exportar update junto com create e list:
-module.exports = {
-  create,
-  list,
-  update,
-};
+// Busca contas reais para o seletor de colaboradores da edição.
+async function searchCollaborators(req, res, next) {
+  try {
+    const query = String(req.query.q || '').trim();
+    if (query.length < 2) return res.json({ users: [] });
+    if (query.length > 100) throw new ApiError(400, 'Pesquisa muito longa.');
+    const users = await User.findAll({
+      where: { role: ROLES.CREATOR, name: { [likeOperator()]: `%${query}%` } },
+      attributes: ['id', 'name'],
+      limit: 10,
+      order: [['name', 'ASC']],
+    });
+    return res.json({ users });
+  } catch (err) {
+    next(err);
+  }
+}
 
-// Exclui o produto informado ou responde 404 quando ele não existe.
+// Exclusão definitiva nesta primeira entrega; a lixeira fica para outra feature.
 async function destroy(req, res, next) {
-  const transaction = await sequelize.transaction();
-
   try {
     const { id } = req.params;
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
     const userId = req.user?.id || req.userId;
+    await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Projeto não encontrado.');
+      if (project.ownerId !== userId) {
+        throw new ApiError(403, 'Apenas o proprietário do projeto pode excluí-lo.');
+      }
 
-    const project = await Project.findByPk(id, { transaction });
-    if (!project) {
-      await transaction.rollback();
-      return res.status(404).json({ message: 'Projeto não encontrado.' });
-    }
-
-    const ownerId = project.ownerId || project.owner_id;
-    if (ownerId !== userId && req.user?.role !== 'super_admin') {
-      await transaction.rollback();
-      return res.status(403).json({ message: 'Apenas o proprietário do projeto pode excluí-lo.' });
-    }
-
-    // Exclui as dependências existentes
-    await ProjectTechnology.destroy({
-      where: { projectId: project.id },
-      transaction,
+      await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+      await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+      await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+      await project.destroy({ transaction });
     });
-
-    await ProjectCollaborator.destroy({
-      where: { projectId: project.id },
-      transaction,
-    });
-
-    // Exclui o projeto principal
-    await project.destroy({ transaction });
-
-    await transaction.commit();
 
     return res.status(200).json({ message: 'Projeto excluído com sucesso.' });
   } catch (err) {
-    await transaction.rollback();
-    console.error('>>> ERRO AO EXCLUIR PROJETO:', err);
     next(err);
   }
 }
 
-module.exports = { list, getById, create, update, destroy };
+module.exports = { list, getById, searchCollaborators, create, update, destroy };

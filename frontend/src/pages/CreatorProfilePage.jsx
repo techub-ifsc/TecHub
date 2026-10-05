@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import "./CreatorProfilePage.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
 
@@ -42,6 +43,7 @@ export default function CreatorProfilePage() {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   // Recupera o usuário autenticado do localStorage
   const loggedUser = useMemo(() => {
@@ -84,8 +86,7 @@ export default function CreatorProfilePage() {
     async function loadUserProjects() {
       try {
         setLoadingProjects(true);
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const response = await fetch(`${apiUrl}/projects`);
+        const response = await fetch(`${API_URL}/projects?limit=100`);
 
         if (!response.ok) {
           throw new Error("Erro ao buscar projetos");
@@ -160,16 +161,16 @@ export default function CreatorProfilePage() {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!window.confirm("Tem certeza que deseja excluir este projeto?")) {
+    if (!window.confirm("Excluir este projeto definitivamente? Esta ação não pode ser desfeita nesta versão.")) {
       return;
     }
 
     try {
+      setDeletingProjectId(projectId);
       const token =
         localStorage.getItem("techub_token") || localStorage.getItem("token");
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-      const res = await fetch(`${apiUrl}/projects/${projectId}`, {
+      const res = await fetch(`${API_URL}/projects/${projectId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -177,14 +178,17 @@ export default function CreatorProfilePage() {
       });
 
       if (!res.ok) {
-        throw new Error("Erro ao excluir projeto.");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Erro ao excluir projeto.");
       }
 
       setProjects((current) => current.filter((p) => p.id !== projectId));
       alert("Projeto excluído com sucesso!");
     } catch (err) {
       console.error(err);
-      alert("Não foi possível excluir o projeto.");
+      alert(err.message || "Não foi possível excluir o projeto.");
+    } finally {
+      setDeletingProjectId(null);
     }
   }
 
@@ -377,8 +381,8 @@ export default function CreatorProfilePage() {
                         </div>
                       </Link>
 
-                      {/* Atalhos de Gestão para o Dono do Projeto */}
-                      {isOwner && project.role === "autor" && (
+                      {/* O colaborador edita conteúdo; somente o dono pode excluir. */}
+                      {isOwner && (
                         <div
                           style={{
                             display: "flex",
@@ -421,9 +425,10 @@ export default function CreatorProfilePage() {
                             Editar
                           </button>
 
-                          <button
+                          {project.role === "autor" && <button
                             type="button"
                             onClick={(e) => handleDeleteProject(e, project.id)}
+                            disabled={deletingProjectId === project.id}
                             style={{
                               flex: "1 1 0",
                               width: 0,
@@ -453,7 +458,7 @@ export default function CreatorProfilePage() {
                           >
                             <i className="fa-solid fa-trash" aria-hidden="true" />
                             Excluir
-                          </button>
+                          </button>}
                         </div>
                       )}
                     </div>

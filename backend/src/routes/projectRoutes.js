@@ -107,6 +107,34 @@ router.get('/', projectController.list);
  *     summary: Busca um projeto com tecnologias, colaboradores e mídias
  *     tags:
  *       - Projects
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do projeto a ser visualizado
+ *     responses:
+ *       200:
+ *         description: Projeto encontrado. A mídia de capa vem primeiro.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project:
+ *                   $ref: '#/components/schemas/Project'
+ *       404:
+ *         description: Projeto não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.get('/:id', projectController.getById);
+
+/**
+ * @openapi
+ * /projects/{id}:
  *   put:
  *     summary: Atualiza um projeto existente
  *     tags:
@@ -120,20 +148,6 @@ router.get('/', projectController.list);
  *         schema:
  *           type: string
  *           format: uuid
- *     responses:
- *       200:
- *         description: Projeto encontrado. A mídia de capa vem primeiro.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 project:
- *                   $ref: '#/components/schemas/Project'
- *       404:
- *         description: Projeto não encontrado.
- */
-router.get('/:id', projectController.getById);
  *         description: ID do projeto a ser editado
  *     requestBody:
  *       required: true
@@ -187,9 +201,9 @@ router.get('/:id', projectController.getById);
  *                 enum:
  *                   - Em design
  *                   - Em desenvolvimento
- *                   - Concluido
+ *                   - Concluído
  *                   - Pausado
- *                 example: Concluido
+ *                 example: Concluído
  *     responses:
  *       200:
  *         description: Projeto atualizado com sucesso.
@@ -201,6 +215,8 @@ router.get('/:id', projectController.getById);
  *         description: Não autorizado (apenas o dono pode editar).
  *       404:
  *         description: Projeto não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
  */
 router.put('/:id', authenticate, projectController.update);
 

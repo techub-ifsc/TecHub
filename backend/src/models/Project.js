@@ -7,7 +7,7 @@ const ProjectCollaborator = require('./ProjectCollaborator');
 const ProjectMedia = require('./ProjectMedia');
 const User = require('./User');
 
-class Project extends Model { }
+class Project extends Model {}
 
 Project.init(
   {
@@ -22,9 +22,8 @@ Project.init(
       validate: { notEmpty: true, len: [1, 100] },
     },
     description: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.TEXT, // Permite descrições completas sem estourar o limite de 500 chars
       allowNull: true,
-      validate: { notEmpty: true, len: [1, 500] },
     },
     major: {
       type: DataTypes.ENUM(Object.values(MAJORS)),
@@ -38,23 +37,15 @@ Project.init(
     githubURL: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      field: 'github_url', // <-- Força o nome da coluna no PostgreSQL a ser github_url
+      field: 'github_url',
       validate: { notEmpty: true, len: [1, 100] },
     },
     liveURL: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      field: 'live_url', // <-- Força o nome da coluna no PostgreSQL a ser live_url
+      field: 'live_url',
       validate: { notEmpty: true, len: [1, 100] },
     },
-    // pictures
-    //videos
-    // imageUrl: {
-    //   type: DataTypes.STRING(500),
-    //   allowNull: true,
-    //   field: 'image_url',
-    // },
-
     status: {
       type: DataTypes.ENUM(Object.values(STATUS)),
       allowNull: true,
@@ -72,6 +63,8 @@ Project.init(
     underscored: true,
   }
 );
+
+// Associações
 Project.hasMany(ProjectTechnology, {
   foreignKey: 'project_id',
   as: 'technologies',
@@ -83,10 +76,13 @@ Project.hasMany(ProjectCollaborator, {
 });
 
 Project.hasMany(ProjectMedia, {
-  foreignKey: 'projectId',
+  foreignKey: 'project_id',
   as: 'media',
+});
+
 Project.belongsTo(User, {
   foreignKey: 'owner_id',
   as: 'author',
 });
+
 module.exports = Project;

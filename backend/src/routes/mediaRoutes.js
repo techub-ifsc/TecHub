@@ -3,14 +3,13 @@ const rateLimit = require('express-rate-limit');
 const mediaController = require('../controllers/mediaController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { ROLES } = require('../constants/roles');
-const { uploadMediaFiles } = require('../middlewares/upload');
 
 const router = Router();
 
-// Limita por usuário autenticado para evitar abuso do storage.
-const uploadLimiter = rateLimit({
+// Cada assinatura autoriza um único arquivo; o limite por usuário evita abuso do storage.
+const signatureLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 40,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user.id,
@@ -19,13 +18,15 @@ const uploadLimiter = rateLimit({
 
 /**
  * @openapi
- * /media/upload:
+ * /media/signature:
  *   post:
- *     summary: Envia fotos e vídeos de um projeto para o storage (somente criadores)
+ *     summary: Autoriza o envio de uma foto ou vídeo direto ao Cloudinary (somente criadores)
  *     description: >
- *       Primeira etapa do cadastro com mídias. Devolve as URLs públicas que devem ser
- *       enviadas no campo `media` do `POST /projects`. Formatos aceitos: JPG, PNG, WEBP,
- *       MP4 e WEBM; até 10 arquivos de no máximo 20 MB cada. Imagens são convertidas para webp.
+ *       Primeira etapa do cadastro com mídias. Para cada arquivo, o frontend pede uma
+ *       assinatura e envia o arquivo (campo `file`) junto com `fields` em multipart para
+ *       `uploadUrl`. A `secure_url` devolvida pelo Cloudinary deve ser enviada no campo
+ *       `media` do `POST /projects`. Formatos: JPG, PNG, WEBP, MP4 e WEBM, até 10 MB.
+ *       Imagens são convertidas para webp. A assinatura vale para um único arquivo.
  *     tags:
  *       - Media
  *     security:
@@ -33,31 +34,28 @@ const uploadLimiter = rateLimit({
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
- *             required: [files]
+ *             required: [type, size]
  *             properties:
- *               files:
- *                 type: array
- *                 maxItems: 10
- *                 items:
- *                   type: string
- *                   format: binary
+ *               type:
+ *                 type: string
+ *                 enum: [image/jpeg, image/png, image/webp, video/mp4, video/webm]
+ *                 example: image/png
+ *               size:
+ *                 type: integer
+ *                 description: Tamanho do arquivo em bytes (máximo 10 MB).
+ *                 example: 245760
  *     responses:
  *       201:
- *         description: Arquivos enviados com sucesso, na mesma ordem do envio.
+ *         description: Assinatura criada.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 media:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/UploadedMedia'
+ *               $ref: '#/components/schemas/MediaUploadSignature'
  *       400:
- *         description: Arquivo ausente, com formato inválido ou acima do limite.
+ *         description: Formato não permitido ou arquivo acima de 10 MB.
  *         content:
  *           application/json:
  *             schema:
@@ -71,14 +69,12 @@ const uploadLimiter = rateLimit({
  *       503:
  *         description: Storage não configurado no servidor.
  */
-// Autenticação, perfil e limite são verificados antes de o multer ler qualquer arquivo.
 router.post(
-  '/upload',
+  '/signature',
   authenticate,
   authorize(ROLES.CREATOR),
-  uploadLimiter,
-  uploadMediaFiles,
-  mediaController.upload
+  signatureLimiter,
+  mediaController.signUpload
 );
 
 module.exports = router;

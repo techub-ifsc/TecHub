@@ -42,6 +42,13 @@ async function list(req, res, next) {
           as: 'collaborators',
           attributes: ['userId', 'contribution'],
         },
+        {
+          model: ProjectMedia,
+          as: 'media',
+          attributes: ['url'],
+          where: { isCover: true },
+          required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
+        },
       ],
       limit: Number(limit),
       offset: Number(offset),
@@ -49,12 +56,13 @@ async function list(req, res, next) {
       distinct: true, // Garante que a contagem seja correta mesmo com includes
     });
 
-    // Formata o retorno para deixar tecnologias como um array simples de strings
+    // Formata o retorno: tecnologias como array de strings e a capa como coverUrl
     const formattedProjects = projects.map((p) => {
-      const json = p.toJSON();
+      const { media, ...json } = p.toJSON();
       return {
         ...json,
         technologies: (json.technologies || []).map((t) => t.name),
+        coverUrl: media?.[0]?.url ?? null,
       };
     });
 
@@ -79,6 +87,7 @@ async function getById(req, res, next) {
 
     const project = await Project.findByPk(req.params.id, {
       include: [
+        { model: User, as: 'author', attributes: ['id', 'name'] }, // sem e-mail na página pública
         { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
         { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
         { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
@@ -148,7 +157,7 @@ async function create(req, res, next) {
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
-    // 4. Insere as mídias (URLs já enviadas ao storage pelo POST /media/upload)
+    // 4. Insere as mídias (URLs já enviadas ao Cloudinary com assinatura do POST /media/signature)
     const mediaRecords = await ProjectMedia.bulkCreate(
       media.map((item) => ({ ...item, projectId: project.id })),
       { transaction }
@@ -194,7 +203,7 @@ async function update(req, res, next) {
 
     // 3. Valida os dados enviados
     const data = updateProjectSchema.parse(req.body);
-    const { technologies, collaborators, ...projectData } = data;
+    const { technologies, collaborators, media, ...projectData } = data;
 
     // 4. Atualiza os dados principais do projeto
     await project.update(projectData, { transaction });
@@ -235,13 +244,30 @@ async function update(req, res, next) {
       }
     }
 
+    // 7. Se enviou nova lista de mídias, sincroniza (o schema exige ao menos uma)
+    if (Array.isArray(media)) {
+      await ProjectMedia.destroy({
+        where: { projectId: project.id },
+        transaction,
+      });
+      await ProjectMedia.bulkCreate(
+        media.map((item) => ({ ...item, projectId: project.id })),
+        { transaction }
+      );
+    }
+
     await transaction.commit();
 
-    // 7. Retorna o projeto atualizado com suas associações
+    // 8. Retorna o projeto atualizado com suas associações
     const updatedProject = await Project.findByPk(project.id, {
       include: [
         { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
         { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
+        { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
+      ],
+      order: [
+        [{ model: ProjectMedia, as: 'media' }, 'is_cover', 'DESC'],
+        [{ model: ProjectMedia, as: 'media' }, 'created_at', 'ASC'],
       ],
     });
 
@@ -294,6 +320,11 @@ async function destroy(req, res, next) {
     });
 
     await ProjectCollaborator.destroy({
+      where: { projectId: project.id },
+      transaction,
+    });
+
+    await ProjectMedia.destroy({
       where: { projectId: project.id },
       transaction,
     });

@@ -8,7 +8,7 @@ const { MEDIA_TYPES, MAX_MEDIA_PER_PROJECT } = require('../constants/media');
 const { isManagedMediaUrl } = require('../services/mediaStorageService');
 const { normalizeYoutubeUrl } = require('../utils/youtube');
 
-// Cada mídia precisa ter sido enviada pelo POST /media/upload ou ser um link do YouTube.
+// Cada mídia precisa ter sido enviada ao Cloudinary com assinatura do POST /media/signature ou ser um link do YouTube.
 const mediaItemSchema = z
   .object({
     url: z.string().trim().url('URL da mídia inválida').max(500),
@@ -53,6 +53,10 @@ const mediaSchema = z
     const firstImage = items.findIndex((m) => m.mediaType === MEDIA_TYPES.IMAGE);
     return items.map((m, index) => ({ ...m, isCover: index === firstImage }));
   });
+
+// Links externos exibidos na página do projeto: somente http(s), para impedir
+// URLs como "javascript:" que executariam código ao serem clicadas.
+const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 
 const createProjectSchema = z.object({
   title: z
@@ -107,6 +111,7 @@ const createProjectSchema = z.object({
     .trim()
     .url('O link do GitHub deve ser uma URL válida')
     .max(100, 'O link do GitHub deve ter no máximo 100 caracteres')
+    .refine(isHttpUrl, 'O link do GitHub deve começar com http:// ou https://')
     .optional()
     .nullable()
     .or(z.literal('')),
@@ -116,6 +121,7 @@ const createProjectSchema = z.object({
     .trim()
     .url('O link da demonstração deve ser uma URL válida')
     .max(100, 'O link da demonstração deve ter no máximo 100 caracteres')
+    .refine(isHttpUrl, 'O link da demonstração deve começar com http:// ou https://')
     .optional()
     .nullable()
     .or(z.literal('')),

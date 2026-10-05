@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { API_URL } from "../api/apiUrl";
+import ProjectGallery from "../components/ProjectGallery";
+import { useProjectMedia } from "../hooks/useProjectMedia";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_TAGS = 8;
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 const COURSE_PHASES = {
   "Ciência da Computação": 8,
@@ -105,7 +106,7 @@ const MOCK_COLLABORATORS = [
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
-  "Concluido",
+  "Concluído",
   "Pausado",
 ];
 
@@ -124,13 +125,6 @@ function isValidUrl(value) {
   }
 }
 
-function formatFileSize(bytes) {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
 function validateForm({
   title,
   descriptionText,
@@ -139,6 +133,7 @@ function validateForm({
   tags,
   github,
   liveUrl,
+  mediaCount,
 }) {
   const errors = {};
 
@@ -172,6 +167,10 @@ function validateForm({
 
   if (liveUrl.trim() && !isValidUrl(liveUrl.trim())) {
     errors.liveUrl = "Informe uma URL válida, começando com http:// ou https://.";
+  }
+
+  if (mediaCount === 0) {
+    errors.files = "Adicione pelo menos uma imagem, vídeo ou link do YouTube.";
   }
 
   return errors;
@@ -219,39 +218,37 @@ export default function EditProjectPage() {
   const [liveUrl, setLiveUrl] = useState("");
   const [status, setStatus] = useState("Em desenvolvimento");
 
-  const [files, setFiles] = useState([]);
-  const [dragOver, setDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  const gallery = useProjectMedia({
+    onError: (message) =>
+      message
+        ? setErrors((curr) => ({ ...curr, files: message }))
+        : clearFieldError("files"),
+  });
 
   // Carrega os dados existentes do projeto
   useEffect(() => {
     async function loadProjectDetails() {
       try {
         setIsLoading(true);
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const response = await fetch(`${apiUrl}/projects`);
+        const response = await fetch(`${API_URL}/projects/${id}`);
 
-        if (!response.ok) {
-          throw new Error("Erro ao buscar projetos");
-        }
-
-        const data = await response.json();
-        const list = Array.isArray(data.projects)
-          ? data.projects
-          : Array.isArray(data)
-          ? data
-          : [];
-
-        const currentProject = list.find((p) => p.id === id);
-
-        if (!currentProject) {
+        if (response.status === 404) {
           setFeedbackType("error");
           setFeedbackMessage("Projeto não encontrado.");
           return;
         }
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar projeto");
+        }
+
+        const { project: currentProject } = await response.json();
 
         // Popula os campos do formulário
         setTitle(currentProject.title || "");
@@ -293,6 +290,7 @@ export default function EditProjectPage() {
         setGithub(currentProject.githubURL || currentProject.github_url || "");
         setLiveUrl(currentProject.liveURL || currentProject.live_url || "");
         setStatus(currentProject.status || "Em desenvolvimento");
+        gallery.loadSavedMedia(currentProject.media || []);
       } catch (err) {
         console.error("Falha ao carregar projeto para edição:", err);
         setFeedbackType("error");
@@ -545,68 +543,9 @@ export default function EditProjectPage() {
     setCollaborators((curr) => curr.filter((c) => c.id !== collaboratorId));
   }
 
-  function addFiles(fileList) {
-    const incomingFiles = Array.from(fileList);
-    const acceptedFiles = [];
-    const rejectedMessages = [];
-
-    for (const file of incomingFiles) {
-      const isAcceptedType =
-        file.type.startsWith("image/") || file.type.startsWith("video/");
-
-      if (!isAcceptedType) {
-        rejectedMessages.push(`${file.name}: formato não permitido.`);
-        continue;
-      }
-
-      if (file.size > MAX_FILE_SIZE) {
-        rejectedMessages.push(`${file.name}: tamanho superior a 20 MB.`);
-        continue;
-      }
-
-      const isDuplicate = [...files, ...acceptedFiles].some(
-        (savedFile) =>
-          savedFile.name === file.name && savedFile.size === file.size
-      );
-
-      if (isDuplicate) {
-        rejectedMessages.push(`${file.name}: arquivo já adicionado.`);
-        continue;
-      }
-
-      if (files.length + acceptedFiles.length >= MAX_FILES) {
-        rejectedMessages.push(`O limite é de ${MAX_FILES} arquivos.`);
-        break;
-      }
-
-      acceptedFiles.push(file);
-    }
-
-    if (acceptedFiles.length > 0) {
-      setFiles((curr) => [...curr, ...acceptedFiles]);
-      clearFieldError("files");
-    }
-
-    if (rejectedMessages.length > 0) {
-      setErrors((curr) => ({
-        ...curr,
-        files: rejectedMessages.join(" "),
-      }));
-    }
-  }
-
-  function removeFile(position) {
-    setFiles((curr) => curr.filter((_, idx) => idx !== position));
-  }
-
-  function handleDrop(event) {
-    event.preventDefault();
-    setDragOver(false);
-    addFiles(event.dataTransfer.files);
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
+    if (isSubmitting) return;
 
     setErrors({});
     setFeedbackMessage("");
@@ -620,6 +559,7 @@ export default function EditProjectPage() {
       tags,
       github,
       liveUrl,
+      mediaCount: gallery.media.length,
     };
 
     const validationErrors = validateForm(projectData);
@@ -633,12 +573,31 @@ export default function EditProjectPage() {
       return;
     }
 
-    try {
-      setFeedbackType("");
-      setFeedbackMessage("Salvando alterações...");
+    setIsSubmitting(true);
+    let saved = false;
 
+    try {
       const token =
         localStorage.getItem("techub_token") || localStorage.getItem("token");
+
+      // Envia ao storage somente os arquivos novos; as mídias já cadastradas são mantidas.
+      if (gallery.hasPendingUploads) {
+        setFeedbackType("");
+        setFeedbackMessage("Enviando fotos e vídeos...");
+      }
+
+      let media;
+      try {
+        media = await gallery.buildMediaPayload(token);
+      } catch (uploadError) {
+        setErrors({ files: uploadError.message });
+        setFeedbackType("error");
+        setFeedbackMessage(uploadError.message);
+        return;
+      }
+
+      setFeedbackType("");
+      setFeedbackMessage("Salvando alterações...");
 
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
 
@@ -654,10 +613,11 @@ export default function EditProjectPage() {
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
+        media,
       };
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects/${id}`,
+        `${API_URL}/projects/${id}`,
         {
           method: "PUT",
           headers: {
@@ -681,6 +641,7 @@ export default function EditProjectPage() {
             else if (field === "technologies") backendErrors.tags = issue.message;
             else if (field === "githubURL") backendErrors.github = issue.message;
             else if (field === "liveURL") backendErrors.liveUrl = issue.message;
+            else if (field === "media") backendErrors.files = issue.message;
             else if (field) backendErrors[field] = issue.message;
           });
           setErrors(backendErrors);
@@ -694,6 +655,7 @@ export default function EditProjectPage() {
         return;
       }
 
+      saved = true;
       setFeedbackType("success");
       setFeedbackMessage("Projeto atualizado com sucesso!");
 
@@ -704,6 +666,9 @@ export default function EditProjectPage() {
       console.error(err);
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
+    } finally {
+      // Após o sucesso o botão continua bloqueado até o redirecionamento.
+      if (!saved) setIsSubmitting(false);
     }
   }
 
@@ -1204,64 +1169,11 @@ export default function EditProjectPage() {
           </div>
         </div>
 
-        <div className="form-field">
-          <span className="form-label">Galeria do projeto</span>
-
-          <label
-            className={`upload-area ${dragOver ? "drag-over" : ""} ${
-              errors.files ? "is-invalid" : ""
-            }`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
-            <input
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              className="upload-input"
-              onChange={(event) => {
-                addFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-
-            <i className="fa-solid fa-plus upload-icon" aria-hidden="true" />
-
-            <div className="upload-text">
-              <p className="upload-title">Adicionar fotos ou vídeos</p>
-              <p className="upload-helper">
-                Até {MAX_FILES} arquivos de no máximo 20 MB cada
-              </p>
-            </div>
-          </label>
-
-          {files.length > 0 && (
-            <ul className="upload-file-list">
-              {files.map((file, index) => (
-                <li key={`${file.name}-${file.size}`} className="upload-file">
-                  <i className="fa-solid fa-paperclip" aria-hidden="true" />
-                  <span className="upload-file-information">
-                    <strong>{file.name}</strong>
-                    <small>{formatFileSize(file.size)}</small>
-                  </span>
-                  <button
-                    type="button"
-                    className="upload-file-remove"
-                    onClick={() => removeFile(index)}
-                    aria-label={`Remover ${file.name}`}
-                    title={`Remover ${file.name}`}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <ProjectGallery
+          gallery={gallery}
+          error={errors.files}
+          onInputChange={() => clearFieldError("files")}
+        />
 
         <fieldset className="status-section">
           <legend className="form-label">Status</legend>
@@ -1298,8 +1210,12 @@ export default function EditProjectPage() {
         )}
 
         <div className="actions">
-          <button type="submit" className="action-button submit-review">
-            Salvar alterações
+          <button
+            type="submit"
+            className="action-button submit-review"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Salvando..." : "Salvar alterações"}
           </button>
         </div>
 

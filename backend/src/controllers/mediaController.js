@@ -1,38 +1,33 @@
+const { z } = require('zod');
 const { ApiError } = require('../middlewares/errorHandler');
 const { isCloudinaryConfigured } = require('../config/cloudinary');
-const { ALLOWED_MIME_TYPES } = require('../constants/media');
-const { matchesDeclaredType, uploadMedia } = require('../services/mediaStorageService');
+const { ALLOWED_MIME_TYPES, MAX_MEDIA_FILE_SIZE } = require('../constants/media');
+const { createUploadSignature } = require('../services/mediaStorageService');
 
-// Envia as fotos/vídeos ao storage e devolve as URLs para o cadastro do projeto.
-async function upload(req, res, next) {
+const signatureSchema = z.object({
+  type: z.enum(Object.keys(ALLOWED_MIME_TYPES), {
+    errorMap: () => ({ message: 'Formato não permitido. Use JPG, PNG, WEBP, MP4 ou WEBM.' }),
+  }),
+  size: z
+    .number({ required_error: 'Informe o tamanho do arquivo.' })
+    .int()
+    .positive('Arquivo vazio.')
+    .max(MAX_MEDIA_FILE_SIZE, 'Cada arquivo deve ter no máximo 10 MB.'),
+});
+
+// Autoriza o envio de um arquivo direto ao Cloudinary (sem passar pelo servidor,
+// que na Vercel limita cada requisição a 4,5 MB). Devolve a URL e os campos assinados.
+function signUpload(req, res, next) {
   try {
     if (!isCloudinaryConfigured()) {
       throw new ApiError(503, 'Upload de mídias indisponível no momento.');
     }
 
-    const files = req.files || [];
-    if (files.length === 0) {
-      throw new ApiError(400, 'Envie pelo menos um arquivo no campo "files".');
-    }
-
-    // Valida todos os arquivos antes de enviar qualquer um, para não deixar uploads pela metade.
-    const invalidFile = files.find((file) => !matchesDeclaredType(file.buffer, file.mimetype));
-    if (invalidFile) {
-      throw new ApiError(400, `O conteúdo de ${invalidFile.originalname} não corresponde ao formato informado.`);
-    }
-
-    const media = await Promise.all(
-      files.map(async (file) => {
-        const mediaType = ALLOWED_MIME_TYPES[file.mimetype];
-        const url = await uploadMedia(file.buffer, file.mimetype);
-        return { url, mediaType };
-      })
-    );
-
-    return res.status(201).json({ media });
+    const { type } = signatureSchema.parse(req.body);
+    return res.status(201).json(createUploadSignature(type));
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = { upload };
+module.exports = { signUpload };

@@ -1,7 +1,7 @@
 const STATUS = Object.freeze({
   DESIGN: 'Em design',
   DEVELOPMENT: 'Em desenvolvimento',
-  COMPLETED: 'Concluido',
+  COMPLETED: 'Concluído',
   PAUSED: 'Pausado'
 });
 

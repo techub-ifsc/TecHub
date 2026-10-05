@@ -1,24 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { getYoutubeVideoId } from "../utils/youtube";
 import "./NewProjectPage.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_TAGS = 8;
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
-// Formatos aceitos pelo backend (POST /media/upload) e o tipo de mídia correspondente.
-const ALLOWED_MEDIA_TYPES = {
-  "image/jpeg": "image",
-  "image/png": "image",
-  "image/webp": "image",
-  "video/mp4": "video",
-  "video/webm": "video",
-};
 
 const COURSE_PHASES = {
   "Ciência da Computação": 8,
@@ -107,7 +95,6 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
-// Usando o UUID fornecido para o primeiro usuário de teste
 const MOCK_COLLABORATORS = [
   { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
   { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
@@ -115,11 +102,10 @@ const MOCK_COLLABORATORS = [
   { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
 ];
 
-// O backend espera exatamente estes valores definidos nas constantes/Zod
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
-  "Concluído",
+  "Concluido",
   "Pausado",
 ];
 
@@ -153,7 +139,6 @@ function validateForm({
   tags,
   github,
   liveUrl,
-  mediaCount,
 }) {
   const errors = {};
 
@@ -189,19 +174,18 @@ function validateForm({
     errors.liveUrl = "Informe uma URL válida, começando com http:// ou https://.";
   }
 
-  if (mediaCount === 0) {
-    errors.files = "Adicione pelo menos uma imagem, vídeo ou link do YouTube.";
-  }
-
   return errors;
 }
 
-export default function NewProjectPage() {
+export default function EditProjectPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
   const collaboratorContainerRef = useRef(null);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
@@ -233,27 +217,102 @@ export default function NewProjectPage() {
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
-  const [status, setStatus] = useState("Em design");
+  const [status, setStatus] = useState("Em desenvolvimento");
 
-  // Cada item é um arquivo local ({ kind: "file", file, previewUrl }) ou um link do YouTube ({ kind: "youtube", url }).
-  const [media, setMedia] = useState([]);
-  const [coverId, setCoverId] = useState(null);
-  const [youtubeInput, setYoutubeInput] = useState("");
+  const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const nextMediaId = useRef(0);
-  const mediaRef = useRef(media);
-  mediaRef.current = media;
 
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
 
-  // A capa é a imagem escolhida pelo usuário ou, por padrão, a primeira imagem adicionada.
-  const imageItems = media.filter((item) => item.mediaType === "image");
-  const coverItemId = imageItems.some((item) => item.id === coverId)
-    ? coverId
-    : imageItems[0]?.id ?? null;
+  // Carrega os dados existentes do projeto
+  useEffect(() => {
+    async function loadProjectDetails() {
+      try {
+        setIsLoading(true);
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+        const response = await fetch(`${apiUrl}/projects`);
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar projetos");
+        }
+
+        const data = await response.json();
+        const list = Array.isArray(data.projects)
+          ? data.projects
+          : Array.isArray(data)
+          ? data
+          : [];
+
+        const currentProject = list.find((p) => p.id === id);
+
+        if (!currentProject) {
+          setFeedbackType("error");
+          setFeedbackMessage("Projeto não encontrado.");
+          return;
+        }
+
+        // Popula os campos do formulário
+        setTitle(currentProject.title || "");
+
+        const initialDesc = currentProject.description || "";
+        setDescriptionHtml(initialDesc);
+        setDescriptionText(initialDesc);
+
+        if (editorRef.current) {
+          editorRef.current.innerHTML = initialDesc;
+        }
+
+        if (currentProject.major) {
+          setCourse(currentProject.major);
+        }
+
+        if (currentProject.semester) {
+          setPhase(`${currentProject.semester}ª Fase`);
+        }
+
+        if (Array.isArray(currentProject.technologies)) {
+          setTags(currentProject.technologies);
+        }
+
+        if (Array.isArray(currentProject.collaborators)) {
+          const mappedCollabs = currentProject.collaborators.map((c) => {
+            const foundMock = MOCK_COLLABORATORS.find(
+              (m) => m.id === (c.userId || c.id)
+            );
+            return {
+              id: c.userId || c.id,
+              name: foundMock?.name || c.name || "Colaborador",
+              color: foundMock?.color || "#4f46e5",
+            };
+          });
+          setCollaborators(mappedCollabs);
+        }
+
+        setGithub(currentProject.githubURL || currentProject.github_url || "");
+        setLiveUrl(currentProject.liveURL || currentProject.live_url || "");
+        setStatus(currentProject.status || "Em desenvolvimento");
+      } catch (err) {
+        console.error("Falha ao carregar projeto para edição:", err);
+        setFeedbackType("error");
+        setFeedbackMessage("Não foi possível carregar os dados do projeto.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (id) {
+      loadProjectDetails();
+    }
+  }, [id]);
+
+  // Atualiza o editor caso os dados cheguem após o mount inicial
+  useEffect(() => {
+    if (editorRef.current && descriptionHtml && !editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = descriptionHtml;
+    }
+  }, [descriptionHtml]);
 
   const phaseOptions = course
     ? Array.from(
@@ -306,15 +365,6 @@ export default function NewProjectPage() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
-
-  // Libera as pré-visualizações criadas com URL.createObjectURL ao sair da página.
-  useEffect(() => {
-    return () => {
-      mediaRef.current.forEach((item) => {
-        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-      });
     };
   }, []);
 
@@ -491,24 +541,20 @@ export default function NewProjectPage() {
     setCollaboratorsOpen(false);
   }
 
-  function removeCollaborator(id) {
-    setCollaborators((curr) => curr.filter((c) => c.id !== id));
-  }
-
-  function createMediaId() {
-    nextMediaId.current += 1;
-    return nextMediaId.current;
+  function removeCollaborator(collaboratorId) {
+    setCollaborators((curr) => curr.filter((c) => c.id !== collaboratorId));
   }
 
   function addFiles(fileList) {
     const incomingFiles = Array.from(fileList);
-    const acceptedItems = [];
+    const acceptedFiles = [];
     const rejectedMessages = [];
 
     for (const file of incomingFiles) {
-      const mediaType = ALLOWED_MEDIA_TYPES[file.type];
+      const isAcceptedType =
+        file.type.startsWith("image/") || file.type.startsWith("video/");
 
-      if (!mediaType) {
+      if (!isAcceptedType) {
         rejectedMessages.push(`${file.name}: formato não permitido.`);
         continue;
       }
@@ -518,11 +564,9 @@ export default function NewProjectPage() {
         continue;
       }
 
-      const isDuplicate = [...media, ...acceptedItems].some(
-        (item) =>
-          item.kind === "file" &&
-          item.file.name === file.name &&
-          item.file.size === file.size
+      const isDuplicate = [...files, ...acceptedFiles].some(
+        (savedFile) =>
+          savedFile.name === file.name && savedFile.size === file.size
       );
 
       if (isDuplicate) {
@@ -530,22 +574,16 @@ export default function NewProjectPage() {
         continue;
       }
 
-      if (media.length + acceptedItems.length >= MAX_FILES) {
-        rejectedMessages.push(`O limite é de ${MAX_FILES} mídias.`);
+      if (files.length + acceptedFiles.length >= MAX_FILES) {
+        rejectedMessages.push(`O limite é de ${MAX_FILES} arquivos.`);
         break;
       }
 
-      acceptedItems.push({
-        id: createMediaId(),
-        kind: "file",
-        file,
-        mediaType,
-        previewUrl: mediaType === "image" ? URL.createObjectURL(file) : null,
-      });
+      acceptedFiles.push(file);
     }
 
-    if (acceptedItems.length > 0) {
-      setMedia((curr) => [...curr, ...acceptedItems]);
+    if (acceptedFiles.length > 0) {
+      setFiles((curr) => [...curr, ...acceptedFiles]);
       clearFieldError("files");
     }
 
@@ -557,60 +595,8 @@ export default function NewProjectPage() {
     }
   }
 
-  function addYoutubeLink() {
-    const videoId = getYoutubeVideoId(youtubeInput.trim());
-    let message = "";
-
-    if (!videoId) {
-      message = "Informe um link válido do YouTube.";
-    } else if (media.some((item) => item.kind === "youtube" && item.videoId === videoId)) {
-      message = "Esse vídeo do YouTube já foi adicionado.";
-    } else if (media.length >= MAX_FILES) {
-      message = `O limite é de ${MAX_FILES} mídias.`;
-    }
-
-    if (message) {
-      setErrors((curr) => ({ ...curr, files: message }));
-      return;
-    }
-
-    setMedia((curr) => [
-      ...curr,
-      {
-        id: createMediaId(),
-        kind: "youtube",
-        videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        mediaType: "video",
-      },
-    ]);
-    setYoutubeInput("");
-    clearFieldError("files");
-  }
-
-  function removeMedia(id) {
-    const item = media.find((current) => current.id === id);
-    if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
-    setMedia((curr) => curr.filter((current) => current.id !== id));
-  }
-
-  // Envia os arquivos locais ao storage e devolve as URLs na mesma ordem.
-  async function uploadMediaFiles(fileItems, token) {
-    const formData = new FormData();
-    fileItems.forEach((item) => formData.append("files", item.file));
-
-    const response = await fetch(`${API_URL}/media/upload`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.message || "Não foi possível enviar as mídias.");
-    }
-
-    return data.media.map((uploaded) => uploaded.url);
+  function removeFile(position) {
+    setFiles((curr) => curr.filter((_, idx) => idx !== position));
   }
 
   function handleDrop(event) {
@@ -619,29 +605,8 @@ export default function NewProjectPage() {
     addFiles(event.dataTransfer.files);
   }
 
-  function handleSaveDraft() {
-    const draft = {
-      title: title.trim(),
-      description: descriptionHtml,
-      descriptionText: descriptionText.trim(),
-      course,
-      phase,
-      tags,
-      collaborators,
-      github: github.trim(),
-      liveUrl: liveUrl.trim(),
-      status,
-      savedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem("techub:new-project-draft", JSON.stringify(draft));
-    setFeedbackType("success");
-    setFeedbackMessage("Rascunho salvo localmente neste navegador.");
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
-    if (isSubmitting) return;
 
     setErrors({});
     setFeedbackMessage("");
@@ -655,7 +620,6 @@ export default function NewProjectPage() {
       tags,
       github,
       liveUrl,
-      mediaCount: media.length,
     };
 
     const validationErrors = validateForm(projectData);
@@ -663,83 +627,46 @@ export default function NewProjectPage() {
 
     if (Object.keys(validationErrors).length > 0) {
       setFeedbackType("error");
-      setFeedbackMessage("Revise os campos destacados antes de enviar o projeto.");
+      setFeedbackMessage("Revise os campos destacados antes de salvar o projeto.");
       const firstInvalidField = document.querySelector(".is-invalid");
       firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    setIsSubmitting(true);
-    let created = false;
-
     try {
-      const token = localStorage.getItem("techub_token");
-
-      // 1. Envia ao storage somente os arquivos que ainda não subiram (links do YouTube
-      // não precisam de upload). Assim, reenviar após um erro não duplica arquivos.
-      const uploadedUrlById = new Map(
-        media.filter((item) => item.uploadedUrl).map((item) => [item.id, item.uploadedUrl])
-      );
-      const pendingItems = media.filter((item) => item.kind === "file" && !item.uploadedUrl);
-
-      if (pendingItems.length > 0) {
-        setFeedbackType("");
-        setFeedbackMessage("Enviando fotos e vídeos...");
-
-        try {
-          const urls = await uploadMediaFiles(pendingItems, token);
-          pendingItems.forEach((item, index) => uploadedUrlById.set(item.id, urls[index]));
-          setMedia((curr) =>
-            curr.map((item) =>
-              uploadedUrlById.has(item.id)
-                ? { ...item, uploadedUrl: uploadedUrlById.get(item.id) }
-                : item
-            )
-          );
-        } catch (uploadError) {
-          setErrors({ files: uploadError.message });
-          setFeedbackType("error");
-          setFeedbackMessage(uploadError.message);
-          return;
-        }
-      }
-
       setFeedbackType("");
-      setFeedbackMessage("Enviando projeto...");
+      setFeedbackMessage("Salvando alterações...");
 
-      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
+      const token =
+        localStorage.getItem("techub_token") || localStorage.getItem("token");
+
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
 
-      // Monta o payload conforme o contrato do Backend/Zod
       const payload = {
         title: title.trim(),
         description: descriptionText.trim(),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        // Envia o objeto no formato esperado: { userId, contribution }
         collaborators: collaborators.map((c) => ({
           userId: c.id,
         })),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
-        // 2. Envia as URLs das mídias junto com o projeto.
-        media: media.map((item) => ({
-          url: item.kind === "file" ? uploadedUrlById.get(item.id) : item.url,
-          mediaType: item.mediaType,
-          isCover: item.id === coverItemId,
-        })),
       };
 
-      const response = await fetch(`${API_URL}/projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await response.json();
 
@@ -754,7 +681,6 @@ export default function NewProjectPage() {
             else if (field === "technologies") backendErrors.tags = issue.message;
             else if (field === "githubURL") backendErrors.github = issue.message;
             else if (field === "liveURL") backendErrors.liveUrl = issue.message;
-            else if (field === "media") backendErrors.files = issue.message;
             else if (field) backendErrors[field] = issue.message;
           });
           setErrors(backendErrors);
@@ -764,30 +690,37 @@ export default function NewProjectPage() {
         }
 
         setFeedbackType("error");
-        setFeedbackMessage(data.message || "Erro ao cadastrar projeto.");
+        setFeedbackMessage(data.message || "Erro ao atualizar projeto.");
         return;
       }
 
-      created = true;
       setFeedbackType("success");
-      setFeedbackMessage("Projeto criado com sucesso!");
+      setFeedbackMessage("Projeto atualizado com sucesso!");
 
       setTimeout(() => {
-        navigate("/");
-      }, 1500);
+        navigate(-1);
+      }, 1200);
     } catch (err) {
       console.error(err);
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
-    } finally {
-      // Após o sucesso o botão continua bloqueado até o redirecionamento.
-      if (!created) setIsSubmitting(false);
     }
+  }
+
+  if (isLoading) {
+    return (
+      <main className="new-project-page">
+        <h1 className="new-project-title">Editar projeto</h1>
+        <div className="new-project-card" style={{ padding: "3rem", textAlign: "center" }}>
+          <p>Carregando dados do projeto...</p>
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">Editar projeto</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -1272,12 +1205,7 @@ export default function NewProjectPage() {
         </div>
 
         <div className="form-field">
-          <span className="form-label">
-            Galeria do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
-          </span>
+          <span className="form-label">Galeria do projeto</span>
 
           <label
             className={`upload-area ${dragOver ? "drag-over" : ""} ${
@@ -1293,7 +1221,7 @@ export default function NewProjectPage() {
             <input
               type="file"
               multiple
-              accept={Object.keys(ALLOWED_MEDIA_TYPES).join(",")}
+              accept="image/*,video/*"
               className="upload-input"
               onChange={(event) => {
                 addFiles(event.target.files);
@@ -1306,105 +1234,31 @@ export default function NewProjectPage() {
             <div className="upload-text">
               <p className="upload-title">Adicionar fotos ou vídeos</p>
               <p className="upload-helper">
-                JPG, PNG, WEBP, MP4 ou WEBM · até {MAX_FILES} mídias de no máximo 20 MB cada
+                Até {MAX_FILES} arquivos de no máximo 20 MB cada
               </p>
             </div>
           </label>
 
-          <div className="youtube-link-field">
-            <i className="fa-brands fa-youtube" aria-hidden="true" />
-            <input
-              type="url"
-              className="project-input"
-              placeholder="Ou cole um link do YouTube"
-              aria-label="Link de vídeo do YouTube"
-              value={youtubeInput}
-              onChange={(event) => {
-                setYoutubeInput(event.target.value);
-                clearFieldError("files");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addYoutubeLink();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="youtube-link-add"
-              onClick={addYoutubeLink}
-              disabled={!youtubeInput.trim()}
-            >
-              Adicionar
-            </button>
-          </div>
-
-          {errors.files && (
-            <span className="field-error" role="alert">
-              {errors.files}
-            </span>
-          )}
-
-          {media.length > 0 && (
+          {files.length > 0 && (
             <ul className="upload-file-list">
-              {media.map((item) => {
-                const isImage = item.mediaType === "image";
-                const isCover = item.id === coverItemId;
-                const name = item.kind === "file" ? item.file.name : item.url;
-
-                return (
-                  <li
-                    key={item.id}
-                    className={`upload-file ${isCover ? "is-cover" : ""}`}
+              {files.map((file, index) => (
+                <li key={`${file.name}-${file.size}`} className="upload-file">
+                  <i className="fa-solid fa-paperclip" aria-hidden="true" />
+                  <span className="upload-file-information">
+                    <strong>{file.name}</strong>
+                    <small>{formatFileSize(file.size)}</small>
+                  </span>
+                  <button
+                    type="button"
+                    className="upload-file-remove"
+                    onClick={() => removeFile(index)}
+                    aria-label={`Remover ${file.name}`}
+                    title={`Remover ${file.name}`}
                   >
-                    {item.previewUrl ? (
-                      <img className="upload-file-thumb" src={item.previewUrl} alt="" />
-                    ) : (
-                      <span className="upload-file-thumb" aria-hidden="true">
-                        <i
-                          className={
-                            item.kind === "youtube"
-                              ? "fa-brands fa-youtube"
-                              : "fa-solid fa-film"
-                          }
-                        />
-                      </span>
-                    )}
-
-                    <span className="upload-file-information">
-                      <strong>{name}</strong>
-                      <small>
-                        {item.kind === "file"
-                          ? formatFileSize(item.file.size)
-                          : "Vídeo do YouTube"}
-                      </small>
-                    </span>
-
-                    {isImage && (
-                      <label className="upload-file-cover">
-                        <input
-                          type="radio"
-                          name="project-cover"
-                          checked={isCover}
-                          onChange={() => setCoverId(item.id)}
-                        />
-                        Capa
-                      </label>
-                    )}
-
-                    <button
-                      type="button"
-                      className="upload-file-remove"
-                      onClick={() => removeMedia(item.id)}
-                      aria-label={`Remover ${name}`}
-                      title={`Remover ${name}`}
-                    >
-                      ×
-                    </button>
-                  </li>
-                );
-              })}
+                    ×
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
         </div>
@@ -1444,29 +1298,17 @@ export default function NewProjectPage() {
         )}
 
         <div className="actions">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            className="action-button save-draft"
-          >
-            Salvar rascunho
-          </button>
-
-          <button
-            type="submit"
-            className="action-button submit-review"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Enviando..." : "Enviar para a revisão"}
+          <button type="submit" className="action-button submit-review">
+            Salvar alterações
           </button>
         </div>
 
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(-1)}
         >
-          Cancelar e voltar para a página inicial
+          Cancelar e voltar
         </button>
       </form>
     </main>

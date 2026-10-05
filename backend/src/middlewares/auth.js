@@ -2,7 +2,7 @@ const { verifyToken } = require('../utils/jwt');
 const { User } = require('../models');
 const { ROLES } = require('../constants/roles');
 
-// Autentica a requisição pelo token Bearer e disponibiliza o usuário em req.user.
+// Autentica a requisição pelo token Bearer e disponibiliza o usuário em req.user e req.userId.
 async function authenticate(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -19,12 +19,21 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ message: 'Token inválido ou expirado.' });
     }
 
-    const user = await User.findByPk(payload.sub);
+    // Suporta tanto JWT com subject padrão (sub) quanto payload com id direto
+    const userId = payload.sub || payload.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Identificador de usuário ausente no token.' });
+    }
+
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
 
+    // Injeta o model do usuário e o id direto para compatibilidade com todos os controllers
     req.user = user;
+    req.userId = user.id;
+
     next();
   } catch (err) {
     next(err);

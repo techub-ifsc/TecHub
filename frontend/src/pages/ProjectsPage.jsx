@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { API_URL } from "../api/apiUrl";
 import "./ProjectsPage.css";
 
 const COURSES = {
@@ -81,8 +82,7 @@ export default function ProjectsPage() {
         setLoading(true);
         setError(null);
 
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const response = await fetch(`${apiUrl}/projects`);
+        const response = await fetch(`${API_URL}/projects`);
 
         if (!response.ok) {
           throw new Error("Erro ao carregar lista de projetos.");
@@ -107,6 +107,7 @@ export default function ProjectsPage() {
           status: p.status,
           githubURL: p.githubURL || p.github_url,
           liveURL: p.liveURL || p.live_url,
+          coverUrl: p.coverUrl,
           color: CARD_COLORS[index % CARD_COLORS.length],
         }));
 
@@ -469,10 +470,14 @@ function ProjectCard({ project }) {
       aria-label={`Ver detalhes do projeto ${project.title}`}
     >
       <div
-        className="project-card__image"
+        className={`project-card__image ${project.coverUrl ? "has-cover" : ""}`}
         style={{ backgroundColor: project.color }}
       >
-        <BrowserPreview title={project.title} />
+        {project.coverUrl ? (
+          <img src={project.coverUrl} alt="" loading="lazy" />
+        ) : (
+          <BrowserPreview title={project.title} />
+        )}
       </div>
 
       <div className="project-card__content">

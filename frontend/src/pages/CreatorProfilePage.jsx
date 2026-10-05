@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { API_URL } from "../api/apiUrl";
 import "./CreatorProfilePage.css";
 
 const PROFILE_PHOTO =
@@ -84,8 +85,7 @@ export default function CreatorProfilePage() {
     async function loadUserProjects() {
       try {
         setLoadingProjects(true);
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const response = await fetch(`${apiUrl}/projects`);
+        const response = await fetch(`${API_URL}/projects`);
 
         if (!response.ok) {
           throw new Error("Erro ao buscar projetos");
@@ -167,9 +167,7 @@ export default function CreatorProfilePage() {
     try {
       const token =
         localStorage.getItem("techub_token") || localStorage.getItem("token");
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
-      const res = await fetch(`${apiUrl}/projects/${projectId}`, {
+      const res = await fetch(`${API_URL}/projects/${projectId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

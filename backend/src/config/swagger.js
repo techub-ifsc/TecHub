@@ -256,6 +256,7 @@ const definition = {
           liveURL: { type: 'string', format: 'uri', nullable: true, example: 'https://techub.vercel.app' },
           status: { type: 'string', nullable: true, example: 'Em design' },
           media: { type: 'array', items: { $ref: '#/components/schemas/ProjectMedia' } },
+          coverUrl: { type: 'string', format: 'uri', nullable: true, description: 'Somente na listagem: URL da imagem de capa.' },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },

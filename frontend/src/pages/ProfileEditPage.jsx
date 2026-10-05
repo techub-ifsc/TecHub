@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import CustomSelect from "../components/CustomSelect";
 
 import "./ProfileEditPage.css";
 
@@ -614,8 +615,9 @@ export default function ProfileEditPage() {
                       type="button"
                       onClick={() => addInterest()}
                       aria-label="Adicionar interesse"
+                      title="Adicionar interesse"
                     >
-                      +
+                      <i className="fa-solid fa-plus" aria-hidden="true" />
                     </button>
                   </div>
 
@@ -759,21 +761,24 @@ export default function ProfileEditPage() {
                       <span aria-hidden="true">*</span>
                     </label>
 
-                    <select
+                    <CustomSelect
                       id="profile-course"
                       name="course"
                       value={form.course}
                       onChange={handleChange}
-                      className={errors.course ? "is-invalid" : ""}
-                    >
-                      <option value="">Selecione o curso</option>
-
-                      {COURSE_OPTIONS.map((course) => (
-                        <option key={course} value={course}>
-                          {course}
-                        </option>
-                      ))}
-                    </select>
+                      invalid={Boolean(errors.course)}
+                      placeholder="Selecione o curso"
+                      options={[
+                        {
+                          value: "",
+                          label: "Selecione o curso",
+                        },
+                        ...COURSE_OPTIONS.map((course) => ({
+                          value: course,
+                          label: course,
+                        })),
+                      ]}
+                    />
 
                     {errors.course && (
                       <span className="profile-edit-error" role="alert">
@@ -807,19 +812,28 @@ export default function ProfileEditPage() {
                         <span aria-hidden="true">*</span>
                       </label>
 
-                      <select
+                      <CustomSelect
                         id="profile-conclusion-semester"
                         name="conclusionSemester"
                         value={form.conclusionSemester}
                         onChange={handleChange}
-                        className={
-                          errors.conclusionSemester ? "is-invalid" : ""
-                        }
-                      >
-                        <option value="">Selecione</option>
-                        <option value="1">1º semestre</option>
-                        <option value="2">2º semestre</option>
-                      </select>
+                        invalid={Boolean(errors.conclusionSemester)}
+                        placeholder="Selecione"
+                        options={[
+                          {
+                            value: "",
+                            label: "Selecione",
+                          },
+                          {
+                            value: "1",
+                            label: "1º semestre",
+                          },
+                          {
+                            value: "2",
+                            label: "2º semestre",
+                          },
+                        ]}
+                      />
                     </div>
                   </div>
 
@@ -835,21 +849,24 @@ export default function ProfileEditPage() {
                       <span aria-hidden="true">*</span>
                     </label>
 
-                    <select
+                    <CustomSelect
                       id="profile-academic-status"
                       name="academicStatus"
                       value={form.academicStatus}
                       onChange={handleChange}
-                      className={errors.academicStatus ? "is-invalid" : ""}
-                    >
-                      <option value="">Selecione o vínculo</option>
-
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
+                      invalid={Boolean(errors.academicStatus)}
+                      placeholder="Selecione o vínculo"
+                      options={[
+                        {
+                          value: "",
+                          label: "Selecione o vínculo",
+                        },
+                        ...STATUS_OPTIONS.map((status) => ({
+                          value: status,
+                          label: status,
+                        })),
+                      ]}
+                    />
 
                     {errors.academicStatus && (
                       <span className="profile-edit-error" role="alert">

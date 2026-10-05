@@ -71,7 +71,7 @@ export default function ProjectGallery({ gallery, error, onInputChange }) {
         <div className="upload-text">
           <p className="upload-title">Adicionar fotos ou vídeos</p>
           <p className="upload-helper">
-            JPG, PNG, WEBP, MP4 ou WEBM · até {MAX_MEDIA} mídias de no máximo 20 MB cada
+            JPG, PNG, WEBP, MP4 ou WEBM · até {MAX_MEDIA} mídias de no máximo 10 MB cada
           </p>
         </div>
       </label>

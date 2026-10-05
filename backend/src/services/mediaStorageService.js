@@ -2,57 +2,43 @@ const crypto = require('crypto');
 const { cloudinary, cloudName } = require('../config/cloudinary');
 const { ALLOWED_MIME_TYPES, MEDIA_TYPES, MEDIA_STORAGE_FOLDER } = require('../constants/media');
 
-// Confere a assinatura binária do arquivo, pois o MIME informado pelo navegador
-// pode ser falsificado. Retorna true quando o conteúdo condiz com o tipo declarado.
-function matchesDeclaredType(buffer, mimeType) {
-  const startsWith = (bytes, offset = 0) =>
-    buffer.length >= offset + bytes.length &&
-    bytes.every((byte, index) => buffer[offset + index] === byte);
-  const ascii = (text) => [...text].map((char) => char.charCodeAt(0));
+// Imagens são sempre reprocessadas pelo Cloudinary: redimensionadas (até 1920px) e
+// convertidas para webp. Arquivos que não são imagens válidas são recusados por ele.
+// Obs.: allowed_formats não é usado em imagens porque desativa a conversão de formato.
+const IMAGE_UPLOAD_PARAMS = {
+  format: 'webp',
+  transformation: 'c_limit,h_1920,q_auto,w_1920',
+};
 
-  switch (mimeType) {
-    case 'image/jpeg':
-      return startsWith([0xff, 0xd8, 0xff]);
-    case 'image/png':
-      return startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    case 'image/webp':
-      return startsWith(ascii('RIFF')) && startsWith(ascii('WEBP'), 8);
-    case 'video/mp4':
-      return startsWith(ascii('ftyp'), 4);
-    case 'video/webm':
-      return startsWith([0x1a, 0x45, 0xdf, 0xa3]);
-    default:
-      return false;
-  }
-}
+// Vídeos são guardados como enviados; somente mp4 e webm são aceitos.
+const VIDEO_UPLOAD_PARAMS = {
+  allowed_formats: 'mp4,webm',
+};
 
-// Envia o arquivo ao Cloudinary e retorna a URL pública permanente.
-// Imagens são redimensionadas (até 1920px) e convertidas para webp para deixar o feed leve;
-// vídeos mantêm o formato declarado (mp4 ou webm).
-function uploadMedia(buffer, mimeType) {
+// Gera os parâmetros assinados para o navegador enviar UM arquivo direto ao Cloudinary.
+// A pasta, o nome, a conversão e os formatos ficam travados na assinatura: qualquer
+// alteração faz o Cloudinary recusar o envio. O API Secret nunca sai do servidor.
+function createUploadSignature(mimeType) {
   const mediaType = ALLOWED_MIME_TYPES[mimeType];
-  const isImage = mediaType === MEDIA_TYPES.IMAGE;
-  const options = {
+  const params = {
+    timestamp: Math.round(Date.now() / 1000),
     folder: MEDIA_STORAGE_FOLDER,
     public_id: `media_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-    resource_type: mediaType,
-    overwrite: false,
-    format: isImage ? 'webp' : mimeType.split('/')[1],
-    ...(isImage && {
-      transformation: [{ width: 1920, height: 1920, crop: 'limit', quality: 'auto' }],
-    }),
+    overwrite: false, // reutilizar a assinatura não substitui o arquivo já enviado
+    ...(mediaType === MEDIA_TYPES.IMAGE ? IMAGE_UPLOAD_PARAMS : VIDEO_UPLOAD_PARAMS),
   };
+  const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
 
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream(options, (error, result) => (error ? reject(error) : resolve(result.secure_url)))
-      .end(buffer);
-  });
+  return {
+    mediaType,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${mediaType}/upload`,
+    fields: { ...params, api_key: process.env.CLOUDINARY_API_KEY, signature },
+  };
 }
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Aceita somente URLs exatamente no formato gerado por uploadMedia nesta conta do Cloudinary.
+// Aceita somente URLs exatamente no formato gerado pelas assinaturas desta conta do Cloudinary.
 // Isso impede links de terceiros e URLs com transformações embutidas (que consomem créditos).
 function isManagedMediaUrl(value, mediaType) {
   if (!cloudName) return false;
@@ -76,4 +62,4 @@ function isManagedMediaUrl(value, mediaType) {
   }
 }
 
-module.exports = { matchesDeclaredType, uploadMedia, isManagedMediaUrl };
+module.exports = { createUploadSignature, isManagedMediaUrl };

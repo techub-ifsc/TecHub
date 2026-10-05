@@ -157,7 +157,7 @@ async function create(req, res, next) {
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
-    // 4. Insere as mídias (URLs já enviadas ao storage pelo POST /media/upload)
+    // 4. Insere as mídias (URLs já enviadas ao Cloudinary com assinatura do POST /media/signature)
     const mediaRecords = await ProjectMedia.bulkCreate(
       media.map((item) => ({ ...item, projectId: project.id })),
       { transaction }

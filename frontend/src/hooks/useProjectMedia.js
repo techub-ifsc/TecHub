@@ -4,9 +4,10 @@ import { API_URL } from "../api/apiUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
 
 export const MAX_MEDIA = 10;
-export const MAX_MEDIA_FILE_SIZE = 20 * 1024 * 1024;
+// Limite do plano gratuito do Cloudinary; o backend recusa assinar arquivos maiores.
+export const MAX_MEDIA_FILE_SIZE = 10 * 1024 * 1024;
 
-// Formatos aceitos pelo backend (POST /media/upload) e o tipo de mídia correspondente.
+// Formatos aceitos pelo backend (POST /media/signature) e o tipo de mídia correspondente.
 export const ALLOWED_MEDIA_TYPES = {
   "image/jpeg": "image",
   "image/png": "image",
@@ -19,23 +20,40 @@ function youtubeUrl(videoId) {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
-// Envia os arquivos locais ao storage e devolve as URLs na mesma ordem.
-async function uploadMediaFiles(fileItems, token) {
-  const formData = new FormData();
-  fileItems.forEach((item) => formData.append("files", item.file));
-
-  const response = await fetch(`${API_URL}/media/upload`, {
+// Envia um arquivo direto ao Cloudinary, sem passar pelo backend (a Vercel limita
+// cada requisição a 4,5 MB): o backend só assina o envio e devolve os campos travados.
+async function uploadMediaFile(file, token) {
+  const signatureResponse = await fetch(`${API_URL}/media/signature`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ type: file.type, size: file.size }),
   });
-  const data = await response.json().catch(() => ({}));
+  const signature = await signatureResponse.json().catch(() => ({}));
 
-  if (!response.ok) {
-    throw new Error(data.message || "Não foi possível enviar as mídias.");
+  if (!signatureResponse.ok) {
+    throw new Error(signature.message || "Não foi possível enviar as mídias.");
   }
 
-  return data.media.map((uploaded) => uploaded.url);
+  const formData = new FormData();
+  Object.entries(signature.fields).forEach(([key, value]) => formData.append(key, value));
+  formData.append("file", file);
+
+  const uploadResponse = await fetch(signature.uploadUrl, { method: "POST", body: formData });
+  const uploaded = await uploadResponse.json().catch(() => ({}));
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Não foi possível enviar ${file.name}. Verifique se o arquivo é válido.`);
+  }
+
+  return uploaded.secure_url;
+}
+
+// Envia os arquivos em paralelo e devolve as URLs na mesma ordem.
+function uploadMediaFiles(fileItems, token) {
+  return Promise.all(fileItems.map((item) => uploadMediaFile(item.file, token)));
 }
 
 // Estado da galeria de um projeto. Cada item é:
@@ -102,7 +120,7 @@ export function useProjectMedia({ onError }) {
       }
 
       if (file.size > MAX_MEDIA_FILE_SIZE) {
-        rejectedMessages.push(`${file.name}: tamanho superior a 20 MB.`);
+        rejectedMessages.push(`${file.name}: tamanho superior a 10 MB.`);
         continue;
       }
 

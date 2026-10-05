@@ -8,7 +8,7 @@ const { MEDIA_TYPES, MAX_MEDIA_PER_PROJECT } = require('../constants/media');
 const { isManagedMediaUrl } = require('../services/mediaStorageService');
 const { normalizeYoutubeUrl } = require('../utils/youtube');
 
-// Cada mídia precisa ter sido enviada pelo POST /media/upload ou ser um link do YouTube.
+// Cada mídia precisa ter sido enviada ao Cloudinary com assinatura do POST /media/signature ou ser um link do YouTube.
 const mediaItemSchema = z
   .object({
     url: z.string().trim().url('URL da mídia inválida').max(500),

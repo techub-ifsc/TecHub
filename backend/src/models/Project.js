@@ -4,6 +4,7 @@ const { MAJORS } = require('../constants/majors');
 const { STATUS } = require('../constants/status');
 const ProjectTechnology = require('./ProjectTechnology');
 const ProjectCollaborator = require('./ProjectCollaborator');
+const User = require('./User');
 
 class Project extends Model { }
 
@@ -78,5 +79,10 @@ Project.hasMany(ProjectTechnology, {
 Project.hasMany(ProjectCollaborator, {
   foreignKey: 'project_id',
   as: 'collaborators',
+});
+
+Project.belongsTo(User, {
+  foreignKey: 'owner_id',
+  as: 'author',
 });
 module.exports = Project;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import "./NewProjectPage.css";
 
@@ -95,7 +95,6 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
-// Usando o UUID fornecido para o primeiro usuário de teste
 const MOCK_COLLABORATORS = [
   { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
   { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
@@ -103,11 +102,10 @@ const MOCK_COLLABORATORS = [
   { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
 ];
 
-// O backend espera exatamente estes valores definidos nas constantes/Zod
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
-  "Concluído",
+  "Concluido",
   "Pausado",
 ];
 
@@ -179,12 +177,15 @@ function validateForm({
   return errors;
 }
 
-export default function NewProjectPage() {
+export default function EditProjectPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
   const collaboratorContainerRef = useRef(null);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
@@ -216,7 +217,7 @@ export default function NewProjectPage() {
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
-  const [status, setStatus] = useState("Em design");
+  const [status, setStatus] = useState("Em desenvolvimento");
 
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -224,6 +225,94 @@ export default function NewProjectPage() {
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  // Carrega os dados existentes do projeto
+  useEffect(() => {
+    async function loadProjectDetails() {
+      try {
+        setIsLoading(true);
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+        const response = await fetch(`${apiUrl}/projects`);
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar projetos");
+        }
+
+        const data = await response.json();
+        const list = Array.isArray(data.projects)
+          ? data.projects
+          : Array.isArray(data)
+          ? data
+          : [];
+
+        const currentProject = list.find((p) => p.id === id);
+
+        if (!currentProject) {
+          setFeedbackType("error");
+          setFeedbackMessage("Projeto não encontrado.");
+          return;
+        }
+
+        // Popula os campos do formulário
+        setTitle(currentProject.title || "");
+
+        const initialDesc = currentProject.description || "";
+        setDescriptionHtml(initialDesc);
+        setDescriptionText(initialDesc);
+
+        if (editorRef.current) {
+          editorRef.current.innerHTML = initialDesc;
+        }
+
+        if (currentProject.major) {
+          setCourse(currentProject.major);
+        }
+
+        if (currentProject.semester) {
+          setPhase(`${currentProject.semester}ª Fase`);
+        }
+
+        if (Array.isArray(currentProject.technologies)) {
+          setTags(currentProject.technologies);
+        }
+
+        if (Array.isArray(currentProject.collaborators)) {
+          const mappedCollabs = currentProject.collaborators.map((c) => {
+            const foundMock = MOCK_COLLABORATORS.find(
+              (m) => m.id === (c.userId || c.id)
+            );
+            return {
+              id: c.userId || c.id,
+              name: foundMock?.name || c.name || "Colaborador",
+              color: foundMock?.color || "#4f46e5",
+            };
+          });
+          setCollaborators(mappedCollabs);
+        }
+
+        setGithub(currentProject.githubURL || currentProject.github_url || "");
+        setLiveUrl(currentProject.liveURL || currentProject.live_url || "");
+        setStatus(currentProject.status || "Em desenvolvimento");
+      } catch (err) {
+        console.error("Falha ao carregar projeto para edição:", err);
+        setFeedbackType("error");
+        setFeedbackMessage("Não foi possível carregar os dados do projeto.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (id) {
+      loadProjectDetails();
+    }
+  }, [id]);
+
+  // Atualiza o editor caso os dados cheguem após o mount inicial
+  useEffect(() => {
+    if (editorRef.current && descriptionHtml && !editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = descriptionHtml;
+    }
+  }, [descriptionHtml]);
 
   const phaseOptions = course
     ? Array.from(
@@ -452,8 +541,8 @@ export default function NewProjectPage() {
     setCollaboratorsOpen(false);
   }
 
-  function removeCollaborator(id) {
-    setCollaborators((curr) => curr.filter((c) => c.id !== id));
+  function removeCollaborator(collaboratorId) {
+    setCollaborators((curr) => curr.filter((c) => c.id !== collaboratorId));
   }
 
   function addFiles(fileList) {
@@ -516,26 +605,6 @@ export default function NewProjectPage() {
     addFiles(event.dataTransfer.files);
   }
 
-  function handleSaveDraft() {
-    const draft = {
-      title: title.trim(),
-      description: descriptionHtml,
-      descriptionText: descriptionText.trim(),
-      course,
-      phase,
-      tags,
-      collaborators,
-      github: github.trim(),
-      liveUrl: liveUrl.trim(),
-      status,
-      savedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem("techub:new-project-draft", JSON.stringify(draft));
-    setFeedbackType("success");
-    setFeedbackMessage("Rascunho salvo localmente neste navegador.");
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -558,7 +627,7 @@ export default function NewProjectPage() {
 
     if (Object.keys(validationErrors).length > 0) {
       setFeedbackType("error");
-      setFeedbackMessage("Revise os campos destacados antes de enviar o projeto.");
+      setFeedbackMessage("Revise os campos destacados antes de salvar o projeto.");
       const firstInvalidField = document.querySelector(".is-invalid");
       firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -566,21 +635,19 @@ export default function NewProjectPage() {
 
     try {
       setFeedbackType("");
-      setFeedbackMessage("Enviando projeto...");
+      setFeedbackMessage("Salvando alterações...");
 
-      const token = localStorage.getItem("techub_token");
+      const token =
+        localStorage.getItem("techub_token") || localStorage.getItem("token");
 
-      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
 
-      // Monta o payload conforme o contrato do Backend/Zod
       const payload = {
         title: title.trim(),
         description: descriptionText.trim(),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        // Envia o objeto no formato esperado: { userId, contribution }
         collaborators: collaborators.map((c) => ({
           userId: c.id,
         })),
@@ -589,14 +656,17 @@ export default function NewProjectPage() {
         status: status || null,
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await response.json();
 
@@ -620,16 +690,16 @@ export default function NewProjectPage() {
         }
 
         setFeedbackType("error");
-        setFeedbackMessage(data.message || "Erro ao cadastrar projeto.");
+        setFeedbackMessage(data.message || "Erro ao atualizar projeto.");
         return;
       }
 
       setFeedbackType("success");
-      setFeedbackMessage("Projeto criado com sucesso!");
+      setFeedbackMessage("Projeto atualizado com sucesso!");
 
       setTimeout(() => {
-        navigate("/");
-      }, 1500);
+        navigate(-1);
+      }, 1200);
     } catch (err) {
       console.error(err);
       setFeedbackType("error");
@@ -637,9 +707,20 @@ export default function NewProjectPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <main className="new-project-page">
+        <h1 className="new-project-title">Editar projeto</h1>
+        <div className="new-project-card" style={{ padding: "3rem", textAlign: "center" }}>
+          <p>Carregando dados do projeto...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">Editar projeto</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -1124,9 +1205,7 @@ export default function NewProjectPage() {
         </div>
 
         <div className="form-field">
-          <span className="form-label">
-            Galeria do projeto
-          </span>
+          <span className="form-label">Galeria do projeto</span>
 
           <label
             className={`upload-area ${dragOver ? "drag-over" : ""} ${
@@ -1219,25 +1298,17 @@ export default function NewProjectPage() {
         )}
 
         <div className="actions">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            className="action-button save-draft"
-          >
-            Salvar rascunho
-          </button>
-
           <button type="submit" className="action-button submit-review">
-            Enviar para a revisão
+            Salvar alterações
           </button>
         </div>
 
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(-1)}
         >
-          Cancelar e voltar para a página inicial
+          Cancelar e voltar
         </button>
       </form>
     </main>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import "./CreatorProfilePage.css";
 
@@ -12,74 +12,18 @@ const FILTER_TABS = [
   { id: "colaborador", label: "Como colaborador" },
 ];
 
-const PROJECTS = [
-  {
-    id: 1,
-    image:
-      "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480",
-    title: "Projeto Node",
-    description:
-      "API REST construída com Node.js e Express para gerenciamento de tarefas colaborativas.",
-    tags: ["Node.js", "Back-end", "API"],
-    role: "autor",
-  },
-  {
-    id: 2,
-    image:
-      "https://images.unsplash.com/photo-1675869940341-d495d49010b5?fit=crop&fm=jpg&q=80&w=800&h=480",
-    title: "Plataforma de agendamentos",
-    description:
-      "Plataforma web de agendamento com interface responsiva e integração de pagamentos.",
-    tags: ["React", "Front-end", "Web"],
-    role: "autor",
-  },
-  {
-    id: 3,
-    image:
-      "https://images.unsplash.com/photo-1582138825658-fb952c08b282?fit=crop&fm=jpg&q=80&w=800&h=480",
-    title: "Transporter",
-    description:
-      "Sistema de rastreamento de entregas em tempo real com painel administrativo.",
-    tags: ["React", "PostgreSQL", "Maps"],
-    role: "colaborador",
-  },
-  {
-    id: 4,
-    image:
-      "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480",
-    title: "TecHub",
-    description:
-      "Hub de projetos acadêmicos conectando estudantes, professores e recrutadores.",
-    tags: ["React", "Node.js", "Web"],
-    role: "colaborador",
-  },
-];
-
-const PROFILE = {
-  id: 1,
-  name: "Antoni Ferraz",
-  initials: "AF",
-  profileSlug: "/p/antoni-ferraz",
+const DEFAULT_PROFILE = {
+  name: "Estudante IFSC",
+  initials: "IF",
   campus: "IFSC Câmpus Lages",
   course: "Ciência da Computação",
-  phase: "8ª Fase",
+  phase: "Fase acadêmica",
   conclusion: "2026/2",
   status: "Em formação",
   bio: [
-    "Olá! Sou Antoni Ferraz, estudante de Ciência da Computação no IFSC Câmpus Lages, atualmente na 8ª fase do curso. Apaixonado por tecnologia desde cedo, encontrei no desenvolvimento web minha principal área de interesse e atuação.",
-    "Tenho experiência prática com React, Node.js e PostgreSQL, desenvolvendo aplicações web completas — do planejamento ao deploy. Também tenho interesse por testes de software, automação e qualidade em projetos colaborativos.",
+    "Estudante e entusiasta de tecnologia desenvolvendo soluções e projetos acadêmicos no IFSC Câmpus Lages.",
   ],
-  interests: [
-    "React",
-    "Node.js",
-    "Python",
-    "PostgreSQL",
-    "CSS",
-    "HTML",
-    "Git",
-    "Figma",
-    "Agile",
-  ],
+  interests: ["React", "Node.js", "PostgreSQL", "Git"],
   links: [
     {
       id: "github",
@@ -87,34 +31,162 @@ const PROFILE = {
       url: "https://github.com",
       icon: "fa-brands fa-github",
     },
-    {
-      id: "linkedin",
-      label: "LinkedIn",
-      url: "https://linkedin.com",
-      icon: "fa-brands fa-linkedin",
-    },
-    {
-      id: "portfolio",
-      label: "Portfólio/Currículo",
-      url: "https://github.com/techub-ifsc/TecHub",
-      icon: "fa-solid fa-link",
-    },
   ],
 };
 
 export default function CreatorProfilePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("autor");
+  const [activeTab, setActiveTab] = useState("todos");
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
 
-  const filteredProjects = PROJECTS.filter((project) => {
-    if (activeTab === "todos") {
-      return true;
+  // Recupera o usuário autenticado do localStorage
+  const loggedUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("techub_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const isOwner = loggedUser?.id === id;
+
+  // Monta as informações visuais mesclando o que temos do usuário logado
+  const profileInfo = useMemo(() => {
+    if (isOwner && loggedUser) {
+      const names = (loggedUser.name || "Usuário").trim().split(" ");
+      const initials =
+        names.length > 1
+          ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+          : names[0].slice(0, 2).toUpperCase();
+
+      return {
+        ...DEFAULT_PROFILE,
+        name: loggedUser.name,
+        initials,
+        email: loggedUser.email,
+        profileSlug: `/criadores/${loggedUser.id.slice(0, 8)}`,
+      };
     }
 
+    return {
+      ...DEFAULT_PROFILE,
+      profileSlug: `/criadores/${id?.slice(0, 8) || ""}`,
+    };
+  }, [id, isOwner, loggedUser]);
+
+  // Carrega e filtra os projetos reais do banco
+  useEffect(() => {
+    async function loadUserProjects() {
+      try {
+        setLoadingProjects(true);
+        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+        const response = await fetch(`${apiUrl}/projects`);
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar projetos");
+        }
+
+        const data = await response.json();
+        const allProjects = Array.isArray(data.projects)
+          ? data.projects
+          : Array.isArray(data)
+            ? data
+            : [];
+
+        // Filtra projetos onde o usuário atual é autor ou colaborador
+        const userProjects = [];
+
+        allProjects.forEach((p) => {
+          const isAuthor =
+            p.ownerId === id ||
+            p.owner_id === id ||
+            p.author?.id === id;
+
+          const isCollaborator = Array.isArray(p.collaborators)
+            ? p.collaborators.some(
+              (c) => c.userId === id || c.user_id === id || c.id === id
+            )
+            : false;
+
+          if (isAuthor) {
+            userProjects.push({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              tags: Array.isArray(p.technologies) ? p.technologies : [],
+              role: "autor",
+              image:
+                p.coverUrl ||
+                "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480",
+            });
+          } else if (isCollaborator) {
+            userProjects.push({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              tags: Array.isArray(p.technologies) ? p.technologies : [],
+              role: "colaborador",
+              image:
+                p.coverUrl ||
+                "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480",
+            });
+          }
+        });
+
+        setProjects(userProjects);
+      } catch (err) {
+        console.error("Falha ao carregar projetos do criador:", err);
+      } finally {
+        setLoadingProjects(false);
+      }
+    }
+
+    if (id) {
+      loadUserProjects();
+    }
+  }, [id]);
+
+  const filteredProjects = projects.filter((project) => {
+    if (activeTab === "todos") return true;
     return project.role === activeTab;
   });
+
+  async function handleDeleteProject(event, projectId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!window.confirm("Tem certeza que deseja excluir este projeto?")) {
+      return;
+    }
+
+    try {
+      const token =
+        localStorage.getItem("techub_token") || localStorage.getItem("token");
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+      const res = await fetch(`${apiUrl}/projects/${projectId}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao excluir projeto.");
+      }
+
+      setProjects((current) => current.filter((p) => p.id !== projectId));
+      alert("Projeto excluído com sucesso!");
+    } catch (err) {
+      console.error(err);
+      alert("Não foi possível excluir o projeto.");
+    }
+  }
 
   async function handleCopyProfile() {
     const profileAddress = `${window.location.origin}/criadores/${id}`;
@@ -122,25 +194,19 @@ export default function CreatorProfilePage() {
     try {
       await navigator.clipboard.writeText(profileAddress);
       setCopyFeedback("Link copiado!");
-
-      window.setTimeout(() => {
-        setCopyFeedback("");
-      }, 2000);
+      window.setTimeout(() => setCopyFeedback(""), 2000);
     } catch {
       setCopyFeedback("Não foi possível copiar.");
-
-      window.setTimeout(() => {
-        setCopyFeedback("");
-      }, 2000);
+      window.setTimeout(() => setCopyFeedback(""), 2000);
     }
   }
 
   return (
     <main className="creator-profile-page">
       <div className="creator-profile-page__container">
-        <Link to="/criadores" className="creator-profile-page__back">
+        <Link to="/projetos" className="creator-profile-page__back">
           <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-          Voltar para criadores
+          Voltar para projetos
         </Link>
 
         <div className="creator-profile-layout">
@@ -148,31 +214,37 @@ export default function CreatorProfilePage() {
             <section className="creator-profile-hero">
               <div className="creator-profile-hero__cover" />
 
-              <Link
-                to={`/criadores/${id}/editar`}
-                className="creator-profile-hero__edit"
-              >
-                <i className="fa-solid fa-pen" aria-hidden="true" />
-                Editar perfil
-              </Link>
+              {isOwner && (
+                <Link
+                  to={`/criadores/${id}/editar`}
+                  className="creator-profile-hero__edit"
+                >
+                  <i className="fa-solid fa-pen" aria-hidden="true" />
+                  Editar perfil
+                </Link>
+              )}
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
-                  <img src={PROFILE_PHOTO} alt={PROFILE.name} />
+                  <img src={PROFILE_PHOTO} alt={profileInfo.name} />
 
                   <span
                     className="creator-profile-avatar__fallback"
                     aria-hidden="true"
                   >
-                    {PROFILE.initials}
+                    {profileInfo.initials}
                   </span>
                 </div>
 
-                <h1>{PROFILE.name}</h1>
+                <h1>{profileInfo.name}</h1>
 
-                <p className="creator-profile-hero__course">{PROFILE.course}</p>
+                <p className="creator-profile-hero__course">
+                  {profileInfo.course}
+                </p>
 
-                <p className="creator-profile-hero__phase">{PROFILE.phase}</p>
+                <p className="creator-profile-hero__phase">
+                  {profileInfo.phase}
+                </p>
 
                 <button
                   type="button"
@@ -180,8 +252,7 @@ export default function CreatorProfilePage() {
                   onClick={handleCopyProfile}
                   aria-label="Copiar endereço do perfil"
                 >
-                  <span>{PROFILE.profileSlug}</span>
-
+                  <span>{profileInfo.profileSlug}</span>
                   <i className="fa-regular fa-copy" aria-hidden="true" />
                 </button>
 
@@ -199,21 +270,16 @@ export default function CreatorProfilePage() {
               <h2>Bio / Apresentação</h2>
 
               <div className="creator-profile-bio__content">
-                {PROFILE.bio.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
+                {profileInfo.bio.map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
                 ))}
               </div>
-
-              <span className="creator-profile-bio__counter">
-                {PROFILE.bio.join(" ").length}/500
-              </span>
             </section>
 
             <section className="creator-profile-card creator-profile-projects">
               <div className="creator-profile-section-heading">
                 <div>
                   <h2>Projetos</h2>
-
                   <p>
                     Projetos publicados como autor ou desenvolvidos em
                     colaboração.
@@ -249,55 +315,159 @@ export default function CreatorProfilePage() {
                 })}
               </div>
 
-              <div className="creator-profile-project-grid">
-                {filteredProjects.map((project) => (
-                  <Link
-                    key={project.id}
-                    to={`/projetos/${project.id}`}
-                    className="creator-profile-project"
-                    aria-label={`Abrir projeto ${project.title}`}
-                  >
-                    <div className="creator-profile-project__image">
-                      <img
-                        src={project.image}
-                        alt=""
-                        loading="lazy"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
+              {loadingProjects ? (
+                <p style={{ padding: "2rem", textAlign: "center" }}>
+                  Carregando projetos do estudante...
+                </p>
+              ) : filteredProjects.length === 0 ? (
+                <p
+                  style={{
+                    padding: "2rem",
+                    textAlign: "center",
+                    color: "var(--color-text-muted, #666)",
+                  }}
+                >
+                  Nenhum projeto encontrado nesta categoria.
+                </p>
+              ) : (
+                <div className="creator-profile-project-grid">
+                  {filteredProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="creator-profile-project"
+                      style={{ position: "relative" }}
+                    >
+                      <Link
+                        to={`/projetos/${project.id}`}
+                        style={{
+                          textDecoration: "none",
+                          color: "inherit",
+                          display: "block",
                         }}
-                      />
-
-                      <span className="creator-profile-project__role">
-                        {project.role === "autor" ? "Autor" : "Colaborador"}
-                      </span>
-                    </div>
-
-                    <div className="creator-profile-project__content">
-                      <h3>{project.title}</h3>
-
-                      <p>{project.description}</p>
-
-                      <div
-                        className="creator-profile-project__tags"
-                        aria-label="Tecnologias utilizadas"
                       >
-                        {project.tags.map((tag) => (
-                          <span key={tag}>{tag}</span>
-                        ))}
-                      </div>
+                        <div className="creator-profile-project__image">
+                          <img
+                            src={project.image}
+                            alt=""
+                            loading="lazy"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+
+                          <span className="creator-profile-project__role">
+                            {project.role === "autor"
+                              ? "Autor"
+                              : "Colaborador"}
+                          </span>
+                        </div>
+
+                        <div className="creator-profile-project__content">
+                          <h3>{project.title}</h3>
+                          <p>{project.description}</p>
+
+                          <div
+                            className="creator-profile-project__tags"
+                            aria-label="Tecnologias utilizadas"
+                          >
+                            {project.tags.map((tag) => (
+                              <span key={tag}>{tag}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </Link>
+
+                      {/* Atalhos de Gestão para o Dono do Projeto */}
+                      {isOwner && project.role === "autor" && (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "0.5rem",
+                            padding: "0.5rem 1rem 1rem",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/projetos/${project.id}/editar`)}
+                            style={{
+                              flex: "1 1 0",
+                              width: 0,
+                              boxSizing: "border-box",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "0.4rem",
+                              padding: "0.45rem 0.5rem",
+                              borderRadius: "6px",
+                              background: "#f8fafc",
+                              color: "#334155",
+                              cursor: "pointer",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#e2e8f0";
+                              e.currentTarget.style.borderColor = "#94a3b8";
+                              e.currentTarget.style.color = "#0f172a";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "#f8fafc";
+                              e.currentTarget.style.borderColor = "#cbd5e1";
+                              e.currentTarget.style.color = "#334155";
+                            }}
+                          >
+                            <i className="fa-solid fa-pen" aria-hidden="true" />
+                            Editar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteProject(e, project.id)}
+                            style={{
+                              flex: "1 1 0",
+                              width: 0,
+                              boxSizing: "border-box",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: "0.4rem",
+                              padding: "0.45rem 0.5rem",
+                              borderRadius: "6px",
+                              border: "1px solid #dc3545",
+                              background: "#dc3545",
+                              color: "#fff",
+                              cursor: "pointer",
+                              fontSize: "0.85rem",
+                              fontWeight: 600,
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#b02a37";
+                              e.currentTarget.style.borderColor = "#b02a37";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "#dc3545";
+                              e.currentTarget.style.borderColor = "#dc3545";
+                            }}
+                          >
+                            <i className="fa-solid fa-trash" aria-hidden="true" />
+                            Excluir
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </Link>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
 
           <aside className="creator-profile-sidebar">
             <section className="creator-profile-card">
               <h2>Áreas de interesse</h2>
-
               <div className="creator-profile-interests">
-                {PROFILE.interests.map((interest) => (
+                {profileInfo.interests.map((interest) => (
                   <span key={interest}>{interest}</span>
                 ))}
               </div>
@@ -305,9 +475,8 @@ export default function CreatorProfilePage() {
 
             <section className="creator-profile-card">
               <h2>Links e contato</h2>
-
               <div className="creator-profile-links">
-                {PROFILE.links.map((link) => (
+                {profileInfo.links.map((link) => (
                   <a
                     key={link.id}
                     href={link.url}
@@ -315,9 +484,7 @@ export default function CreatorProfilePage() {
                     rel="noopener noreferrer"
                   >
                     <i className={link.icon} aria-hidden="true" />
-
                     <span>{link.label}</span>
-
                     <i
                       className="fa-solid fa-arrow-up-right-from-square"
                       aria-hidden="true"
@@ -329,30 +496,28 @@ export default function CreatorProfilePage() {
 
             <section className="creator-profile-card">
               <h2>Situação acadêmica</h2>
-
               <dl className="creator-profile-academic">
                 <div className="creator-profile-academic__field">
                   <dt>Campus</dt>
-                  <dd>{PROFILE.campus}</dd>
+                  <dd>{profileInfo.campus}</dd>
                 </div>
 
                 <div className="creator-profile-academic__field">
                   <dt>Curso</dt>
-                  <dd>{PROFILE.course}</dd>
+                  <dd>{profileInfo.course}</dd>
                 </div>
 
                 <div className="creator-profile-academic__field">
                   <dt>Previsão de término</dt>
-                  <dd>{PROFILE.conclusion}</dd>
+                  <dd>{profileInfo.conclusion}</dd>
                 </div>
 
                 <div className="creator-profile-academic__field">
                   <dt>Status</dt>
-
                   <dd>
                     <span className="creator-profile-status">
                       <span aria-hidden="true" />
-                      {PROFILE.status}
+                      {profileInfo.status}
                     </span>
                   </dd>
                 </div>

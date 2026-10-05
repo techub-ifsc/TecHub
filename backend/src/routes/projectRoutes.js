@@ -100,4 +100,121 @@ router.post('/', authenticate, projectController.create);
  */
 router.get('/', projectController.list);
 
+/**
+ * @openapi
+ * /projects/{id}:
+ *   put:
+ *     summary: Atualiza um projeto existente
+ *     tags:
+ *       - Projects
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do projeto a ser editado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Projeto Atualizado
+ *               description:
+ *                 type: string
+ *                 example: Nova descrição detalhada com mais de 20 caracteres sobre o projeto.
+ *               major:
+ *                 type: string
+ *                 enum:
+ *                   - Ciência da Computação
+ *                   - Técnico em Informática para Internet
+ *                   - Técnico em Desenvolvimento de Sistemas
+ *                 example: Ciência da Computação
+ *               semester:
+ *                 type: integer
+ *                 example: 6
+ *               technologies:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["React", "TypeScript", "PostgreSQL"]
+ *               collaborators:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                       format: uuid
+ *                     contribution:
+ *                       type: string
+ *                 example:
+ *                   - userId: "e986790f-aa4e-461b-aa8f-145e4b3c17b0"
+ *                     contribution: "Desenvolvedor Frontend"
+ *               githubURL:
+ *                 type: string
+ *                 example: https://github.com/techub-ifsc/TecHub
+ *               liveURL:
+ *                 type: string
+ *                 example: https://techub.vercel.app
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - Em design
+ *                   - Em desenvolvimento
+ *                   - Concluido
+ *                   - Pausado
+ *                 example: Concluido
+ *     responses:
+ *       200:
+ *         description: Projeto atualizado com sucesso.
+ *       400:
+ *         description: Dados de entrada inválidos.
+ *       401:
+ *         description: Não autenticado.
+ *       403:
+ *         description: Não autorizado (apenas o dono pode editar).
+ *       404:
+ *         description: Projeto não encontrado.
+ */
+router.put('/:id', authenticate, projectController.update);
+
+/**
+ * @openapi
+ * /projects/{id}:
+ *   delete:
+ *     summary: Exclui um projeto permanentemente
+ *     tags:
+ *       - Projects
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID do projeto que será excluído
+ *     responses:
+ *       200:
+ *         description: Projeto excluído com sucesso.
+ *       401:
+ *         description: Não autenticado. Token ausente ou inválido.
+ *       403:
+ *         description: Não autorizado. Apenas o proprietário pode excluir.
+ *       404:
+ *         description: Projeto não encontrado.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+router.delete('/:id', authenticate, projectController.destroy);
+
 module.exports = router;

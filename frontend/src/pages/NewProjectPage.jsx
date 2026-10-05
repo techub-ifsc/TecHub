@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import CustomSelect from "../components/CustomSelect";
+
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -386,28 +388,22 @@ export default function NewProjectPage() {
   }
 
   function applyEditorCommand(command, value = null) {
-  editorRef.current?.focus();
-  document.execCommand(command, false, value);
-  updateEditorState();
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    updateEditorState();
 
-  setActiveFormats({
-    bold: document.queryCommandState("bold"),
-    italic: document.queryCommandState("italic"),
-    underline: document.queryCommandState("underline"),
-    strikeThrough:
-      document.queryCommandState("strikeThrough"),
-    unorderedList:
-      document.queryCommandState("insertUnorderedList"),
-    orderedList:
-      document.queryCommandState("insertOrderedList"),
-    justifyLeft:
-      document.queryCommandState("justifyLeft"),
-    justifyCenter:
-      document.queryCommandState("justifyCenter"),
-    justifyRight:
-      document.queryCommandState("justifyRight"),
-  });
-}
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      strikeThrough: document.queryCommandState("strikeThrough"),
+      unorderedList: document.queryCommandState("insertUnorderedList"),
+      orderedList: document.queryCommandState("insertOrderedList"),
+      justifyLeft: document.queryCommandState("justifyLeft"),
+      justifyCenter: document.queryCommandState("justifyCenter"),
+      justifyRight: document.queryCommandState("justifyRight"),
+    });
+  }
 
   function updateEditorState() {
     if (!editorRef.current) {
@@ -707,110 +703,106 @@ export default function NewProjectPage() {
                 : "description-container"
             }
           >
-<div
-  className="project-toolbar"
-  role="toolbar"
-  aria-label="Formatação da descrição"
->
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Negrito"
-      icon="fa-bold"
-      active={activeFormats.bold}
-      onClick={() => applyEditorCommand("bold")}
-    />
+            <div
+              className="project-toolbar"
+              role="toolbar"
+              aria-label="Formatação da descrição"
+            >
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Negrito"
+                  icon="fa-bold"
+                  active={activeFormats.bold}
+                  onClick={() => applyEditorCommand("bold")}
+                />
 
-    <EditorButton
-      label="Itálico"
-      icon="fa-italic"
-      active={activeFormats.italic}
-      onClick={() => applyEditorCommand("italic")}
-    />
+                <EditorButton
+                  label="Itálico"
+                  icon="fa-italic"
+                  active={activeFormats.italic}
+                  onClick={() => applyEditorCommand("italic")}
+                />
 
-    <EditorButton
-      label="Sublinhado"
-      icon="fa-underline"
-      active={activeFormats.underline}
-      onClick={() => applyEditorCommand("underline")}
-    />
+                <EditorButton
+                  label="Sublinhado"
+                  icon="fa-underline"
+                  active={activeFormats.underline}
+                  onClick={() => applyEditorCommand("underline")}
+                />
 
-    <EditorButton
-      label="Tachado"
-      icon="fa-strikethrough"
-      active={activeFormats.strikeThrough}
-      onClick={() => applyEditorCommand("strikeThrough")}
-    />
-  </div>
+                <EditorButton
+                  label="Tachado"
+                  icon="fa-strikethrough"
+                  active={activeFormats.strikeThrough}
+                  onClick={() => applyEditorCommand("strikeThrough")}
+                />
+              </div>
 
-  <span className="project-toolbar-divider" aria-hidden="true" />
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Lista com marcadores"
-      icon="fa-list-ul"
-      active={activeFormats.unorderedList}
-      onClick={() =>
-        applyEditorCommand("insertUnorderedList")
-      }
-    />
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Lista com marcadores"
+                  icon="fa-list-ul"
+                  active={activeFormats.unorderedList}
+                  onClick={() => applyEditorCommand("insertUnorderedList")}
+                />
 
-    <EditorButton
-      label="Lista numerada"
-      icon="fa-list-ol"
-      active={activeFormats.orderedList}
-      onClick={() =>
-        applyEditorCommand("insertOrderedList")
-      }
-    />
-  </div>
+                <EditorButton
+                  label="Lista numerada"
+                  icon="fa-list-ol"
+                  active={activeFormats.orderedList}
+                  onClick={() => applyEditorCommand("insertOrderedList")}
+                />
+              </div>
 
-  <span className="project-toolbar-divider" aria-hidden="true" />
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Alinhar à esquerda"
-      icon="fa-align-left"
-      active={activeFormats.justifyLeft}
-      onClick={() => applyEditorCommand("justifyLeft")}
-    />
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Alinhar à esquerda"
+                  icon="fa-align-left"
+                  active={activeFormats.justifyLeft}
+                  onClick={() => applyEditorCommand("justifyLeft")}
+                />
 
-    <EditorButton
-      label="Centralizar"
-      icon="fa-align-center"
-      active={activeFormats.justifyCenter}
-      onClick={() => applyEditorCommand("justifyCenter")}
-    />
+                <EditorButton
+                  label="Centralizar"
+                  icon="fa-align-center"
+                  active={activeFormats.justifyCenter}
+                  onClick={() => applyEditorCommand("justifyCenter")}
+                />
 
-    <EditorButton
-      label="Alinhar à direita"
-      icon="fa-align-right"
-      active={activeFormats.justifyRight}
-      onClick={() => applyEditorCommand("justifyRight")}
-    />
-  </div>
+                <EditorButton
+                  label="Alinhar à direita"
+                  icon="fa-align-right"
+                  active={activeFormats.justifyRight}
+                  onClick={() => applyEditorCommand("justifyRight")}
+                />
+              </div>
 
-  <span className="project-toolbar-divider" aria-hidden="true" />
+              <span className="project-toolbar-divider" aria-hidden="true" />
 
-  <div className="project-toolbar-group">
-    <EditorButton
-      label="Remover formatação"
-      icon="fa-eraser"
-      onClick={() => applyEditorCommand("removeFormat")}
-    />
+              <div className="project-toolbar-group">
+                <EditorButton
+                  label="Remover formatação"
+                  icon="fa-eraser"
+                  onClick={() => applyEditorCommand("removeFormat")}
+                />
 
-    <EditorButton
-      label="Desfazer"
-      icon="fa-rotate-left"
-      onClick={() => applyEditorCommand("undo")}
-    />
+                <EditorButton
+                  label="Desfazer"
+                  icon="fa-rotate-left"
+                  onClick={() => applyEditorCommand("undo")}
+                />
 
-    <EditorButton
-      label="Refazer"
-      icon="fa-rotate-right"
-      onClick={() => applyEditorCommand("redo")}
-    />
-  </div>
-</div>
+                <EditorButton
+                  label="Refazer"
+                  icon="fa-rotate-right"
+                  onClick={() => applyEditorCommand("redo")}
+                />
+              </div>
+            </div>
 
             <div
               ref={editorRef}
@@ -848,27 +840,33 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-course"
-              className={
-                errors.course ? "project-select is-invalid" : "project-select"
-              }
               value={course}
               onChange={handleCourseChange}
-              aria-invalid={Boolean(errors.course)}
-              required
-            >
-              <option value="">Selecione o curso</option>
-
-              {Object.keys(COURSE_PHASES).map((courseOption) => (
-                <option key={courseOption} value={courseOption}>
-                  {courseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.course)}
+              ariaDescribedBy={
+                errors.course ? "project-course-error" : undefined
+              }
+              placeholder="Selecione o curso"
+              options={[
+                {
+                  value: "",
+                  label: "Selecione o curso",
+                },
+                ...Object.keys(COURSE_PHASES).map((courseOption) => ({
+                  value: courseOption,
+                  label: courseOption,
+                })),
+              ]}
+            />
 
             {errors.course && (
-              <span className="field-error" role="alert">
+              <span
+                id="project-course-error"
+                className="field-error"
+                role="alert"
+              >
                 {errors.course}
               </span>
             )}
@@ -882,31 +880,32 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-phase"
-              className={
-                errors.phase ? "project-select is-invalid" : "project-select"
-              }
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
                 clearFieldError("phase");
               }}
               disabled={!course}
-              aria-invalid={Boolean(errors.phase)}
-              required
-            >
-              <option value="">
-                {course ? "Selecione a fase" : "Selecione primeiro o curso"}
-              </option>
-
-              {phaseOptions.map((phaseOption) => (
-                <option key={phaseOption} value={phaseOption}>
-                  {phaseOption}
-                </option>
-              ))}
-            </select>
-
+              invalid={Boolean(errors.phase)}
+              ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
+              placeholder={
+                course ? "Selecione a fase" : "Selecione primeiro o curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: course
+                    ? "Selecione a fase"
+                    : "Selecione primeiro o curso",
+                },
+                ...phaseOptions.map((phaseOption) => ({
+                  value: phaseOption,
+                  label: phaseOption,
+                })),
+              ]}
+            />
             {errors.phase && (
               <span className="field-error" role="alert">
                 {errors.phase}
@@ -1312,20 +1311,13 @@ export default function NewProjectPage() {
   );
 }
 
-function EditorButton({
-  label,
-  icon,
-  onClick,
-  active,
-}) {
+function EditorButton({ label, icon, onClick, active }) {
   const hasActiveState = typeof active === "boolean";
 
   return (
     <button
       type="button"
-      className={`project-toolbar-button ${
-        active ? "is-active" : ""
-      }`}
+      className={`project-toolbar-button ${active ? "is-active" : ""}`}
       data-tooltip={label}
       aria-label={label}
       aria-pressed={hasActiveState ? active : undefined}
@@ -1335,10 +1327,7 @@ function EditorButton({
       }}
       onClick={onClick}
     >
-      <i
-        className={`fa-solid ${icon}`}
-        aria-hidden="true"
-      />
+      <i className={`fa-solid ${icon}`} aria-hidden="true" />
     </button>
   );
 }

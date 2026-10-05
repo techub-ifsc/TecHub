@@ -615,24 +615,56 @@
   color: #74797e;
 }
 
-.profile-edit-page .profile-edit-interest-input button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: grid;
+.profile-edit-page
+  .profile-edit-interest-input
+  button {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  margin: 0;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  place-items: center;
   appearance: none;
   background-color: var(--profile-edit-green) !important;
   border: 0 !important;
   border-radius: 7px;
   box-shadow: none !important;
   color: #111111 !important;
-  font-family: inherit;
-  font-size: 1.15rem;
-  font-weight: 800;
+  line-height: 1 !important;
   cursor: pointer;
-  transition: background-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.profile-edit-page
+  .profile-edit-interest-input
+  button i {
+  display: block;
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.profile-edit-page
+  .profile-edit-interest-input
+  button:hover {
+  background-color: var(
+    --profile-edit-green-hover
+  ) !important;
+  transform: translateY(-1px);
+}
+
+.profile-edit-page
+  .profile-edit-interest-input
+  button:focus-visible {
+  outline: 3px solid rgb(120 220 80 / 28%);
+  outline-offset: 2px;
 }
 
 .profile-edit-page .profile-edit-interest-input button:hover {
@@ -840,6 +872,11 @@
   button:focus-visible {
   outline: 3px solid rgb(120 220 80 / 25%);
   outline-offset: 3px;
+}
+
+.profile-edit-field input[type="number"] {
+  border-radius: 8px;
+  color-scheme: dark;
 }
 
 /* Responsividade */

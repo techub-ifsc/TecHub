@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import CustomSelect from "../components/CustomSelect";
 
 import "./ProjectsPage.css";
 
@@ -347,40 +348,48 @@ export default function ProjectsPage() {
           <div className="projects-page__select-group">
             <label htmlFor="course-filter">Curso</label>
 
-            <select
+            <CustomSelect
               id="course-filter"
               value={selectedCourse}
               onChange={handleCourseChange}
-            >
-              <option value="">Todos os cursos</option>
-
-              {Object.keys(COURSES).map((course) => (
-                <option key={course} value={course}>
-                  {course}
-                </option>
-              ))}
-            </select>
+              placeholder="Todos os cursos"
+              options={[
+                {
+                  value: "",
+                  label: "Todos os cursos",
+                },
+                ...Object.keys(COURSES).map((course) => ({
+                  value: course,
+                  label: course,
+                })),
+              ]}
+            />
           </div>
 
           <div className="projects-page__select-group">
             <label htmlFor="phase-filter">Fase</label>
 
-            <select
+            <CustomSelect
               id="phase-filter"
               value={selectedPhase}
               onChange={(event) => setSelectedPhase(event.target.value)}
               disabled={!selectedCourse}
-            >
-              <option value="">
-                {selectedCourse ? "Todas as fases" : "Selecione um curso"}
-              </option>
-
-              {phaseOptions.map((phase) => (
-                <option key={phase} value={phase}>
-                  {phase}
-                </option>
-              ))}
-            </select>
+              placeholder={
+                selectedCourse ? "Todas as fases" : "Selecione um curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: selectedCourse
+                    ? "Todas as fases"
+                    : "Selecione um curso",
+                },
+                ...phaseOptions.map((phase) => ({
+                  value: phase,
+                  label: phase,
+                })),
+              ]}
+            />
           </div>
 
           <div className="projects-page__tag-filter" ref={tagsContainerRef}>
@@ -582,10 +591,7 @@ function ProjectCard({ project }) {
           </div>
         </div>
 
-        <div
-          className="project-card__tags"
-          aria-label="Tecnologias do projeto"
-        >
+        <div className="project-card__tags" aria-label="Tecnologias do projeto">
           {project.tags.map((tag) => (
             <span key={tag}>{tag}</span>
           ))}

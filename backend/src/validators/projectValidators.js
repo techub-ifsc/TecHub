@@ -4,6 +4,51 @@ const { z } = require('zod');
 // ou mantenha os arrays com os valores válidos:
 const { MAJORS } = require('../constants/majors');
 const { STATUS } = require('../constants/status');
+const { MEDIA_TYPES, MAX_MEDIA_PER_PROJECT } = require('../constants/media');
+const { isManagedMediaUrl } = require('../services/mediaStorageService');
+const { normalizeYoutubeUrl } = require('../utils/youtube');
+
+// Cada mídia precisa ter sido enviada pelo POST /media/upload ou ser um link do YouTube.
+const mediaItemSchema = z
+  .object({
+    url: z.string().trim().url('URL da mídia inválida').max(500),
+    mediaType: z.enum(Object.values(MEDIA_TYPES), {
+      errorMap: () => ({ message: 'Tipo de mídia deve ser image ou video' }),
+    }),
+    isCover: z.boolean().default(false),
+  })
+  .transform((item, ctx) => {
+    if (isManagedMediaUrl(item.url, item.mediaType)) return item;
+
+    const youtubeUrl = item.mediaType === MEDIA_TYPES.VIDEO ? normalizeYoutubeUrl(item.url) : null;
+    if (youtubeUrl) return { ...item, url: youtubeUrl };
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['url'],
+      message: 'A mídia deve ser enviada pela plataforma ou ser um link do YouTube',
+    });
+    return z.NEVER;
+  });
+
+const mediaSchema = z
+  .array(mediaItemSchema, { required_error: 'Adicione pelo menos uma imagem ou vídeo' })
+  .min(1, 'Adicione pelo menos uma imagem ou vídeo')
+  .max(MAX_MEDIA_PER_PROJECT, `O limite é de ${MAX_MEDIA_PER_PROJECT} mídias por projeto`)
+  .refine(
+    (items) => items.filter((m) => m.isCover).length <= 1,
+    'Apenas uma mídia pode ser definida como capa'
+  )
+  .refine(
+    (items) => !items.some((m) => m.mediaType === MEDIA_TYPES.VIDEO && m.isCover),
+    'Vídeos não podem ser definidos como capa principal'
+  )
+  // Por padrão, a primeira imagem vira capa quando nenhuma foi escolhida.
+  .transform((items) => {
+    if (items.some((m) => m.isCover)) return items;
+    const firstImage = items.findIndex((m) => m.mediaType === MEDIA_TYPES.IMAGE);
+    return items.map((m, index) => ({ ...m, isCover: index === firstImage }));
+  });
 
 const createProjectSchema = z.object({
   title: z
@@ -77,6 +122,8 @@ const createProjectSchema = z.object({
     })
     .optional()
     .nullable(),
+
+  media: mediaSchema,
 });
 
 const updateProjectSchema = createProjectSchema.partial();

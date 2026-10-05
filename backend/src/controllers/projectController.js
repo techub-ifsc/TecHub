@@ -1,6 +1,8 @@
+const { z } = require('zod');
 const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidators');
 const ProjectTechnology = require('../models/ProjectTechnology');
 const ProjectCollaborator = require('../models/ProjectCollaborator');
+const ProjectMedia = require('../models/ProjectMedia');
 const { ApiError } = require('../middlewares/errorHandler');
 const { likeOperator } = require('../utils/db');
 const Project = require('../models/Project');
@@ -61,17 +63,32 @@ async function list(req, res, next) {
   }
 }
 
-// Busca um projeto por ID com sua categoria e quantidade de favoritos.
+// Busca um projeto por ID com tecnologias, colaboradores e mídias.
 async function getById(req, res, next) {
   try {
+    if (!z.string().uuid().safeParse(req.params.id).success) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
+
     const project = await Project.findByPk(req.params.id, {
-      include: [{ model: Category, as: 'category', attributes: ['id', 'name', 'slug'] }],
+      include: [
+        { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
+        { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
+        { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
+      ],
+      // A capa vem primeiro; as demais seguem a ordem de cadastro.
+      order: [
+        [{ model: ProjectMedia, as: 'media' }, 'is_cover', 'DESC'],
+        [{ model: ProjectMedia, as: 'media' }, 'created_at', 'ASC'],
+      ],
     });
     if (!project) {
       throw new ApiError(404, 'Projeto não encontrado.');
     }
-    const favoriteCount = await Favorite.count({ where: { projectId: project.id } });
-    res.json({ project: { ...project.toJSON(), favoriteCount } });
+    const json = project.toJSON();
+    res.json({
+      project: { ...json, technologies: (json.technologies || []).map((t) => t.name) },
+    });
   } catch (err) {
     next(err);
   }
@@ -83,7 +100,7 @@ async function create(req, res, next) {
 
   try {
     const data = createProjectSchema.parse(req.body);
-    const { technologies, collaborators, ...projectData } = data;
+    const { technologies, collaborators, media, ...projectData } = data;
 
     const ownerId = req.user?.id || req.userId;
 
@@ -121,7 +138,13 @@ async function create(req, res, next) {
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
-    // 4. Confirma todas as operações
+    // 4. Insere as mídias (URLs já enviadas ao storage pelo POST /media/upload)
+    const mediaRecords = await ProjectMedia.bulkCreate(
+      media.map((item) => ({ ...item, projectId: project.id })),
+      { transaction }
+    );
+
+    // 5. Confirma todas as operações
     await transaction.commit();
 
     return res.status(201).json({
@@ -129,6 +152,7 @@ async function create(req, res, next) {
         ...project.toJSON(),
         technologies: technologies || [],
         collaborators: collaborators || [],
+        media: mediaRecords.map(({ id, url, mediaType, isCover }) => ({ id, url, mediaType, isCover })),
       },
     });
   } catch (err) {

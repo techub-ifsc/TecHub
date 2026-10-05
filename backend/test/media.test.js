@@ -18,8 +18,10 @@ const { createProjectSchema } = require('../src/validators/projectValidators');
 const { matchesDeclaredType } = require('../src/services/mediaStorageService');
 
 const CLOUD_BASE = 'https://res.cloudinary.com/techub-test';
-const imageUrl = (n = 1) => `${CLOUD_BASE}/image/upload/v1/techub/projects/media_${n}.webp`;
-const videoUrl = `${CLOUD_BASE}/video/upload/v1/techub/projects/media_9.mp4`;
+// Mesmo formato das URLs geradas por uploadMedia.
+const mediaName = (n) => `media_${1700000000000 + n}_${'ab12cd34ef56ab78'}`;
+const imageUrl = (n = 1) => `${CLOUD_BASE}/image/upload/v1700000000/techub/projects/${mediaName(n)}.webp`;
+const videoUrl = `${CLOUD_BASE}/video/upload/v1700000000/techub/projects/${mediaName(99)}.mp4`;
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
@@ -58,13 +60,21 @@ describe('validação das mídias do projeto', () => {
   test('normaliza links do YouTube', () => {
     const result = parseMedia([
       { url: 'https://youtu.be/dQw4w9WgXcQ?t=10', mediaType: 'video' },
-      { url: 'https://www.youtube.com/shorts/dQw4w9WgXcQ', mediaType: 'video' },
+      { url: 'https://www.youtube.com/shorts/9bZkp7q19f0', mediaType: 'video' },
     ]);
     assert.equal(result.success, true);
     assert.deepEqual(result.data.media.map((m) => m.url), [
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      'https://www.youtube.com/watch?v=9bZkp7q19f0',
     ]);
+  });
+
+  test('rejeita o mesmo vídeo do YouTube em formatos diferentes', () => {
+    const result = parseMedia([
+      { url: 'https://youtu.be/dQw4w9WgXcQ', mediaType: 'video' },
+      { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', mediaType: 'video' },
+    ]);
+    assert.equal(result.success, false);
   });
 
   const invalidCases = [
@@ -72,7 +82,15 @@ describe('validação das mídias do projeto', () => {
     ['mais de 10 mídias', Array.from({ length: 11 }, (_, i) => ({ url: imageUrl(i), mediaType: 'image' }))],
     ['URL de outro site', [{ url: 'https://evil.example.com/a.webp', mediaType: 'image' }]],
     ['URL de outra conta do Cloudinary', [{ url: 'https://res.cloudinary.com/outra/image/upload/v1/techub/projects/a.webp', mediaType: 'image' }]],
-    ['URL fora da pasta de projetos', [{ url: `${CLOUD_BASE}/image/upload/v1/outra/a.webp`, mediaType: 'image' }]],
+    ['URL fora da pasta de projetos', [{ url: `${CLOUD_BASE}/image/upload/v1/outra/${mediaName(1)}.webp`, mediaType: 'image' }]],
+    ['URL com transformação embutida', [{ url: `${CLOUD_BASE}/image/upload/w_9000/v1/techub/projects/${mediaName(1)}.webp`, mediaType: 'image' }]],
+    ['URL com navegação de pasta', [{ url: `${CLOUD_BASE}/image/upload/v1/outra/../techub/projects/${mediaName(1)}.webp`, mediaType: 'image' }]],
+    ['URL com navegação de pasta codificada', [{ url: `${CLOUD_BASE}/image/upload/v1/outra/%2e%2e/techub/projects/${mediaName(1)}.webp`, mediaType: 'image' }]],
+    ['URL com query string', [{ url: `${imageUrl(1)}?a=1`, mediaType: 'image' }]],
+    ['imagem que não é webp', [{ url: imageUrl(1).replace('.webp', '.png'), mediaType: 'image' }]],
+    ['vídeo do storage marcado como imagem', [{ url: videoUrl, mediaType: 'image' }]],
+    ['http sem criptografia', [{ url: imageUrl(1).replace('https:', 'http:'), mediaType: 'image' }]],
+    ['mídia repetida', [{ url: imageUrl(1), mediaType: 'image' }, { url: imageUrl(1), mediaType: 'image' }]],
     ['YouTube marcado como imagem', [{ url: 'https://youtu.be/dQw4w9WgXcQ', mediaType: 'image' }]],
     ['tipo inválido', [{ url: imageUrl(), mediaType: 'audio' }]],
     ['duas capas', [{ url: imageUrl(1), mediaType: 'image', isCover: true }, { url: imageUrl(2), mediaType: 'image', isCover: true }]],
@@ -117,7 +135,7 @@ describe('POST /api/media/upload', () => {
     t.mock.method(cloudinary.uploader, 'upload_stream', (options, callback) => ({
       end: () => {
         uploads.push(options);
-        const ext = options.format || 'mp4';
+        const ext = options.format;
         callback(null, { secure_url: `${CLOUD_BASE}/${options.resource_type}/upload/v1/${options.folder}/${options.public_id}.${ext}` });
       },
     }));
@@ -156,6 +174,26 @@ describe('POST /api/media/upload', () => {
 
     // As URLs devolvidas precisam ser aceitas pelo cadastro do projeto.
     assert.equal(parseMedia(body.media).success, true);
+  });
+
+  test('aceita webm como vídeo e mantém o formato', async () => {
+    const res = await send([['demo.webm', 'video/webm', WEBM]]);
+    assert.equal(res.status, 201);
+    const body = await res.json();
+    assert.match(body.media[0].url, /\.webm$/);
+    assert.equal(parseMedia(body.media).success, true);
+  });
+
+  test('recusa visitantes', async () => {
+    const original = user.role;
+    user.role = 'visitor';
+    try {
+      const res = await send([['capa.png', 'image/png', PNG]]);
+      assert.equal(res.status, 403);
+      assert.equal(uploads.length, 0);
+    } finally {
+      user.role = original;
+    }
   });
 
   test('exige autenticação', async () => {

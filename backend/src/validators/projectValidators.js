@@ -43,6 +43,10 @@ const mediaSchema = z
     (items) => !items.some((m) => m.mediaType === MEDIA_TYPES.VIDEO && m.isCover),
     'Vídeos não podem ser definidos como capa principal'
   )
+  .refine(
+    (items) => new Set(items.map((m) => m.url)).size === items.length,
+    'A mesma mídia foi adicionada mais de uma vez'
+  )
   // Por padrão, a primeira imagem vira capa quando nenhuma foi escolhida.
   .transform((items) => {
     if (items.some((m) => m.isCover)) return items;

@@ -24,7 +24,7 @@ async function upload(req, res, next) {
     const media = await Promise.all(
       files.map(async (file) => {
         const mediaType = ALLOWED_MIME_TYPES[file.mimetype];
-        const url = await uploadMedia(file.buffer, mediaType);
+        const url = await uploadMedia(file.buffer, file.mimetype);
         return { url, mediaType };
       })
     );

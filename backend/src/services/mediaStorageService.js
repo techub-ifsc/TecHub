@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { cloudinary, cloudName } = require('../config/cloudinary');
-const { MEDIA_TYPES, MEDIA_STORAGE_FOLDER } = require('../constants/media');
+const { ALLOWED_MIME_TYPES, MEDIA_TYPES, MEDIA_STORAGE_FOLDER } = require('../constants/media');
 
 // Confere a assinatura binária do arquivo, pois o MIME informado pelo navegador
 // pode ser falsificado. Retorna true quando o conteúdo condiz com o tipo declarado.
@@ -27,16 +27,18 @@ function matchesDeclaredType(buffer, mimeType) {
 }
 
 // Envia o arquivo ao Cloudinary e retorna a URL pública permanente.
-// Imagens são redimensionadas (até 1920px) e convertidas para webp para deixar o feed leve.
-function uploadMedia(buffer, mediaType) {
+// Imagens são redimensionadas (até 1920px) e convertidas para webp para deixar o feed leve;
+// vídeos mantêm o formato declarado (mp4 ou webm).
+function uploadMedia(buffer, mimeType) {
+  const mediaType = ALLOWED_MIME_TYPES[mimeType];
   const isImage = mediaType === MEDIA_TYPES.IMAGE;
   const options = {
     folder: MEDIA_STORAGE_FOLDER,
     public_id: `media_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
     resource_type: mediaType,
     overwrite: false,
+    format: isImage ? 'webp' : mimeType.split('/')[1],
     ...(isImage && {
-      format: 'webp',
       transformation: [{ width: 1920, height: 1920, crop: 'limit', quality: 'auto' }],
     }),
   };
@@ -48,18 +50,26 @@ function uploadMedia(buffer, mediaType) {
   });
 }
 
-// Garante que a URL aponta para a pasta de mídias desta aplicação no Cloudinary,
-// impedindo que o cadastro de projeto aceite links arbitrários de terceiros.
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Aceita somente URLs exatamente no formato gerado por uploadMedia nesta conta do Cloudinary.
+// Isso impede links de terceiros e URLs com transformações embutidas (que consomem créditos).
 function isManagedMediaUrl(value, mediaType) {
   if (!cloudName) return false;
+  const extensions = mediaType === MEDIA_TYPES.IMAGE ? 'webp' : 'mp4|webm';
+  const pattern = new RegExp(
+    `^/${escapeRegExp(cloudName)}/${mediaType}/upload/v\\d+/${escapeRegExp(MEDIA_STORAGE_FOLDER)}` +
+      `/media_\\d+_[0-9a-f]{16}\\.(?:${extensions})$`
+  );
   try {
     const url = new URL(value);
-    const expectedPrefix = `/${cloudName}/${mediaType}/upload/`;
     return (
+      url.href === value && // rejeita formas não normalizadas, como caminhos com "../"
       url.protocol === 'https:' &&
       url.hostname === 'res.cloudinary.com' &&
-      url.pathname.startsWith(expectedPrefix) &&
-      url.pathname.includes(`/${MEDIA_STORAGE_FOLDER}/`)
+      !url.search &&
+      !url.hash &&
+      pattern.test(url.pathname)
     );
   } catch {
     return false;

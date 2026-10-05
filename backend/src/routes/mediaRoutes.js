@@ -1,7 +1,8 @@
 const { Router } = require('express');
 const rateLimit = require('express-rate-limit');
 const mediaController = require('../controllers/mediaController');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
+const { ROLES } = require('../constants/roles');
 const { uploadMediaFiles } = require('../middlewares/upload');
 
 const router = Router();
@@ -20,7 +21,7 @@ const uploadLimiter = rateLimit({
  * @openapi
  * /media/upload:
  *   post:
- *     summary: Envia fotos e vídeos de um projeto para o storage
+ *     summary: Envia fotos e vídeos de um projeto para o storage (somente criadores)
  *     description: >
  *       Primeira etapa do cadastro com mídias. Devolve as URLs públicas que devem ser
  *       enviadas no campo `media` do `POST /projects`. Formatos aceitos: JPG, PNG, WEBP,
@@ -63,11 +64,21 @@ const uploadLimiter = rateLimit({
  *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Não autenticado. Token ausente ou inválido.
+ *       403:
+ *         description: Somente criadores podem enviar mídias.
  *       429:
  *         description: Limite de envios atingido.
  *       503:
  *         description: Storage não configurado no servidor.
  */
-router.post('/upload', authenticate, uploadLimiter, uploadMediaFiles, mediaController.upload);
+// Autenticação, perfil e limite são verificados antes de o multer ler qualquer arquivo.
+router.post(
+  '/upload',
+  authenticate,
+  authorize(ROLES.CREATOR),
+  uploadLimiter,
+  uploadMediaFiles,
+  mediaController.upload
+);
 
 module.exports = router;

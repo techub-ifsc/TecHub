@@ -675,16 +675,27 @@ export default function NewProjectPage() {
     try {
       const token = localStorage.getItem("techub_token");
 
-      // 1. Envia os arquivos ao storage (links do YouTube não precisam de upload).
-      const fileItems = media.filter((item) => item.kind === "file");
-      let uploadedUrls = [];
+      // 1. Envia ao storage somente os arquivos que ainda não subiram (links do YouTube
+      // não precisam de upload). Assim, reenviar após um erro não duplica arquivos.
+      const uploadedUrlById = new Map(
+        media.filter((item) => item.uploadedUrl).map((item) => [item.id, item.uploadedUrl])
+      );
+      const pendingItems = media.filter((item) => item.kind === "file" && !item.uploadedUrl);
 
-      if (fileItems.length > 0) {
+      if (pendingItems.length > 0) {
         setFeedbackType("");
         setFeedbackMessage("Enviando fotos e vídeos...");
 
         try {
-          uploadedUrls = await uploadMediaFiles(fileItems, token);
+          const urls = await uploadMediaFiles(pendingItems, token);
+          pendingItems.forEach((item, index) => uploadedUrlById.set(item.id, urls[index]));
+          setMedia((curr) =>
+            curr.map((item) =>
+              uploadedUrlById.has(item.id)
+                ? { ...item, uploadedUrl: uploadedUrlById.get(item.id) }
+                : item
+            )
+          );
         } catch (uploadError) {
           setErrors({ files: uploadError.message });
           setFeedbackType("error");
@@ -692,10 +703,6 @@ export default function NewProjectPage() {
           return;
         }
       }
-
-      const uploadedUrlById = new Map(
-        fileItems.map((item, index) => [item.id, uploadedUrls[index]])
-      );
 
       setFeedbackType("");
       setFeedbackMessage("Enviando projeto...");

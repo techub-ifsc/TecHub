@@ -103,6 +103,10 @@ router.get('/', projectController.list);
 /**
  * @openapi
  * /projects/{id}:
+ *   get:
+ *     summary: Busca um projeto com tecnologias, colaboradores e mídias
+ *     tags:
+ *       - Projects
  *   put:
  *     summary: Atualiza um projeto existente
  *     tags:
@@ -116,6 +120,20 @@ router.get('/', projectController.list);
  *         schema:
  *           type: string
  *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Projeto encontrado. A mídia de capa vem primeiro.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project:
+ *                   $ref: '#/components/schemas/Project'
+ *       404:
+ *         description: Projeto não encontrado.
+ */
+router.get('/:id', projectController.getById);
  *         description: ID do projeto a ser editado
  *     requestBody:
  *       required: true

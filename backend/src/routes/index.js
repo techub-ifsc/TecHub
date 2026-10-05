@@ -7,6 +7,7 @@ const cartRoutes = require('./cartRoutes');
 const orderRoutes = require('./orderRoutes');
 const favoriteRoutes = require('./favoriteRoutes');
 const projectRoutes = require('./projectRoutes');
+const mediaRoutes = require('./mediaRoutes');
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/projects', projectRoutes);
+router.use('/media', mediaRoutes);
 
 module.exports = router;

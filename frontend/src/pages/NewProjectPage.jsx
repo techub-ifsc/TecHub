@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getYoutubeVideoId } from "../utils/youtube";
 import "./NewProjectPage.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_TAGS = 8;
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+// Formatos aceitos pelo backend (POST /media/upload) e o tipo de mídia correspondente.
+const ALLOWED_MEDIA_TYPES = {
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/webp": "image",
+  "video/mp4": "video",
+  "video/webm": "video",
+};
 
 const COURSE_PHASES = {
   "Ciência da Computação": 8,
@@ -141,6 +153,7 @@ function validateForm({
   tags,
   github,
   liveUrl,
+  mediaCount,
 }) {
   const errors = {};
 
@@ -174,6 +187,10 @@ function validateForm({
 
   if (liveUrl.trim() && !isValidUrl(liveUrl.trim())) {
     errors.liveUrl = "Informe uma URL válida, começando com http:// ou https://.";
+  }
+
+  if (mediaCount === 0) {
+    errors.files = "Adicione pelo menos uma imagem, vídeo ou link do YouTube.";
   }
 
   return errors;
@@ -218,12 +235,25 @@ export default function NewProjectPage() {
   const [liveUrl, setLiveUrl] = useState("");
   const [status, setStatus] = useState("Em design");
 
-  const [files, setFiles] = useState([]);
+  // Cada item é um arquivo local ({ kind: "file", file, previewUrl }) ou um link do YouTube ({ kind: "youtube", url }).
+  const [media, setMedia] = useState([]);
+  const [coverId, setCoverId] = useState(null);
+  const [youtubeInput, setYoutubeInput] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const nextMediaId = useRef(0);
+  const mediaRef = useRef(media);
+  mediaRef.current = media;
 
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  // A capa é a imagem escolhida pelo usuário ou, por padrão, a primeira imagem adicionada.
+  const imageItems = media.filter((item) => item.mediaType === "image");
+  const coverItemId = imageItems.some((item) => item.id === coverId)
+    ? coverId
+    : imageItems[0]?.id ?? null;
 
   const phaseOptions = course
     ? Array.from(
@@ -276,6 +306,15 @@ export default function NewProjectPage() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  // Libera as pré-visualizações criadas com URL.createObjectURL ao sair da página.
+  useEffect(() => {
+    return () => {
+      mediaRef.current.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
     };
   }, []);
 
@@ -456,16 +495,20 @@ export default function NewProjectPage() {
     setCollaborators((curr) => curr.filter((c) => c.id !== id));
   }
 
+  function createMediaId() {
+    nextMediaId.current += 1;
+    return nextMediaId.current;
+  }
+
   function addFiles(fileList) {
     const incomingFiles = Array.from(fileList);
-    const acceptedFiles = [];
+    const acceptedItems = [];
     const rejectedMessages = [];
 
     for (const file of incomingFiles) {
-      const isAcceptedType =
-        file.type.startsWith("image/") || file.type.startsWith("video/");
+      const mediaType = ALLOWED_MEDIA_TYPES[file.type];
 
-      if (!isAcceptedType) {
+      if (!mediaType) {
         rejectedMessages.push(`${file.name}: formato não permitido.`);
         continue;
       }
@@ -475,9 +518,11 @@ export default function NewProjectPage() {
         continue;
       }
 
-      const isDuplicate = [...files, ...acceptedFiles].some(
-        (savedFile) =>
-          savedFile.name === file.name && savedFile.size === file.size
+      const isDuplicate = [...media, ...acceptedItems].some(
+        (item) =>
+          item.kind === "file" &&
+          item.file.name === file.name &&
+          item.file.size === file.size
       );
 
       if (isDuplicate) {
@@ -485,16 +530,22 @@ export default function NewProjectPage() {
         continue;
       }
 
-      if (files.length + acceptedFiles.length >= MAX_FILES) {
-        rejectedMessages.push(`O limite é de ${MAX_FILES} arquivos.`);
+      if (media.length + acceptedItems.length >= MAX_FILES) {
+        rejectedMessages.push(`O limite é de ${MAX_FILES} mídias.`);
         break;
       }
 
-      acceptedFiles.push(file);
+      acceptedItems.push({
+        id: createMediaId(),
+        kind: "file",
+        file,
+        mediaType,
+        previewUrl: mediaType === "image" ? URL.createObjectURL(file) : null,
+      });
     }
 
-    if (acceptedFiles.length > 0) {
-      setFiles((curr) => [...curr, ...acceptedFiles]);
+    if (acceptedItems.length > 0) {
+      setMedia((curr) => [...curr, ...acceptedItems]);
       clearFieldError("files");
     }
 
@@ -506,8 +557,60 @@ export default function NewProjectPage() {
     }
   }
 
-  function removeFile(position) {
-    setFiles((curr) => curr.filter((_, idx) => idx !== position));
+  function addYoutubeLink() {
+    const videoId = getYoutubeVideoId(youtubeInput.trim());
+    let message = "";
+
+    if (!videoId) {
+      message = "Informe um link válido do YouTube.";
+    } else if (media.some((item) => item.kind === "youtube" && item.videoId === videoId)) {
+      message = "Esse vídeo do YouTube já foi adicionado.";
+    } else if (media.length >= MAX_FILES) {
+      message = `O limite é de ${MAX_FILES} mídias.`;
+    }
+
+    if (message) {
+      setErrors((curr) => ({ ...curr, files: message }));
+      return;
+    }
+
+    setMedia((curr) => [
+      ...curr,
+      {
+        id: createMediaId(),
+        kind: "youtube",
+        videoId,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        mediaType: "video",
+      },
+    ]);
+    setYoutubeInput("");
+    clearFieldError("files");
+  }
+
+  function removeMedia(id) {
+    const item = media.find((current) => current.id === id);
+    if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    setMedia((curr) => curr.filter((current) => current.id !== id));
+  }
+
+  // Envia os arquivos locais ao storage e devolve as URLs na mesma ordem.
+  async function uploadMediaFiles(fileItems, token) {
+    const formData = new FormData();
+    fileItems.forEach((item) => formData.append("files", item.file));
+
+    const response = await fetch(`${API_URL}/media/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || "Não foi possível enviar as mídias.");
+    }
+
+    return data.media.map((uploaded) => uploaded.url);
   }
 
   function handleDrop(event) {
@@ -538,6 +641,7 @@ export default function NewProjectPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (isSubmitting) return;
 
     setErrors({});
     setFeedbackMessage("");
@@ -551,6 +655,7 @@ export default function NewProjectPage() {
       tags,
       github,
       liveUrl,
+      mediaCount: media.length,
     };
 
     const validationErrors = validateForm(projectData);
@@ -564,11 +669,43 @@ export default function NewProjectPage() {
       return;
     }
 
+    setIsSubmitting(true);
+    let created = false;
+
     try {
+      const token = localStorage.getItem("techub_token");
+
+      // 1. Envia ao storage somente os arquivos que ainda não subiram (links do YouTube
+      // não precisam de upload). Assim, reenviar após um erro não duplica arquivos.
+      const uploadedUrlById = new Map(
+        media.filter((item) => item.uploadedUrl).map((item) => [item.id, item.uploadedUrl])
+      );
+      const pendingItems = media.filter((item) => item.kind === "file" && !item.uploadedUrl);
+
+      if (pendingItems.length > 0) {
+        setFeedbackType("");
+        setFeedbackMessage("Enviando fotos e vídeos...");
+
+        try {
+          const urls = await uploadMediaFiles(pendingItems, token);
+          pendingItems.forEach((item, index) => uploadedUrlById.set(item.id, urls[index]));
+          setMedia((curr) =>
+            curr.map((item) =>
+              uploadedUrlById.has(item.id)
+                ? { ...item, uploadedUrl: uploadedUrlById.get(item.id) }
+                : item
+            )
+          );
+        } catch (uploadError) {
+          setErrors({ files: uploadError.message });
+          setFeedbackType("error");
+          setFeedbackMessage(uploadError.message);
+          return;
+        }
+      }
+
       setFeedbackType("");
       setFeedbackMessage("Enviando projeto...");
-
-      const token = localStorage.getItem("techub_token");
 
       // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
@@ -587,9 +724,15 @@ export default function NewProjectPage() {
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
+        // 2. Envia as URLs das mídias junto com o projeto.
+        media: media.map((item) => ({
+          url: item.kind === "file" ? uploadedUrlById.get(item.id) : item.url,
+          mediaType: item.mediaType,
+          isCover: item.id === coverItemId,
+        })),
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}/projects`, {
+      const response = await fetch(`${API_URL}/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -611,6 +754,7 @@ export default function NewProjectPage() {
             else if (field === "technologies") backendErrors.tags = issue.message;
             else if (field === "githubURL") backendErrors.github = issue.message;
             else if (field === "liveURL") backendErrors.liveUrl = issue.message;
+            else if (field === "media") backendErrors.files = issue.message;
             else if (field) backendErrors[field] = issue.message;
           });
           setErrors(backendErrors);
@@ -624,6 +768,7 @@ export default function NewProjectPage() {
         return;
       }
 
+      created = true;
       setFeedbackType("success");
       setFeedbackMessage("Projeto criado com sucesso!");
 
@@ -634,6 +779,9 @@ export default function NewProjectPage() {
       console.error(err);
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
+    } finally {
+      // Após o sucesso o botão continua bloqueado até o redirecionamento.
+      if (!created) setIsSubmitting(false);
     }
   }
 
@@ -1126,6 +1274,9 @@ export default function NewProjectPage() {
         <div className="form-field">
           <span className="form-label">
             Galeria do projeto
+            <span className="required" aria-hidden="true">
+              *
+            </span>
           </span>
 
           <label
@@ -1142,7 +1293,7 @@ export default function NewProjectPage() {
             <input
               type="file"
               multiple
-              accept="image/*,video/*"
+              accept={Object.keys(ALLOWED_MEDIA_TYPES).join(",")}
               className="upload-input"
               onChange={(event) => {
                 addFiles(event.target.files);
@@ -1155,31 +1306,105 @@ export default function NewProjectPage() {
             <div className="upload-text">
               <p className="upload-title">Adicionar fotos ou vídeos</p>
               <p className="upload-helper">
-                Até {MAX_FILES} arquivos de no máximo 20 MB cada
+                JPG, PNG, WEBP, MP4 ou WEBM · até {MAX_FILES} mídias de no máximo 20 MB cada
               </p>
             </div>
           </label>
 
-          {files.length > 0 && (
+          <div className="youtube-link-field">
+            <i className="fa-brands fa-youtube" aria-hidden="true" />
+            <input
+              type="url"
+              className="project-input"
+              placeholder="Ou cole um link do YouTube"
+              aria-label="Link de vídeo do YouTube"
+              value={youtubeInput}
+              onChange={(event) => {
+                setYoutubeInput(event.target.value);
+                clearFieldError("files");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addYoutubeLink();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="youtube-link-add"
+              onClick={addYoutubeLink}
+              disabled={!youtubeInput.trim()}
+            >
+              Adicionar
+            </button>
+          </div>
+
+          {errors.files && (
+            <span className="field-error" role="alert">
+              {errors.files}
+            </span>
+          )}
+
+          {media.length > 0 && (
             <ul className="upload-file-list">
-              {files.map((file, index) => (
-                <li key={`${file.name}-${file.size}`} className="upload-file">
-                  <i className="fa-solid fa-paperclip" aria-hidden="true" />
-                  <span className="upload-file-information">
-                    <strong>{file.name}</strong>
-                    <small>{formatFileSize(file.size)}</small>
-                  </span>
-                  <button
-                    type="button"
-                    className="upload-file-remove"
-                    onClick={() => removeFile(index)}
-                    aria-label={`Remover ${file.name}`}
-                    title={`Remover ${file.name}`}
+              {media.map((item) => {
+                const isImage = item.mediaType === "image";
+                const isCover = item.id === coverItemId;
+                const name = item.kind === "file" ? item.file.name : item.url;
+
+                return (
+                  <li
+                    key={item.id}
+                    className={`upload-file ${isCover ? "is-cover" : ""}`}
                   >
-                    ×
-                  </button>
-                </li>
-              ))}
+                    {item.previewUrl ? (
+                      <img className="upload-file-thumb" src={item.previewUrl} alt="" />
+                    ) : (
+                      <span className="upload-file-thumb" aria-hidden="true">
+                        <i
+                          className={
+                            item.kind === "youtube"
+                              ? "fa-brands fa-youtube"
+                              : "fa-solid fa-film"
+                          }
+                        />
+                      </span>
+                    )}
+
+                    <span className="upload-file-information">
+                      <strong>{name}</strong>
+                      <small>
+                        {item.kind === "file"
+                          ? formatFileSize(item.file.size)
+                          : "Vídeo do YouTube"}
+                      </small>
+                    </span>
+
+                    {isImage && (
+                      <label className="upload-file-cover">
+                        <input
+                          type="radio"
+                          name="project-cover"
+                          checked={isCover}
+                          onChange={() => setCoverId(item.id)}
+                        />
+                        Capa
+                      </label>
+                    )}
+
+                    <button
+                      type="button"
+                      className="upload-file-remove"
+                      onClick={() => removeMedia(item.id)}
+                      aria-label={`Remover ${name}`}
+                      title={`Remover ${name}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -1227,8 +1452,12 @@ export default function NewProjectPage() {
             Salvar rascunho
           </button>
 
-          <button type="submit" className="action-button submit-review">
-            Enviar para a revisão
+          <button
+            type="submit"
+            className="action-button submit-review"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Enviando..." : "Enviar para a revisão"}
           </button>
         </div>
 

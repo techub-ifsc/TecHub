@@ -96,13 +96,6 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
-const MOCK_COLLABORATORS = [
-  { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
-  { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
-  { id: "b2222222-2222-2222-2222-222222222222", name: "Marcio Zunique", color: "#555555" },
-  { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
-];
-
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
@@ -183,6 +176,7 @@ export default function EditProjectPage() {
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
   const collaboratorContainerRef = useRef(null);
+  const initialCollaboratorsRef = useRef([]);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -212,7 +206,9 @@ export default function EditProjectPage() {
 
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [collaborators, setCollaborators] = useState([]);
+  const [collaboratorOptions, setCollaboratorOptions] = useState([]);
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
+  const [isProjectOwner, setIsProjectOwner] = useState(false);
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
@@ -249,6 +245,12 @@ export default function EditProjectPage() {
         }
 
         const { project: currentProject } = await response.json();
+        try {
+          const currentUser = JSON.parse(localStorage.getItem("techub_user") || "{}");
+          setIsProjectOwner(currentProject.ownerId === currentUser.id);
+        } catch {
+          setIsProjectOwner(false);
+        }
 
         // Popula os campos do formulário
         setTitle(currentProject.title || "");
@@ -274,16 +276,13 @@ export default function EditProjectPage() {
         }
 
         if (Array.isArray(currentProject.collaborators)) {
-          const mappedCollabs = currentProject.collaborators.map((c) => {
-            const foundMock = MOCK_COLLABORATORS.find(
-              (m) => m.id === (c.userId || c.id)
-            );
-            return {
-              id: c.userId || c.id,
-              name: foundMock?.name || c.name || "Colaborador",
-              color: foundMock?.color || "#4f46e5",
-            };
-          });
+          const mappedCollabs = currentProject.collaborators.map((c) => ({
+            id: c.userId || c.id,
+            name: c.name || "Colaborador",
+            color: "#4f46e5",
+            contribution: c.contribution || null,
+          }));
+          initialCollaboratorsRef.current = mappedCollabs.map(({ id, contribution }) => ({ id, contribution }));
           setCollaborators(mappedCollabs);
         }
 
@@ -329,19 +328,44 @@ export default function EditProjectPage() {
     }).slice(0, 10);
   }, [tagInput, tags]);
 
+  useEffect(() => {
+    const query = collaboratorInput.trim();
+    if (!isProjectOwner || query.length < 2) {
+      setCollaboratorOptions([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
+        const response = await fetch(
+          `${API_URL}/projects/collaborators/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) throw new Error("Falha ao pesquisar colaboradores");
+        const data = await response.json();
+        setCollaboratorOptions(data.users || []);
+      } catch (error) {
+        if (error.name !== "AbortError") setCollaboratorOptions([]);
+      }
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [collaboratorInput, isProjectOwner]);
+
   const collaboratorSuggestions = useMemo(() => {
-    const search = collaboratorInput.trim().toLowerCase();
-
-    if (!search) return [];
-
-    return MOCK_COLLABORATORS.filter((person) => {
-      const matchesSearch = person.name.toLowerCase().includes(search);
+    return collaboratorOptions.filter((person) => {
       const isNotSelected = !collaborators.some(
         (collaborator) => collaborator.id === person.id
       );
-      return matchesSearch && isNotSelected;
+      return isNotSelected;
     });
-  }, [collaboratorInput, collaborators]);
+  }, [collaboratorOptions, collaborators]);
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -600,6 +624,9 @@ export default function EditProjectPage() {
       setFeedbackMessage("Salvando alterações...");
 
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
+      const collaboratorValues = collaborators.map(({ id, contribution }) => ({ id, contribution: contribution || null }));
+      const collaboratorsChanged = isProjectOwner &&
+        JSON.stringify(collaboratorValues) !== JSON.stringify(initialCollaboratorsRef.current);
 
       const payload = {
         title: title.trim(),
@@ -607,9 +634,12 @@ export default function EditProjectPage() {
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        collaborators: collaborators.map((c) => ({
-          userId: c.id,
-        })),
+        ...(collaboratorsChanged ? {
+          collaborators: collaboratorValues.map(({ id: userId, contribution }) => ({
+            userId,
+            ...(contribution ? { contribution } : {}),
+          })),
+        } : {}),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
@@ -659,9 +689,7 @@ export default function EditProjectPage() {
       setFeedbackType("success");
       setFeedbackMessage("Projeto atualizado com sucesso!");
 
-      setTimeout(() => {
-        navigate(-1);
-      }, 1200);
+      setTimeout(() => navigate(`/projetos/${id}`), 1200);
     } catch (err) {
       console.error(err);
       setFeedbackType("error");
@@ -1024,7 +1052,7 @@ export default function EditProjectPage() {
           )}
         </div>
 
-        <div className="form-field" ref={collaboratorContainerRef}>
+        {isProjectOwner && <div className="form-field" ref={collaboratorContainerRef}>
           <label className="form-label" htmlFor="collaborator-input">
             Colaboradores
           </label>
@@ -1109,7 +1137,7 @@ export default function EditProjectPage() {
               <li key={rule}>{rule}</li>
             ))}
           </ul>
-        </div>
+        </div>}
 
         <div className="external-links">
           <div className="form-field">

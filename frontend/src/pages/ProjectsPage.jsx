@@ -82,7 +82,7 @@ export default function ProjectsPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${API_URL}/projects`);
+        const response = await fetch(`${API_URL}/projects?limit=100`);
 
         if (!response.ok) {
           throw new Error("Erro ao carregar lista de projetos.");

@@ -29,17 +29,28 @@ describe('rotas de projetos', () => {
 
   beforeEach(async (t) => {
     users = new Map();
-    calls = { mediaDestroy: [], mediaCreate: [], projectCreate: 0 };
+    calls = {
+      mediaDestroy: [], mediaCreate: [], projectCreate: 0,
+      projectDestroy: 0, collaboratorDestroy: 0, collaboratorCreate: [],
+    };
 
     t.mock.method(User, 'findByPk', async (id) => users.get(id) || null);
-    t.mock.method(sequelize, 'transaction', async () => ({ commit: async () => {}, rollback: async () => {} }));
+    t.mock.method(sequelize, 'transaction', async (callback) => {
+      const transaction = { LOCK: { UPDATE: 'UPDATE' }, commit: async () => {}, rollback: async () => {} };
+      return typeof callback === 'function' ? callback(transaction) : transaction;
+    });
     t.mock.method(Project, 'create', async (data) => {
       calls.projectCreate += 1;
       return Project.build({ ...data, id: randomUUID() });
     });
     t.mock.method(ProjectTechnology, 'destroy', async () => 0);
     t.mock.method(ProjectTechnology, 'bulkCreate', async () => []);
-    t.mock.method(ProjectCollaborator, 'destroy', async () => 0);
+    t.mock.method(ProjectCollaborator, 'destroy', async () => { calls.collaboratorDestroy += 1; return 0; });
+    t.mock.method(ProjectCollaborator, 'bulkCreate', async (records) => {
+      calls.collaboratorCreate = records;
+      return records;
+    });
+    t.mock.method(ProjectCollaborator, 'findOne', async () => null);
     t.mock.method(ProjectMedia, 'destroy', async (options) => calls.mediaDestroy.push(options.where));
     t.mock.method(ProjectMedia, 'bulkCreate', async (records) => {
       calls.mediaCreate.push(records);
@@ -158,6 +169,84 @@ describe('rotas de projetos', () => {
       assert.equal(res.status, 403);
       assert.equal(calls.mediaDestroy.length, 0);
     });
+  });
+
+  test('colaborador pode editar conteúdo e mídia, mas não gerenciar colaboradores', async (t) => {
+    const owner = createUser('creator');
+    const collaborator = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Antigo', ownerId: owner.id });
+    t.mock.method(project, 'update', async () => project);
+    t.mock.method(Project, 'findByPk', async () => project);
+    ProjectCollaborator.findOne.mock.mockImplementation(async ({ where }) =>
+      where.userId === collaborator.id ? { userId: collaborator.id } : null
+    );
+
+    const edit = await request('PUT', `/${project.id}`, collaborator, {
+      title: 'Novo título', media: [{ url: imageUrl(3), mediaType: 'image' }],
+    });
+    assert.equal(edit.status, 200);
+    assert.equal(calls.mediaCreate.length, 1);
+
+    const manage = await request('PUT', `/${project.id}`, collaborator, { collaborators: [] });
+    assert.equal(manage.status, 403);
+    assert.equal(calls.collaboratorDestroy, 0);
+  });
+
+  test('somente dono exclui; dependências são removidas na mesma transação', async (t) => {
+    const owner = createUser('creator');
+    const collaborator = createUser('creator');
+    const outsider = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
+    t.mock.method(project, 'destroy', async () => { calls.projectDestroy += 1; });
+    t.mock.method(Project, 'findByPk', async () => project);
+    ProjectCollaborator.findOne.mock.mockImplementation(async ({ where }) =>
+      where.userId === collaborator.id ? { userId: collaborator.id } : null
+    );
+
+    assert.equal((await request('DELETE', `/${project.id}`, outsider)).status, 403);
+    assert.equal((await request('DELETE', `/${project.id}`, collaborator)).status, 403);
+    assert.equal(calls.projectDestroy, 0);
+
+    const deleted = await request('DELETE', `/${project.id}`, owner);
+    assert.equal(deleted.status, 200);
+    assert.equal(calls.projectDestroy, 1);
+    assert.equal(calls.collaboratorDestroy, 1);
+    assert.deepEqual(calls.mediaDestroy, [{ projectId: project.id }]);
+  });
+
+  test('dono pode gerenciar colaboradores; usuário sem vínculo não pode editar', async (t) => {
+    const owner = createUser('creator');
+    const outsider = createUser('creator');
+    const newCollaborator = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
+    t.mock.method(project, 'update', async () => project);
+    t.mock.method(Project, 'findByPk', async () => project);
+
+    const denied = await request('PUT', `/${project.id}`, outsider, { title: 'Alterado' });
+    assert.equal(denied.status, 403);
+
+    const managed = await request('PUT', `/${project.id}`, owner, {
+      collaborators: [{ userId: newCollaborator.id }],
+    });
+    assert.equal(managed.status, 200);
+    assert.equal(calls.collaboratorDestroy, 1);
+    assert.deepEqual(calls.collaboratorCreate, [{
+      projectId: project.id, userId: newCollaborator.id, contribution: null,
+    }]);
+  });
+
+  test('busca nomes reais de colaboradores com autenticação', async (t) => {
+    const creator = createUser('creator');
+    let options;
+    t.mock.method(User, 'findAll', async (query) => {
+      options = query;
+      return [{ id: creator.id, name: 'Colega' }];
+    });
+    assert.equal((await request('GET', '/collaborators/search?q=Co')).status, 401);
+    const response = await request('GET', '/collaborators/search?q=Co', creator);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { users: [{ id: creator.id, name: 'Colega' }] });
+    assert.deepEqual(options.attributes, ['id', 'name']);
   });
 
   test('recusa links externos que não sejam http(s)', async () => {

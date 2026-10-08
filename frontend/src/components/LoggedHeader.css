@@ -1,4 +1,4 @@
-﻿.logged-header__actions {
+.logged-header__actions {
   position: relative;
   gap: 0;
 }
@@ -165,5 +165,190 @@
   .logged-header__dropdown {
     top: calc(100% + 0.5rem);
     right: 0;
+  }
+}
+
+/* Identificação completa do usuário no header */
+
+.site-header button.logged-header__avatar-button {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0.3rem 0.65rem 0.3rem 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.625rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.site-header button.logged-header__avatar-button:hover,
+.site-header button.logged-header__avatar-button.is-open {
+  background: #222426;
+  border-color: #3a3e42;
+  box-shadow: none;
+}
+
+.logged-header__trigger-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(120 220 80 / 12%);
+  border: 1px solid rgb(120 220 80 / 42%);
+  border-radius: 50%;
+  color: var(--tc-green, #78dc50);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.logged-header__trigger-identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.logged-header__trigger-identity strong {
+  max-width: 170px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logged-header__trigger-identity small {
+  color: #92979f;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.logged-header__account-chevron {
+  margin-left: 0.2rem;
+  color: #858a91;
+  font-size: 0.65rem;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.logged-header__account-chevron.is-open {
+  color: var(--tc-green, #78dc50);
+  transform: rotate(180deg);
+}
+
+.logged-header__dropdown {
+  width: 180px;
+  padding: 0.4rem;
+}
+
+.logged-header__dropdown::before {
+  right: 20px;
+}
+
+@media (max-width: 680px) {
+  .site-header button.logged-header__avatar-button {
+    width: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0.15rem;
+    justify-content: center;
+  }
+
+  .logged-header__trigger-identity,
+  .logged-header__account-chevron {
+    display: none;
+  }
+
+  .logged-header__dropdown {
+    width: 180px;
+  }
+}
+
+
+/* Nome à esquerda, separador e avatar à direita */
+
+.site-header button.logged-header__avatar-button {
+  padding: 0.3rem 0.3rem 0.3rem 0.7rem;
+  gap: 0.7rem;
+}
+
+.logged-header__trigger-divider {
+  width: 1px;
+  height: 30px;
+  flex: 0 0 1px;
+  background: #3a3e42;
+}
+
+.logged-header__dropdown::before {
+  right: 15px;
+}
+
+@media (max-width: 680px) {
+  .site-header button.logged-header__avatar-button {
+    padding: 0.15rem;
+  }
+
+  .logged-header__trigger-identity,
+  .logged-header__trigger-divider {
+    display: none;
+  }
+}
+
+
+/* Identidade separada do botão do avatar */
+
+.logged-header__account {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.site-header button.logged-header__avatar-button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.logged-header__trigger-identity {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.logged-header__trigger-divider {
+  width: 1px;
+  height: 30px;
+  flex: 0 0 1px;
+  display: block;
+  background: #3a3e42;
+}
+
+.logged-header__dropdown {
+  right: 0;
+}
+
+@media (max-width: 680px) {
+  .logged-header__account {
+    gap: 0;
+  }
+
+  .logged-header__trigger-identity,
+  .logged-header__trigger-divider {
+    display: none;
   }
 }

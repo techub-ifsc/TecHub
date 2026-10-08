@@ -1,18 +1,20 @@
-import { Route, Routes } from "react-router-dom";
+﻿import { Route, Routes } from "react-router-dom";
 
+import AdminRoute from "./components/AdminRoute";
 import EmptyState from "./components/EmptyState";
-import Header from "./components/Header";
 import Footer from "./components/Footer";
+import Header from "./components/Header";
 
 import CreatorProfilePage from "./pages/CreatorProfilePage";
 import CreatorsPage from "./pages/CreatorsPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import NewProjectPage from "./pages/NewProjectPage";
+import ProfileEditPage from "./pages/ProfileEditPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import ProjectValidationPage from "./pages/ProjectValidationPage";
 import SignUpPage from "./pages/SignUpPage";
-import ProfileEditPage from "./pages/ProfileEditPage";
 
 export default function App() {
   return (
@@ -23,10 +25,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
 
-          <Route
-            path="/projetos"
-            element={<ProjectsPage />}
-          />
+          <Route path="/projetos" element={<ProjectsPage />} />
 
           <Route
             path="/projetos/:id"
@@ -38,30 +37,28 @@ export default function App() {
             element={<NewProjectPage />}
           />
 
-          <Route
-            path="/criadores"
-            element={<CreatorsPage />}
-          />
+          <Route path="/criadores" element={<CreatorsPage />} />
 
           <Route
             path="/criadores/:id/editar"
             element={<ProfileEditPage />}
           />
-          
+
           <Route
             path="/criadores/:id"
             element={<CreatorProfilePage />}
           />
 
-          <Route
-            path="/cadastro"
-            element={<SignUpPage />}
-          />
+          <Route path="/cadastro" element={<SignUpPage />} />
 
-          <Route
-            path="/login"
-            element={<LoginPage />}
-          />
+          <Route path="/login" element={<LoginPage />} />
+
+          <Route element={<AdminRoute />}>
+            <Route
+              path="/admin/projetos/pendentes"
+              element={<ProjectValidationPage />}
+            />
+          </Route>
 
           <Route
             path="*"
@@ -75,7 +72,7 @@ export default function App() {
           />
         </Routes>
       </main>
-      
+
       <Footer />
     </div>
   );

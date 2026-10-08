@@ -1,4 +1,4 @@
-﻿.validation-page {
+.validation-page {
   min-height: calc(100vh - 60px);
   padding: 3rem 2rem 4rem;
   background:
@@ -1126,3 +1126,311 @@
   outline-offset: 3px;
 }
 
+
+/* Informações completas do projeto em validação */
+.validation-details__development-status {
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #79e651;
+  background: rgb(121 230 81 / 8%);
+  border: 1px solid rgb(121 230 81 / 32%);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.validation-details__collaborators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.validation-details__collaborator {
+  min-width: 0;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e2022;
+  border: 1px solid #35383c;
+  border-radius: 10px;
+}
+
+.validation-details__collaborator > span {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #79e651;
+  background: rgb(121 230 81 / 10%);
+  border: 1px solid rgb(121 230 81 / 35%);
+  border-radius: 50%;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.validation-details__collaborator strong {
+  overflow: hidden;
+  color: #f5f5f5;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.validation-details__links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.validation-details__links a {
+  min-width: 0;
+  min-height: 68px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #f5f5f5;
+  background: #1e2022;
+  border: 1px solid #393c40;
+  border-radius: 10px;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.validation-details__links a:hover {
+  background: rgb(121 230 81 / 7%);
+  border-color: #79e651;
+  transform: translateY(-2px);
+}
+
+.validation-details__links a > i:first-child {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #79e651;
+  background: rgb(121 230 81 / 10%);
+  border-radius: 8px;
+  font-size: 1.05rem;
+}
+
+.validation-details__links a > span {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.validation-details__links a small {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.validation-details__links a strong {
+  overflow: hidden;
+  color: #f5f5f5;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.validation-details__links a > i:last-child {
+  color: #818791;
+  font-size: 0.82rem;
+}
+
+.validation-details__gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.validation-details__media {
+  min-width: 0;
+  overflow: hidden;
+  background: #1e2022;
+  border: 1px solid #393c40;
+  border-radius: 12px;
+}
+
+.validation-details__media-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #79e651;
+  background:
+    linear-gradient(135deg, rgb(121 230 81 / 12%), transparent 55%),
+    #181a1c;
+  border-bottom: 1px solid #393c40;
+  font-size: 2rem;
+}
+
+.validation-details__media-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 200ms ease;
+}
+
+.validation-details__media:hover .validation-details__media-preview img {
+  transform: scale(1.035);
+}
+
+.validation-details__media-preview .validation-details__play {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: rgb(0 0 0 / 72%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 50%;
+  font-size: 1.1rem;
+}
+
+.validation-details__media-info {
+  min-width: 0;
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.validation-details__media-info strong {
+  overflow: hidden;
+  color: #f5f5f5;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.validation-details__media-info span {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1000px) {
+  .validation-details__gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .validation-details__collaborators,
+  .validation-details__links,
+  .validation-details__gallery {
+    grid-template-columns: 1fr;
+  }
+}
+/* Informações compactas com divisão visual */
+.validation-details__inline-section {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+
+.validation-details__inline-section > h3 {
+  min-height: 42px;
+  margin: 0;
+  padding-right: 20px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #3a3d41;
+}
+
+.validation-details__inline-section .validation-details__technologies {
+  margin: 0;
+}
+
+.validation-details__inline-section
+  .validation-details__development-status {
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .validation-details__inline-section {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .validation-details__inline-section > h3 {
+    min-height: auto;
+    padding-right: 0;
+    padding-bottom: 10px;
+    border-right: 0;
+    border-bottom: 1px solid #3a3d41;
+  }
+}
+/* Barra de rolagem da lista de projetos */
+.validation-list__items {
+  scrollbar-width: thin;
+  scrollbar-color: #555b62 #1d1f21;
+}
+
+.validation-list__items::-webkit-scrollbar {
+  width: 8px;
+}
+
+.validation-list__items::-webkit-scrollbar-track {
+  background: #1d1f21;
+  border-left: 1px solid #2d3034;
+}
+
+.validation-list__items::-webkit-scrollbar-thumb {
+  background: #555b62;
+  border: 2px solid #1d1f21;
+  border-radius: 8px;
+}
+
+.validation-list__items::-webkit-scrollbar-thumb:hover {
+  background: #79e651;
+}
+
+.validation-list__items::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+/* A lista acompanha a altura dos detalhes do projeto selecionado */
+.validation-page__workspace {
+  align-items: stretch;
+}
+
+.validation-list {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  contain: size;
+}
+
+.validation-list__header {
+  flex-shrink: 0;
+}
+
+.validation-list__items {
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+  overflow-y: auto;
+}

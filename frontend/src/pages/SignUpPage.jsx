@@ -13,10 +13,10 @@ const INITIAL_FORM = {
 };
 
 // A tela usa os rótulos em português; a API espera "creator" / "visitor".
-const ACCOUNT_TYPE_API = {
-  criador: "creator",
-  visitante: "visitor",
-};
+// const ACCOUNT_TYPE_API = {
+//   criador: "creator",
+//   visitante: "visitor",
+// };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -122,7 +122,7 @@ export default function SignUpPage() {
           name: form.username,
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          accountType: ACCOUNT_TYPE_API[accountType],
+          accountType: accountType,
         }),
       });
 

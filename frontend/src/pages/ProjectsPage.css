@@ -787,3 +787,133 @@
   outline: 2px solid var(--tc-green);
   outline-offset: 2px;
 }
+
+/* Chamada para acessar os detalhes do projeto */
+
+.project-card__tags {
+  margin-bottom: 0.15rem;
+}
+
+.project-card__details {
+  width: 100%;
+  min-height: 40px;
+  margin-top: auto;
+  padding: 0.625rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background-color: rgb(120 220 80 / 9%);
+  border: 1px solid var(--tc-green, #78dc50);
+  border-radius: 8px;
+  color: var(--tc-green, #78dc50);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.project-card:hover .project-card__details {
+  background-color: var(--tc-green, #78dc50);
+  color: #111111;
+}
+
+
+/* ==================================================
+   Correções dos campos de busca e da rolagem
+   ================================================== */
+
+/* Remove a segunda borda aplicada globalmente ao input */
+
+.projects-page .projects-page__search input,
+.projects-page .projects-page__search input:hover,
+.projects-page .projects-page__search input:focus,
+.projects-page .projects-page__search input:focus-visible {
+  padding: 0.75rem 0;
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  color: #ffffff;
+}
+
+/* Mantém somente a borda do contêiner principal */
+
+.projects-page__search {
+  overflow: hidden;
+}
+
+.projects-page__search:focus-within {
+  border-color: var(--tc-green, #78dc50);
+  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+}
+
+/* Busca interna do seletor de tecnologias */
+
+.projects-page .projects-page__tag-search input,
+.projects-page .projects-page__tag-search input:hover,
+.projects-page .projects-page__tag-search input:focus,
+.projects-page .projects-page__tag-search input:focus-visible {
+  padding: 0.375rem 0;
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  color: #ffffff;
+}
+
+.projects-page__tag-search {
+  min-height: 48px;
+  background: #1b1d1f;
+  border-bottom: 1px solid #36393d;
+  color: #92979f;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.projects-page__tag-search:focus-within {
+  border-bottom-color: rgb(120 220 80 / 55%);
+  color: var(--tc-green, #78dc50);
+}
+
+/* Remove o botão de limpeza nativo dos inputs de busca */
+
+.projects-page__tag-search input::-webkit-search-cancel-button,
+.projects-page__search input::-webkit-search-cancel-button {
+  display: none;
+  appearance: none;
+}
+
+/* Barra de rolagem do seletor de tecnologias */
+
+.projects-page__tag-options {
+  scrollbar-width: thin;
+  scrollbar-color: #62676f #18191a;
+}
+
+.projects-page__tag-options::-webkit-scrollbar {
+  width: 10px;
+}
+
+.projects-page__tag-options::-webkit-scrollbar-track {
+  background: #18191a;
+  border-left: 1px solid #303337;
+}
+
+.projects-page__tag-options::-webkit-scrollbar-thumb {
+  background: #62676f;
+  border: 2px solid #18191a;
+  border-radius: 999px;
+}
+
+.projects-page__tag-options::-webkit-scrollbar-thumb:hover {
+  background: var(--tc-green, #78dc50);
+}

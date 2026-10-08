@@ -5,9 +5,9 @@ import CustomSelect from "../components/CustomSelect";
 import "./ProjectsPage.css";
 
 const COURSES = {
-  "Ciência da Computação": 8,
-  "Técnico em Informática para Internet": 4,
-  "Técnico em Desenvolvimento de Sistemas": 3,
+  "CiÃªncia da ComputaÃ§Ã£o": 8,
+  "TÃ©cnico em InformÃ¡tica para Internet": 4,
+  "TÃ©cnico em Desenvolvimento de Sistemas": 3,
 };
 
 const TECHNOLOGIES = [
@@ -52,8 +52,8 @@ const MOCK_PROJECTS = [
     id: 1,
     title: "SiteWebBlue.com",
     author: "Matheus Oliveira",
-    course: "Ciência da Computação",
-    phase: "4ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "4Âª Fase",
     tags: ["Web", "Front-end", "React"],
     color: "#c9e2f5",
   },
@@ -61,26 +61,26 @@ const MOCK_PROJECTS = [
     id: 2,
     title: "AppMobile.dev",
     author: "Maria Silva",
-    course: "Ciência da Computação",
-    phase: "5ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "5Âª Fase",
     tags: ["Mobile", "React Native", "Firebase"],
     color: "#d7cdf5",
   },
   {
     id: 3,
     title: "Dashboard Analytics",
-    author: "João Costa",
-    course: "Ciência da Computação",
-    phase: "6ª Fase",
+    author: "JoÃ£o Costa",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "6Âª Fase",
     tags: ["Front-end", "React", "Data Science"],
     color: "#cce9dd",
   },
   {
     id: 4,
-    title: "PortfólioTech.io",
+    title: "PortfÃ³lioTech.io",
     author: "Ana Ferreira",
-    course: "Técnico em Informática para Internet",
-    phase: "3ª Fase",
+    course: "TÃ©cnico em InformÃ¡tica para Internet",
+    phase: "3Âª Fase",
     tags: ["Web", "HTML", "CSS"],
     color: "#f4d5c4",
   },
@@ -88,17 +88,17 @@ const MOCK_PROJECTS = [
     id: 5,
     title: "EcoTrack API",
     author: "Lucas Andrade",
-    course: "Ciência da Computação",
-    phase: "7ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "7Âª Fase",
     tags: ["Back-end", "Node.js", "PostgreSQL"],
     color: "#c8e7ca",
   },
   {
     id: 6,
-    title: "Finanças Pessoais",
+    title: "FinanÃ§as Pessoais",
     author: "Beatriz Lima",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "2ª Fase",
+    course: "TÃ©cnico em Desenvolvimento de Sistemas",
+    phase: "2Âª Fase",
     tags: ["Front-end", "React", "TypeScript"],
     color: "#f2dfad",
   },
@@ -106,17 +106,17 @@ const MOCK_PROJECTS = [
     id: 7,
     title: "TaskFlow Manager",
     author: "Gabriel Santos",
-    course: "Ciência da Computação",
-    phase: "5ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "5Âª Fase",
     tags: ["Full Stack", "Next.js", "Tailwind CSS"],
     color: "#c9d8f2",
   },
   {
     id: 8,
-    title: "Guia Universitário",
+    title: "Guia UniversitÃ¡rio",
     author: "Camila Rocha",
-    course: "Técnico em Informática para Internet",
-    phase: "3ª Fase",
+    course: "TÃ©cnico em InformÃ¡tica para Internet",
+    phase: "3Âª Fase",
     tags: ["Web", "HTML", "JavaScript"],
     color: "#e7c8d7",
   },
@@ -124,8 +124,8 @@ const MOCK_PROJECTS = [
     id: 9,
     title: "HealthPulse Mobile",
     author: "Felipe Martins",
-    course: "Ciência da Computação",
-    phase: "6ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "6Âª Fase",
     tags: ["Mobile", "React Native", "Firebase"],
     color: "#c4e6e8",
   },
@@ -133,17 +133,17 @@ const MOCK_PROJECTS = [
     id: 10,
     title: "CodeShare Platform",
     author: "Larissa Dias",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "3ª Fase",
+    course: "TÃ©cnico em Desenvolvimento de Sistemas",
+    phase: "3Âª Fase",
     tags: ["Web", "Python", "FastAPI"],
     color: "#e9d4ba",
   },
   {
     id: 11,
-    title: "Nexus ERP Acadêmico",
+    title: "Nexus ERP AcadÃªmico",
     author: "Rafael Souza",
-    course: "Ciência da Computação",
-    phase: "8ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "8Âª Fase",
     tags: ["Back-end", "Java", "Spring Boot"],
     color: "#cfd2ef",
   },
@@ -151,8 +151,8 @@ const MOCK_PROJECTS = [
     id: 12,
     title: "PixelCraft Editor",
     author: "Juliana Mendes",
-    course: "Técnico em Informática para Internet",
-    phase: "4ª Fase",
+    course: "TÃ©cnico em InformÃ¡tica para Internet",
+    phase: "4Âª Fase",
     tags: ["Web", "Front-end", "TypeScript"],
     color: "#ebc9c9",
   },
@@ -160,8 +160,8 @@ const MOCK_PROJECTS = [
     id: 13,
     title: "AgroSense IoT",
     author: "Carolina Nogueira",
-    course: "Ciência da Computação",
-    phase: "7ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "7Âª Fase",
     tags: ["Full Stack", "Vue.js", "Python"],
     color: "#d4e6bd",
   },
@@ -169,8 +169,8 @@ const MOCK_PROJECTS = [
     id: 14,
     title: "FastDelivery App",
     author: "Fernanda Costa",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "2ª Fase",
+    course: "TÃ©cnico em Desenvolvimento de Sistemas",
+    phase: "2Âª Fase",
     tags: ["Mobile", "Flutter", "REST API"],
     color: "#f1d4b8",
   },
@@ -178,8 +178,8 @@ const MOCK_PROJECTS = [
     id: 15,
     title: "BiblioTech IFSC",
     author: "Thiago Barbosa",
-    course: "Técnico em Informática para Internet",
-    phase: "4ª Fase",
+    course: "TÃ©cnico em InformÃ¡tica para Internet",
+    phase: "4Âª Fase",
     tags: ["Web", "PHP", "Laravel"],
     color: "#c6dfef",
   },
@@ -187,8 +187,8 @@ const MOCK_PROJECTS = [
     id: 16,
     title: "VisionAI Classifier",
     author: "Pedro Almeida",
-    course: "Ciência da Computação",
-    phase: "8ª Fase",
+    course: "CiÃªncia da ComputaÃ§Ã£o",
+    phase: "8Âª Fase",
     tags: ["Machine Learning", "Python", "Data Science"],
     color: "#ddd0ef",
   },
@@ -210,7 +210,7 @@ export default function ProjectsPage() {
   const phaseOptions = selectedCourse
     ? Array.from(
         { length: COURSES[selectedCourse] },
-        (_, index) => `${index + 1}ª Fase`,
+        (_, index) => `${index + 1}Âª Fase`,
       )
     : [];
 
@@ -317,7 +317,7 @@ export default function ProjectsPage() {
         <header className="projects-page__header">
           <h1>Projetos</h1>
 
-          <p>Conheça os projetos desenvolvidos pelos estudantes do IFSC.</p>
+          <p>ConheÃ§a os projetos desenvolvidos pelos estudantes do IFSC.</p>
         </header>
 
         <div className="projects-page__search">
@@ -339,7 +339,7 @@ export default function ProjectsPage() {
               aria-label="Limpar busca"
               title="Limpar busca"
             >
-              ×
+              Ã—
             </button>
           )}
         </div>
@@ -432,7 +432,7 @@ export default function ProjectsPage() {
                 <div
                   className="projects-page__tag-options"
                   role="listbox"
-                  aria-label="Tecnologias disponíveis"
+                  aria-label="Tecnologias disponÃ­veis"
                 >
                   {availableTags.length > 0 ? (
                     availableTags.map((tag) => (
@@ -554,7 +554,7 @@ function FilterTag({ label, type, onRemove }) {
         aria-label={`Remover filtro ${label}`}
         title={`Remover ${label}`}
       >
-        ×
+        Ã—
       </button>
     </span>
   );
@@ -596,6 +596,14 @@ function ProjectCard({ project }) {
             <span key={tag}>{tag}</span>
           ))}
         </div>
+
+        <span className="project-card__details">
+          <i
+            className="fa-solid fa-arrow-up-right-from-square"
+            aria-hidden="true"
+          />
+          Ver projeto
+        </span>
       </div>
     </Link>
   );
@@ -624,31 +632,31 @@ function Pagination({
   }
 
   return (
-    <nav className="projects-pagination" aria-label="Paginação dos projetos">
+    <nav className="projects-pagination" aria-label="PaginaÃ§Ã£o dos projetos">
       <div className="projects-pagination__buttons">
         <button
           type="button"
           onClick={() => changePage(1)}
           disabled={currentPage === 1}
-          aria-label="Primeira página"
-          title="Primeira página"
+          aria-label="Primeira pÃ¡gina"
+          title="Primeira pÃ¡gina"
         >
-          «
+          Â«
         </button>
 
         <button
           type="button"
           onClick={() => changePage(currentPage - 1)}
           disabled={currentPage === 1}
-          aria-label="Página anterior"
-          title="Página anterior"
+          aria-label="PÃ¡gina anterior"
+          title="PÃ¡gina anterior"
         >
-          ‹
+          â€¹
         </button>
 
         {visiblePages.map((page, index) =>
           page === "..." ? (
-            <span key={`ellipsis-${index}`}>…</span>
+            <span key={`ellipsis-${index}`}>â€¦</span>
           ) : (
             <button
               key={page}
@@ -666,27 +674,27 @@ function Pagination({
           type="button"
           onClick={() => changePage(currentPage + 1)}
           disabled={currentPage === totalPages}
-          aria-label="Próxima página"
-          title="Próxima página"
+          aria-label="PrÃ³xima pÃ¡gina"
+          title="PrÃ³xima pÃ¡gina"
         >
-          ›
+          â€º
         </button>
 
         <button
           type="button"
           onClick={() => changePage(totalPages)}
           disabled={currentPage === totalPages}
-          aria-label="Última página"
-          title="Última página"
+          aria-label="Ãšltima pÃ¡gina"
+          title="Ãšltima pÃ¡gina"
         >
-          »
+          Â»
         </button>
       </div>
 
       <p>
         Mostrando{" "}
         <strong>
-          {startItem}–{endItem}
+          {startItem}â€“{endItem}
         </strong>{" "}
         de <strong>{totalItems}</strong> projetos
       </p>

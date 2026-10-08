@@ -777,3 +777,352 @@
   transform: none;
 }
 
+
+/* ==================================================
+   Painel unificado da validação administrativa
+   ================================================== */
+
+.validation-page {
+  padding: 1.5rem;
+  background: #18191a;
+}
+
+.validation-page__container {
+  width: 100%;
+  max-width: 1440px;
+  padding: 2rem;
+  background: #222426;
+  border: 1px solid #2f3235;
+  border-radius: 16px;
+}
+
+/* Cabeçalho integrado ao painel */
+
+.validation-page__heading {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid #363a3e;
+}
+
+.validation-page__pending-summary {
+  background: #18191a;
+  border-color: #3a3e42;
+}
+
+/* Indicadores agrupados dentro do painel */
+
+.validation-page__stats {
+  margin-bottom: 1.25rem;
+  padding: 0;
+  gap: 1rem;
+}
+
+.validation-page__stats article {
+  background: #18191a;
+  border-color: #3a3e42;
+  border-radius: 12px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.validation-page__stats article:hover {
+  border-color: #50555b;
+  transform: translateY(-2px);
+}
+
+/* Barra única para os filtros */
+
+.validation-page__filters {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 1.25rem;
+  padding: 0.45rem;
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  background: #18191a;
+  border: 1px solid #3a3e42;
+  border-radius: 12px;
+}
+
+.validation-page .validation-page__filters button {
+  min-height: 38px;
+  padding: 0.5rem 0.9rem;
+  flex-shrink: 0;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px;
+  color: #aeb2b8 !important;
+}
+
+.validation-page .validation-page__filters button:hover {
+  background: #292c2e !important;
+  border-color: #454a4f !important;
+  color: #ffffff !important;
+}
+
+.validation-page .validation-page__filters button.is-active {
+  background: rgb(120 220 80 / 12%) !important;
+  border-color: rgb(120 220 80 / 45%) !important;
+  color: var(--tc-green, #78dc50) !important;
+}
+
+/* Área de lista e detalhes */
+
+.validation-page__workspace {
+  overflow: hidden;
+  background: #18191a;
+  border: 1px solid #3a3e42;
+  border-radius: 14px;
+}
+
+.validation-list {
+  background: #1d1f21;
+  border-color: #3a3e42;
+}
+
+.validation-details {
+  background: #18191a;
+}
+
+.validation-list__header {
+  background: #222426;
+}
+
+.validation-list__item.is-selected {
+  background: rgb(120 220 80 / 8%) !important;
+}
+
+/* Responsividade do painel */
+
+@media (max-width: 800px) {
+  .validation-page {
+    padding: 1rem;
+  }
+
+  .validation-page__container {
+    padding: 1.25rem;
+    border-radius: 14px;
+  }
+
+  .validation-page__heading {
+    padding-bottom: 1.25rem;
+  }
+
+  .validation-page__filters {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .validation-page {
+    padding: 0.75rem;
+  }
+
+  .validation-page__container {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .validation-page__filters {
+    padding: 0.35rem;
+  }
+}
+
+
+/* ==================================================
+   Resumo pendente e filtros segmentados
+   ================================================== */
+
+/* Indicador horizontal */
+
+.validation-page__pending-summary {
+  min-width: 230px;
+  padding: 0.75rem 0.9rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  background: #18191a;
+  border: 1px solid #3a3e42;
+  border-radius: 8px;
+}
+
+.validation-page__pending-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(245 183 66 / 12%);
+  border: 1px solid rgb(245 183 66 / 24%);
+  border-radius: 7px;
+  color: #f5b742;
+}
+
+.validation-page__pending-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.validation-page__pending-summary strong {
+  color: #ffffff;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.validation-page__pending-summary span:not(
+    .validation-page__pending-icon
+  ) {
+  color: #a0a4ab;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+/* Filtros como controle segmentado */
+
+.validation-page__filters {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  gap: 0;
+  overflow-x: auto;
+  background: #18191a;
+  border: 1px solid #3a3e42;
+  border-radius: 8px;
+}
+
+.validation-page .validation-page__filters button {
+  min-height: 42px;
+  margin: 0;
+  padding: 0.55rem 1rem;
+  background: transparent !important;
+  border: 0 !important;
+  border-right: 1px solid #3a3e42 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #aeb2b8 !important;
+  transform: none !important;
+}
+
+.validation-page .validation-page__filters button:last-child {
+  border-right: 0 !important;
+}
+
+.validation-page .validation-page__filters button:hover {
+  background: #292c2e !important;
+  color: #ffffff !important;
+}
+
+.validation-page .validation-page__filters button.is-active {
+  background: rgb(120 220 80 / 12%) !important;
+  box-shadow:
+    inset 0 -3px var(--tc-green, #78dc50) !important;
+  color: var(--tc-green, #78dc50) !important;
+}
+
+@media (max-width: 800px) {
+  .validation-page__pending-summary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .validation-page__filters {
+    width: 100%;
+  }
+
+  .validation-page .validation-page__filters button {
+    flex: 1 0 auto;
+  }
+}
+
+
+/* ==================================================
+   Indicadores numéricos simplificados
+   ================================================== */
+
+.validation-page__heading {
+  justify-content: flex-start;
+}
+
+.validation-page__stats article {
+  min-height: 86px;
+  padding: 1rem 1.25rem;
+}
+
+.validation-page__stat-icon {
+  display: none;
+}
+
+.validation-page__stats article > div {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.validation-page__stats article strong {
+  min-width: 54px;
+  padding-right: 1rem;
+  border-right: 1px solid #45494e;
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.validation-page__stats article div span {
+  color: #c3c6ca;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* Cores discretas para diferenciar cada situação */
+
+.validation-page__stats article:nth-child(1) strong {
+  color: #f5b742;
+}
+
+.validation-page__stats article:nth-child(2) strong {
+  color: var(--tc-green, #78dc50);
+}
+
+.validation-page__stats article:nth-child(3) strong {
+  color: #ff8e87;
+}
+
+@media (max-width: 800px) {
+  .validation-page__stats article {
+    min-height: 72px;
+  }
+
+  .validation-page__stats article strong {
+    font-size: 1.65rem;
+  }
+}
+
+
+/* Botão de rejeição com identidade visual própria */
+
+.validation-page button.validation-details__reject {
+  background: rgb(255 113 104 / 7%) !important;
+  border: 1px solid #ff7168 !important;
+  color: #ff8580 !important;
+}
+
+.validation-page button.validation-details__reject:hover {
+  background: #e85f58 !important;
+  border-color: #f07068 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgb(232 95 88 / 18%) !important;
+}
+
+.validation-page button.validation-details__reject:focus-visible {
+  outline: 3px solid rgb(255 113 104 / 25%);
+  outline-offset: 3px;
+}
+

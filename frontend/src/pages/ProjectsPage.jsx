@@ -5,9 +5,9 @@ import CustomSelect from "../components/CustomSelect";
 import "./ProjectsPage.css";
 
 const COURSES = {
-  "CiÃªncia da ComputaÃ§Ã£o": 8,
-  "TÃ©cnico em InformÃ¡tica para Internet": 4,
-  "TÃ©cnico em Desenvolvimento de Sistemas": 3,
+  "Ciência da Computação": 8,
+  "Técnico em Informática para Internet": 4,
+  "Técnico em Desenvolvimento de Sistemas": 3,
 };
 
 const TECHNOLOGIES = [
@@ -52,8 +52,8 @@ const MOCK_PROJECTS = [
     id: 1,
     title: "SiteWebBlue.com",
     author: "Matheus Oliveira",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "4Âª Fase",
+    course: "Ciência da Computação",
+    phase: "4ª Fase",
     tags: ["Web", "Front-end", "React"],
     color: "#c9e2f5",
   },
@@ -61,26 +61,26 @@ const MOCK_PROJECTS = [
     id: 2,
     title: "AppMobile.dev",
     author: "Maria Silva",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "5Âª Fase",
+    course: "Ciência da Computação",
+    phase: "5ª Fase",
     tags: ["Mobile", "React Native", "Firebase"],
     color: "#d7cdf5",
   },
   {
     id: 3,
     title: "Dashboard Analytics",
-    author: "JoÃ£o Costa",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "6Âª Fase",
+    author: "João Costa",
+    course: "Ciência da Computação",
+    phase: "6ª Fase",
     tags: ["Front-end", "React", "Data Science"],
     color: "#cce9dd",
   },
   {
     id: 4,
-    title: "PortfÃ³lioTech.io",
+    title: "PortfólioTech.io",
     author: "Ana Ferreira",
-    course: "TÃ©cnico em InformÃ¡tica para Internet",
-    phase: "3Âª Fase",
+    course: "Técnico em Informática para Internet",
+    phase: "3ª Fase",
     tags: ["Web", "HTML", "CSS"],
     color: "#f4d5c4",
   },
@@ -88,17 +88,17 @@ const MOCK_PROJECTS = [
     id: 5,
     title: "EcoTrack API",
     author: "Lucas Andrade",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "7Âª Fase",
+    course: "Ciência da Computação",
+    phase: "7ª Fase",
     tags: ["Back-end", "Node.js", "PostgreSQL"],
     color: "#c8e7ca",
   },
   {
     id: 6,
-    title: "FinanÃ§as Pessoais",
+    title: "Finanças Pessoais",
     author: "Beatriz Lima",
-    course: "TÃ©cnico em Desenvolvimento de Sistemas",
-    phase: "2Âª Fase",
+    course: "Técnico em Desenvolvimento de Sistemas",
+    phase: "2ª Fase",
     tags: ["Front-end", "React", "TypeScript"],
     color: "#f2dfad",
   },
@@ -106,17 +106,17 @@ const MOCK_PROJECTS = [
     id: 7,
     title: "TaskFlow Manager",
     author: "Gabriel Santos",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "5Âª Fase",
+    course: "Ciência da Computação",
+    phase: "5ª Fase",
     tags: ["Full Stack", "Next.js", "Tailwind CSS"],
     color: "#c9d8f2",
   },
   {
     id: 8,
-    title: "Guia UniversitÃ¡rio",
+    title: "Guia Universitário",
     author: "Camila Rocha",
-    course: "TÃ©cnico em InformÃ¡tica para Internet",
-    phase: "3Âª Fase",
+    course: "Técnico em Informática para Internet",
+    phase: "3ª Fase",
     tags: ["Web", "HTML", "JavaScript"],
     color: "#e7c8d7",
   },
@@ -124,8 +124,8 @@ const MOCK_PROJECTS = [
     id: 9,
     title: "HealthPulse Mobile",
     author: "Felipe Martins",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "6Âª Fase",
+    course: "Ciência da Computação",
+    phase: "6ª Fase",
     tags: ["Mobile", "React Native", "Firebase"],
     color: "#c4e6e8",
   },
@@ -133,17 +133,17 @@ const MOCK_PROJECTS = [
     id: 10,
     title: "CodeShare Platform",
     author: "Larissa Dias",
-    course: "TÃ©cnico em Desenvolvimento de Sistemas",
-    phase: "3Âª Fase",
+    course: "Técnico em Desenvolvimento de Sistemas",
+    phase: "3ª Fase",
     tags: ["Web", "Python", "FastAPI"],
     color: "#e9d4ba",
   },
   {
     id: 11,
-    title: "Nexus ERP AcadÃªmico",
+    title: "Nexus ERP Acadêmico",
     author: "Rafael Souza",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "8Âª Fase",
+    course: "Ciência da Computação",
+    phase: "8ª Fase",
     tags: ["Back-end", "Java", "Spring Boot"],
     color: "#cfd2ef",
   },
@@ -151,8 +151,8 @@ const MOCK_PROJECTS = [
     id: 12,
     title: "PixelCraft Editor",
     author: "Juliana Mendes",
-    course: "TÃ©cnico em InformÃ¡tica para Internet",
-    phase: "4Âª Fase",
+    course: "Técnico em Informática para Internet",
+    phase: "4ª Fase",
     tags: ["Web", "Front-end", "TypeScript"],
     color: "#ebc9c9",
   },
@@ -160,8 +160,8 @@ const MOCK_PROJECTS = [
     id: 13,
     title: "AgroSense IoT",
     author: "Carolina Nogueira",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "7Âª Fase",
+    course: "Ciência da Computação",
+    phase: "7ª Fase",
     tags: ["Full Stack", "Vue.js", "Python"],
     color: "#d4e6bd",
   },
@@ -169,8 +169,8 @@ const MOCK_PROJECTS = [
     id: 14,
     title: "FastDelivery App",
     author: "Fernanda Costa",
-    course: "TÃ©cnico em Desenvolvimento de Sistemas",
-    phase: "2Âª Fase",
+    course: "Técnico em Desenvolvimento de Sistemas",
+    phase: "2ª Fase",
     tags: ["Mobile", "Flutter", "REST API"],
     color: "#f1d4b8",
   },
@@ -178,8 +178,8 @@ const MOCK_PROJECTS = [
     id: 15,
     title: "BiblioTech IFSC",
     author: "Thiago Barbosa",
-    course: "TÃ©cnico em InformÃ¡tica para Internet",
-    phase: "4Âª Fase",
+    course: "Técnico em Informática para Internet",
+    phase: "4ª Fase",
     tags: ["Web", "PHP", "Laravel"],
     color: "#c6dfef",
   },
@@ -187,8 +187,8 @@ const MOCK_PROJECTS = [
     id: 16,
     title: "VisionAI Classifier",
     author: "Pedro Almeida",
-    course: "CiÃªncia da ComputaÃ§Ã£o",
-    phase: "8Âª Fase",
+    course: "Ciência da Computação",
+    phase: "8ª Fase",
     tags: ["Machine Learning", "Python", "Data Science"],
     color: "#ddd0ef",
   },
@@ -210,7 +210,7 @@ export default function ProjectsPage() {
   const phaseOptions = selectedCourse
     ? Array.from(
         { length: COURSES[selectedCourse] },
-        (_, index) => `${index + 1}Âª Fase`,
+        (_, index) => `${index + 1}ª Fase`,
       )
     : [];
 
@@ -317,7 +317,7 @@ export default function ProjectsPage() {
         <header className="projects-page__header">
           <h1>Projetos</h1>
 
-          <p>ConheÃ§a os projetos desenvolvidos pelos estudantes do IFSC.</p>
+          <p>Conheça os projetos desenvolvidos pelos estudantes do IFSC.</p>
         </header>
 
         <div className="projects-page__search">
@@ -339,7 +339,7 @@ export default function ProjectsPage() {
               aria-label="Limpar busca"
               title="Limpar busca"
             >
-              Ã—
+              ×
             </button>
           )}
         </div>
@@ -432,7 +432,7 @@ export default function ProjectsPage() {
                 <div
                   className="projects-page__tag-options"
                   role="listbox"
-                  aria-label="Tecnologias disponÃ­veis"
+                  aria-label="Tecnologias disponíveis"
                 >
                   {availableTags.length > 0 ? (
                     availableTags.map((tag) => (
@@ -554,7 +554,7 @@ function FilterTag({ label, type, onRemove }) {
         aria-label={`Remover filtro ${label}`}
         title={`Remover ${label}`}
       >
-        Ã—
+        ×
       </button>
     </span>
   );
@@ -586,7 +586,7 @@ function ProjectCard({ project }) {
             <p>{project.author}</p>
 
             <span>
-              {project.course} • {project.phase}
+              {project.course} � {project.phase}
             </span>
           </div>
         </div>
@@ -616,14 +616,25 @@ function Pagination({
   itemsPerPage,
   onPageChange,
 }) {
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const startItem =
+    totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
 
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const endItem = Math.min(
+    currentPage * itemsPerPage,
+    totalItems,
+  );
 
-  const visiblePages = getVisiblePages(currentPage, totalPages);
+  const visiblePages = getVisiblePages(
+    currentPage,
+    totalPages,
+  );
 
   function changePage(page) {
-    if (page < 1 || page > totalPages || page === currentPage) {
+    if (
+      page < 1 ||
+      page > totalPages ||
+      page === currentPage
+    ) {
       return;
     }
 
@@ -632,38 +643,51 @@ function Pagination({
   }
 
   return (
-    <nav className="projects-pagination" aria-label="PaginaÃ§Ã£o dos projetos">
+    <nav
+      className="projects-pagination"
+      aria-label="Paginação dos projetos"
+    >
       <div className="projects-pagination__buttons">
         <button
           type="button"
           onClick={() => changePage(1)}
           disabled={currentPage === 1}
-          aria-label="Primeira pÃ¡gina"
-          title="Primeira pÃ¡gina"
+          aria-label="Primeira página"
+          title="Primeira página"
         >
-          Â«
+          <i
+            className="fa-solid fa-angles-left"
+            aria-hidden="true"
+          />
         </button>
 
         <button
           type="button"
           onClick={() => changePage(currentPage - 1)}
           disabled={currentPage === 1}
-          aria-label="PÃ¡gina anterior"
-          title="PÃ¡gina anterior"
+          aria-label="Página anterior"
+          title="Página anterior"
         >
-          â€¹
+          <i
+            className="fa-solid fa-chevron-left"
+            aria-hidden="true"
+          />
         </button>
 
         {visiblePages.map((page, index) =>
           page === "..." ? (
-            <span key={`ellipsis-${index}`}>â€¦</span>
+            <span key={`ellipsis-${index}`}>...</span>
           ) : (
             <button
               key={page}
               type="button"
-              className={page === currentPage ? "is-current" : ""}
+              className={
+                page === currentPage ? "is-current" : ""
+              }
               onClick={() => changePage(page)}
-              aria-current={page === currentPage ? "page" : undefined}
+              aria-current={
+                page === currentPage ? "page" : undefined
+              }
             >
               {page}
             </button>
@@ -674,27 +698,33 @@ function Pagination({
           type="button"
           onClick={() => changePage(currentPage + 1)}
           disabled={currentPage === totalPages}
-          aria-label="PrÃ³xima pÃ¡gina"
-          title="PrÃ³xima pÃ¡gina"
+          aria-label="Próxima página"
+          title="Próxima página"
         >
-          â€º
+          <i
+            className="fa-solid fa-chevron-right"
+            aria-hidden="true"
+          />
         </button>
 
         <button
           type="button"
           onClick={() => changePage(totalPages)}
           disabled={currentPage === totalPages}
-          aria-label="Ãšltima pÃ¡gina"
-          title="Ãšltima pÃ¡gina"
+          aria-label="Última página"
+          title="Última página"
         >
-          Â»
+          <i
+            className="fa-solid fa-angles-right"
+            aria-hidden="true"
+          />
         </button>
       </div>
 
       <p>
         Mostrando{" "}
         <strong>
-          {startItem}â€“{endItem}
+          {startItem}-{endItem}
         </strong>{" "}
         de <strong>{totalItems}</strong> projetos
       </p>

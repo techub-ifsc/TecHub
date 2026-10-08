@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import ConfirmationModal from "../components/ConfirmationModal";
 
@@ -15,7 +15,6 @@ const INITIAL_PROJECTS = [
     description:
       "Plataforma para acompanhar sensores ambientais e apresentar informações sobre temperatura, umidade e qualidade do ar.",
     technologies: ["React", "Node.js", "PostgreSQL"],
-    githubUrl: "https://github.com/",
     status: "pending",
   },
   {
@@ -28,7 +27,6 @@ const INITIAL_PROJECTS = [
     description:
       "Aplicação para organizar, pesquisar e disponibilizar materiais acadêmicos produzidos por estudantes.",
     technologies: ["React", "Express", "Sequelize"],
-    githubUrl: "https://github.com/",
     status: "pending",
   },
   {
@@ -41,7 +39,6 @@ const INITIAL_PROJECTS = [
     description:
       "Sistema para reserva de laboratórios, controle de equipamentos e acompanhamento das atividades acadêmicas.",
     technologies: ["JavaScript", "Vite", "PostgreSQL"],
-    githubUrl: "https://github.com/",
     status: "approved",
   },
 ];
@@ -125,11 +122,7 @@ export default function ProjectValidationPage() {
             </p>
           </div>
 
-          <div className="validation-page__pending-summary">
-            <strong>{totals.pending}</strong>
-            <span>aguardando análise</span>
-          </div>
-        </header>
+</header>
 
         <div className="validation-page__stats">
           <article>
@@ -239,16 +232,6 @@ export default function ProjectValidationPage() {
                     <h2>{selectedProject.title}</h2>
                     <p>Enviado por {selectedProject.creator}</p>
                   </div>
-
-                  <a
-                    href={selectedProject.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="validation-details__github"
-                  >
-                    <i className="fa-brands fa-github" aria-hidden="true" />
-                    GitHub
-                  </a>
                 </div>
 
                 <div className="validation-details__section">

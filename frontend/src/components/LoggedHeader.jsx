@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +22,8 @@ export default function LoggedHeader() {
   const isCreator = user?.role === "creator";
   const isAdmin = user?.role === "super_admin";
 
-  const userInitial = user?.name?.trim().charAt(0).toUpperCase() || "U";
+  const userInitial =
+    user?.name?.trim().charAt(0).toUpperCase() || "U";
 
   function closeMenu() {
     setMenuOpen(false);
@@ -63,8 +64,15 @@ export default function LoggedHeader() {
   return (
     <header className="site-header">
       <div className="site-header__content">
-        <Link to="/" className="site-header__brand" onClick={closeMenu}>
-          <span className="site-header__symbol" aria-hidden="true">
+        <Link
+          to="/"
+          className="site-header__brand"
+          onClick={closeMenu}
+        >
+          <span
+            className="site-header__symbol"
+            aria-hidden="true"
+          >
             &lt;/&gt;
           </span>
 
@@ -74,20 +82,26 @@ export default function LoggedHeader() {
         <button
           type="button"
           className="site-header__menu-button"
-          onClick={() => setMenuOpen((currentValue) => !currentValue)}
+          onClick={() =>
+            setMenuOpen((currentValue) => !currentValue)
+          }
           aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
           aria-expanded={menuOpen}
           aria-controls="logged-header-menu"
         >
           <i
-            className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"}`}
+            className={`fa-solid ${
+              menuOpen ? "fa-xmark" : "fa-bars"
+            }`}
             aria-hidden="true"
           />
         </button>
 
         <div
           id="logged-header-menu"
-          className={`site-header__menu${menuOpen ? " is-open" : ""}`}
+          className={`site-header__menu${
+            menuOpen ? " is-open" : ""
+          }`}
         >
           <nav
             className="site-header__navigation"
@@ -97,7 +111,9 @@ export default function LoggedHeader() {
               to="/"
               end
               className={({ isActive }) =>
-                `site-header__nav-item${isActive ? " is-active" : ""}`
+                `site-header__nav-item${
+                  isActive ? " is-active" : ""
+                }`
               }
               onClick={closeMenu}
             >
@@ -107,7 +123,9 @@ export default function LoggedHeader() {
             <NavLink
               to="/projetos"
               className={({ isActive }) =>
-                `site-header__nav-item${isActive ? " is-active" : ""}`
+                `site-header__nav-item${
+                  isActive ? " is-active" : ""
+                }`
               }
               onClick={closeMenu}
             >
@@ -117,7 +135,9 @@ export default function LoggedHeader() {
             <NavLink
               to="/criadores"
               className={({ isActive }) =>
-                `site-header__nav-item${isActive ? " is-active" : ""}`
+                `site-header__nav-item${
+                  isActive ? " is-active" : ""
+                }`
               }
               onClick={closeMenu}
             >
@@ -128,7 +148,9 @@ export default function LoggedHeader() {
               <NavLink
                 to="/projeto/novo"
                 className={({ isActive }) =>
-                  `site-header__nav-item${isActive ? " is-active" : ""}`
+                  `site-header__nav-item${
+                    isActive ? " is-active" : ""
+                  }`
                 }
                 onClick={closeMenu}
               >
@@ -140,7 +162,9 @@ export default function LoggedHeader() {
               <NavLink
                 to="/admin/projetos/pendentes"
                 className={({ isActive }) =>
-                  `site-header__nav-item${isActive ? " is-active" : ""}`
+                  `site-header__nav-item${
+                    isActive ? " is-active" : ""
+                  }`
                 }
                 onClick={closeMenu}
               >
@@ -150,37 +174,49 @@ export default function LoggedHeader() {
           </nav>
 
           <div className="site-header__actions logged-header__actions">
-            <div className="logged-header__account" ref={accountMenuRef}>
+            <div
+              className="logged-header__account"
+              ref={accountMenuRef}
+            >
+              <span className="logged-header__trigger-identity">
+                <strong>{user?.name || "Usuário"}</strong>
+                <small>
+                  {ROLE_LABELS[user?.role] || "Usuário"}
+                </small>
+              </span>
+
+              <span
+                className="logged-header__trigger-divider"
+                aria-hidden="true"
+              />
+
               <button
                 type="button"
                 className={`logged-header__avatar-button${
                   accountMenuOpen ? " is-open" : ""
                 }`}
                 onClick={() =>
-                  setAccountMenuOpen((currentValue) => !currentValue)
+                  setAccountMenuOpen(
+                    (currentValue) => !currentValue,
+                  )
                 }
                 aria-label="Abrir menu da conta"
                 aria-haspopup="menu"
                 aria-expanded={accountMenuOpen}
               >
-                <span aria-hidden="true">{userInitial}</span>
+                <span
+                  className="logged-header__trigger-avatar"
+                  aria-hidden="true"
+                >
+                  {userInitial}
+                </span>
               </button>
 
               {accountMenuOpen && (
-                <div className="logged-header__dropdown" role="menu">
-                  <div className="logged-header__account-info">
-                    <span className="logged-header__dropdown-avatar">
-                      {userInitial}
-                    </span>
-
-                    <div>
-                      <strong>{user?.name || "Usuário"}</strong>
-                      <small>{ROLE_LABELS[user?.role] || "Usuário"}</small>
-                    </div>
-                  </div>
-
-                  <div className="logged-header__divider" />
-
+                <div
+                  className="logged-header__dropdown"
+                  role="menu"
+                >
                   <button
                     type="button"
                     className="logged-header__logout"

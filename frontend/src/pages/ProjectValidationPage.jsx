@@ -9,12 +9,42 @@ const INITIAL_PROJECTS = [
     id: 1,
     title: "Sistema de Monitoramento Ambiental",
     creator: "Ana Carolina",
-    course: "Engenharia de Software",
+    course: "Ciência da Computação",
     phase: "5ª fase",
     submittedAt: "Hoje, 10:35",
     description:
       "Plataforma para acompanhar sensores ambientais e apresentar informações sobre temperatura, umidade e qualidade do ar.",
     technologies: ["React", "Node.js", "PostgreSQL"],
+    collaborators: [
+      { id: 1, name: "Antoni Ferraz" },
+      { id: 2, name: "Gabriela Rodrigues" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/monitoramento-ambiental",
+    developmentStatus: "Em desenvolvimento",
+    media: [
+      {
+        id: 1,
+        name: "dashboard-monitoramento.png",
+        type: "image",
+        size: "1,8 MB",
+        preview: "https://picsum.photos/seed/techub-ambiental-1/800/450",
+      },
+      {
+        id: 2,
+        name: "sensores-em-funcionamento.jpg",
+        type: "image",
+        size: "2,4 MB",
+        preview: "https://picsum.photos/seed/techub-ambiental-2/800/450",
+      },
+      {
+        id: 3,
+        name: "demonstracao-do-sistema.mp4",
+        type: "video",
+        size: "12,7 MB",
+        preview: "https://picsum.photos/seed/techub-ambiental-3/800/450",
+      },
+    ],
     status: "pending",
   },
   {
@@ -27,6 +57,36 @@ const INITIAL_PROJECTS = [
     description:
       "Aplicação para organizar, pesquisar e disponibilizar materiais acadêmicos produzidos por estudantes.",
     technologies: ["React", "Express", "Sequelize"],
+    collaborators: [
+      { id: 3, name: "Mariana Souza" },
+      { id: 4, name: "João Costa" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/biblioteca-digital",
+    developmentStatus: "Em design",
+    media: [
+      {
+        id: 1,
+        name: "pagina-inicial-biblioteca.png",
+        type: "image",
+        size: "1,5 MB",
+        preview: "https://picsum.photos/seed/techub-biblioteca-1/800/450",
+      },
+      {
+        id: 2,
+        name: "pesquisa-de-materiais.png",
+        type: "image",
+        size: "2,1 MB",
+        preview: "https://picsum.photos/seed/techub-biblioteca-2/800/450",
+      },
+      {
+        id: 3,
+        name: "apresentacao-biblioteca.mp4",
+        type: "video",
+        size: "10,3 MB",
+        preview: "https://picsum.photos/seed/techub-biblioteca-3/800/450",
+      },
+    ],
     status: "pending",
   },
   {
@@ -39,7 +99,146 @@ const INITIAL_PROJECTS = [
     description:
       "Sistema para reserva de laboratórios, controle de equipamentos e acompanhamento das atividades acadêmicas.",
     technologies: ["JavaScript", "Vite", "PostgreSQL"],
+    collaborators: [
+      { id: 5, name: "Lucas Mendes" },
+      { id: 6, name: "Gabriela Rodrigues" },
+      { id: 7, name: "Antoni Ferraz" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/controle-laboratorios",
+    developmentStatus: "Concluído",
+    media: [
+      {
+        id: 1,
+        name: "painel-dos-laboratorios.png",
+        type: "image",
+        size: "1,9 MB",
+        preview: "https://picsum.photos/seed/techub-laboratorio-1/800/450",
+      },
+      {
+        id: 2,
+        name: "reserva-de-equipamentos.png",
+        type: "image",
+        size: "2,7 MB",
+        preview: "https://picsum.photos/seed/techub-laboratorio-2/800/450",
+      },
+      {
+        id: 3,
+        name: "demonstracao-laboratorios.mp4",
+        type: "video",
+        size: "15,2 MB",
+        preview: "https://picsum.photos/seed/techub-laboratorio-3/800/450",
+      },
+    ],
     status: "approved",
+  },
+  {
+    id: 4,
+    title: "Aplicativo de Transporte Acadêmico",
+    creator: "Pedro Henrique",
+    course: "Ciência da Computação",
+    phase: "3ª fase",
+    submittedAt: "2 de outubro",
+    description:
+      "Aplicativo para acompanhar horários e rotas do transporte acadêmico.",
+    technologies: ["React Native", "Firebase"],
+    status: "pending",
+  },
+  {
+    id: 5,
+    title: "Portal de Eventos Estudantis",
+    creator: "Juliana Alves",
+    course: "Sistemas de Informação",
+    phase: "4ª fase",
+    submittedAt: "1 de outubro",
+    description:
+      "Portal para divulgação e gerenciamento de eventos acadêmicos.",
+    technologies: ["Vue.js", "Node.js"],
+    status: "pending",
+  },
+  {
+    id: 6,
+    title: "Gerenciador de Estágios",
+    creator: "Rafael Oliveira",
+    course: "Ciência da Computação",
+    phase: "6ª fase",
+    submittedAt: "30 de setembro",
+    description:
+      "Sistema para acompanhar oportunidades e processos de estágio.",
+    technologies: ["Angular", "Spring Boot"],
+    status: "approved",
+  },
+  {
+    id: 7,
+    title: "Mapa de Acessibilidade do Campus",
+    creator: "Camila Ferreira",
+    course: "Sistemas de Informação",
+    phase: "5ª fase",
+    submittedAt: "29 de setembro",
+    description:
+      "Mapa colaborativo com informações de acessibilidade do campus.",
+    technologies: ["React", "Google Maps"],
+    status: "pending",
+  },
+  {
+    id: 8,
+    title: "Plataforma de Estudos Colaborativos",
+    creator: "Bruno Martins",
+    course: "Ciência da Computação",
+    phase: "2ª fase",
+    submittedAt: "28 de setembro",
+    description:
+      "Ambiente para criação e compartilhamento de grupos de estudos.",
+    technologies: ["Next.js", "MongoDB"],
+    status: "rejected",
+  },
+  {
+    id: 9,
+    title: "Controle de Empréstimos de Equipamentos",
+    creator: "Fernanda Lima",
+    course: "Sistemas de Informação",
+    phase: "3ª fase",
+    submittedAt: "27 de setembro",
+    description:
+      "Sistema para controlar empréstimos e devoluções de equipamentos.",
+    technologies: ["PHP", "MySQL"],
+    status: "pending",
+  },
+  {
+    id: 10,
+    title: "Assistente Virtual Acadêmico",
+    creator: "Gustavo Souza",
+    course: "Ciência da Computação",
+    phase: "7ª fase",
+    submittedAt: "26 de setembro",
+    description:
+      "Assistente virtual para responder dúvidas frequentes dos estudantes.",
+    technologies: ["Python", "Inteligência Artificial"],
+    status: "approved",
+  },
+  {
+    id: 11,
+    title: "Sistema de Gestão de Monitorias",
+    creator: "Larissa Rocha",
+    course: "Sistemas de Informação",
+    phase: "4ª fase",
+    submittedAt: "25 de setembro",
+    description:
+      "Sistema para organizar horários e atendimentos de monitoria.",
+    technologies: ["React", "Express"],
+    status: "pending",
+  },
+  {
+    id: 12,
+    title: "Painel de Indicadores Acadêmicos",
+    creator: "Diego Ribeiro",
+    course: "Ciência da Computação",
+    phase: "8ª fase",
+    submittedAt: "24 de setembro",
+    description:
+      "Painel para visualização de indicadores e informações acadêmicas.",
+    technologies: ["TypeScript", "Data Science"],
+    status: "rejected",
   },
 ];
 
@@ -265,6 +464,139 @@ export default function ProjectValidationPage() {
                     ))}
                   </div>
                 </div>
+
+                {selectedProject.developmentStatus && (
+                  <div className="validation-details__section validation-details__inline-section">
+                    <h3>Status de desenvolvimento</h3>
+
+                    <span className="validation-details__development-status">
+                      <i
+                        className="fa-solid fa-code-branch"
+                        aria-hidden="true"
+                      />
+                      {selectedProject.developmentStatus}
+                    </span>
+                  </div>
+                )}
+
+                {selectedProject.collaborators?.length > 0 && (
+                  <div className="validation-details__section">
+                    <h3>Colaboradores</h3>
+
+                    <div className="validation-details__collaborators">
+                      {selectedProject.collaborators.map((collaborator) => (
+                        <div
+                          key={collaborator.id}
+                          className="validation-details__collaborator"
+                        >
+                          <span aria-hidden="true">
+                            {collaborator.name.charAt(0).toUpperCase()}
+                          </span>
+
+                          <strong>{collaborator.name}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(selectedProject.github || selectedProject.liveUrl) && (
+                  <div className="validation-details__section">
+                    <h3>Links do projeto</h3>
+
+                    <div className="validation-details__links">
+                      {selectedProject.github && (
+                        <a
+                          href={selectedProject.github}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <i
+                            className="fa-brands fa-github"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <small>Repositório</small>
+                            <strong>Visualizar no GitHub</strong>
+                          </span>
+                          <i
+                            className="fa-solid fa-arrow-up-right-from-square"
+                            aria-hidden="true"
+                          />
+                        </a>
+                      )}
+
+                      {selectedProject.liveUrl && (
+                        <a
+                          href={selectedProject.liveUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <i
+                            className="fa-solid fa-globe"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <small>Demonstração</small>
+                            <strong>Acessar projeto</strong>
+                          </span>
+                          <i
+                            className="fa-solid fa-arrow-up-right-from-square"
+                            aria-hidden="true"
+                          />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedProject.media?.length > 0 && (
+                  <div className="validation-details__section">
+                    <h3>Galeria do projeto</h3>
+
+                    <div className="validation-details__gallery">
+                      {selectedProject.media.map((file) => (
+                        <article
+                          key={file.id}
+                          className="validation-details__media"
+                        >
+                          <div className="validation-details__media-preview">
+                            {file.preview ? (
+                              <img
+                                src={file.preview}
+                                alt={`Pré-visualização de ${file.name}`}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <i
+                                className="fa-regular fa-image"
+                                aria-hidden="true"
+                              />
+                            )}
+
+                            {file.type === "video" && (
+                              <span className="validation-details__play">
+                                <i
+                                  className="fa-solid fa-play"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="validation-details__media-info">
+                            <strong>{file.name}</strong>
+                            <span>
+                              {file.type === "video" ? "Vídeo" : "Imagem"}
+                              {" • "}
+                              {file.size}
+                            </span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="validation-details__actions">
                   <button

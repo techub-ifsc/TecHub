@@ -1,6 +1,8 @@
-﻿import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
+import CreatorRoute from "./components/CreatorRoute";
+import CreatorProfileRoute from "./components/CreatorProfileRoute";
 import EmptyState from "./components/EmptyState";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
@@ -31,18 +33,25 @@ export default function App() {
             path="/projetos/:id"
             element={<ProjectDetailsPage />}
           />
-
-          <Route
-            path="/projeto/novo"
-            element={<NewProjectPage />}
-          />
-
           <Route path="/criadores" element={<CreatorsPage />} />
 
-          <Route
-            path="/criadores/:id/editar"
-            element={<ProfileEditPage />}
-          />
+          <Route element={<CreatorRoute />}>
+            <Route
+              path="/projeto/novo"
+              element={<NewProjectPage />}
+            />
+            <Route
+              path="/projetos/:id/editar"
+              element={<NewProjectPage />}
+            />
+          </Route>
+
+          <Route element={<CreatorProfileRoute />}>
+            <Route
+              path="/criadores/:id/editar"
+              element={<ProfileEditPage />}
+            />
+          </Route>
 
           <Route
             path="/criadores/:id"

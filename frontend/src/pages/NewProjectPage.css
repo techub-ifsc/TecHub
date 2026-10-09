@@ -1287,3 +1287,47 @@
 .collaborator-suggestions::-webkit-scrollbar-thumb:hover {
   background: var(--new-project-green);
 }
+/* Prévia das mídias no formulário de edição */
+.upload-file-preview {
+  position: relative;
+  width: 72px;
+  height: 48px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 72px;
+  color: var(--new-project-green);
+  background: #181a1c;
+  border: 1px solid #393c40;
+  border-radius: 7px;
+}
+
+.upload-file-preview > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+.upload-file-preview__video {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: rgb(0 0 0 / 45%);
+}
+
+.upload-file-preview__video i {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 70%);
+  border-radius: 50%;
+  font-size: 0.65rem;
+}

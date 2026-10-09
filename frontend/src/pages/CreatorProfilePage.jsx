@@ -148,14 +148,6 @@ export default function CreatorProfilePage() {
             <section className="creator-profile-hero">
               <div className="creator-profile-hero__cover" />
 
-              <Link
-                to={`/criadores/${id}/editar`}
-                className="creator-profile-hero__edit"
-              >
-                <i className="fa-solid fa-pen" aria-hidden="true" />
-                Editar perfil
-              </Link>
-
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
                   <img src={PROFILE_PHOTO} alt={PROFILE.name} />

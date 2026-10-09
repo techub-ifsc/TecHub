@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import CustomSelect from "../components/CustomSelect";
 
@@ -117,6 +117,106 @@ const COLLABORATOR_RULES = [
   "Somente o proprietário pode excluir o projeto.",
 ];
 
+const MOCK_EDIT_PROJECTS = {
+  1: {
+    title: "Sistema de Monitoramento Ambiental",
+    description:
+      "Plataforma para acompanhar sensores ambientais em tempo real, exibindo informações sobre temperatura, umidade e qualidade do ar.",
+    course: "Ciência da Computação",
+    phase: "5ª Fase",
+    tags: ["React", "Node.js", "PostgreSQL"],
+    collaborators: [
+      { id: 1, name: "Antoni Ferraz", color: "#3a5a8a" },
+      { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/monitoramento-ambiental",
+    status: "Em desenvolvimento",
+    files: [
+      {
+        name: "dashboard-monitoramento.png",
+        size: 1887436,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-ambiental-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "sensores-em-funcionamento.jpg",
+        size: 2516582,
+        type: "image/jpeg",
+        preview:
+          "https://picsum.photos/seed/techub-edit-ambiental-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+  2: {
+    title: "Biblioteca Digital IFSC",
+    description:
+      "Aplicação para organizar, pesquisar e disponibilizar materiais acadêmicos produzidos por estudantes.",
+    course: "Técnico em Desenvolvimento de Sistemas",
+    phase: "3ª Fase",
+    tags: ["React", "Express", "SQLite"],
+    collaborators: [
+      { id: 3, name: "Marcio Zunique", color: "#555555" },
+      { id: 4, name: "Lucas Mendes", color: "#4a7a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/biblioteca-digital",
+    status: "Em design",
+    files: [
+      {
+        name: "pagina-inicial-biblioteca.png",
+        size: 1572864,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-biblioteca-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "pesquisa-de-materiais.png",
+        size: 2202009,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-biblioteca-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+  3: {
+    title: "Controle Inteligente de Laboratórios",
+    description:
+      "Sistema para reserva de laboratórios, controle de equipamentos e acompanhamento das atividades acadêmicas.",
+    course: "Ciência da Computação",
+    phase: "6ª Fase",
+    tags: ["JavaScript", "Vite", "PostgreSQL"],
+    collaborators: [
+      { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/controle-laboratorios",
+    status: "Concluído",
+    files: [
+      {
+        name: "painel-laboratorios.png",
+        size: 1992294,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-laboratorio-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "demonstracao-laboratorios.mp4",
+        size: 12582912,
+        type: "video/mp4",
+        preview:
+          "https://picsum.photos/seed/techub-edit-laboratorio-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+};
 function isValidUrl(value) {
   try {
     const url = new URL(value);
@@ -190,6 +290,10 @@ function validateForm({
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+
+  const projectToEdit = id ? MOCK_EDIT_PROJECTS[id] : null;
+  const isEditing = Boolean(projectToEdit);
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
@@ -235,6 +339,31 @@ export default function NewProjectPage() {
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  useEffect(() => {
+    if (!projectToEdit) {
+      return;
+    }
+
+    setTitle(projectToEdit.title);
+    setDescriptionHtml(projectToEdit.description);
+    setDescriptionText(projectToEdit.description);
+    setCourse(projectToEdit.course);
+    setPhase(projectToEdit.phase);
+    setTags(projectToEdit.tags);
+    setCollaborators(projectToEdit.collaborators);
+    setGithub(projectToEdit.github);
+    setLiveUrl(projectToEdit.liveUrl);
+    setStatus(projectToEdit.status);
+    setFiles(projectToEdit.files);
+
+    window.requestAnimationFrame(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = projectToEdit.description;
+      }
+    });
+  }, [id]);
+
 
   const phaseOptions = course
     ? Array.from(
@@ -547,7 +676,14 @@ export default function NewProjectPage() {
         break;
       }
 
-      acceptedFiles.push(file);
+      acceptedFiles.push({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        preview: URL.createObjectURL(file),
+        originalFile: file,
+        isExisting: false,
+      });
     }
 
     if (acceptedFiles.length > 0) {
@@ -651,7 +787,9 @@ export default function NewProjectPage() {
 
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">
+        {isEditing ? "Editar projeto" : "Novo projeto"}
+      </h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -1228,7 +1366,28 @@ export default function NewProjectPage() {
             <ul className="upload-file-list">
               {files.map((file, index) => (
                 <li key={`${file.name}-${file.size}`} className="upload-file">
-                  <i className="fa-solid fa-paperclip" aria-hidden="true" />
+                  <div className="upload-file-preview">
+                    {file.preview ? (
+                      <img
+                        src={file.preview}
+                        alt={`Prévia de ${file.name}`}
+                      />
+                    ) : (
+                      <i
+                        className="fa-solid fa-paperclip"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    {file.type.startsWith("video/") && (
+                      <span className="upload-file-preview__video">
+                        <i
+                          className="fa-solid fa-play"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    )}
+                  </div>
 
                   <span className="upload-file-information">
                     <strong>{file.name}</strong>
@@ -1302,9 +1461,11 @@ export default function NewProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => (isEditing ? navigate(-1) : navigate("/"))}
         >
-          Cancelar e voltar para a página inicial
+          {isEditing
+            ? "Cancelar e voltar"
+            : "Cancelar e voltar para a página inicial"}
         </button>
       </form>
     </main>

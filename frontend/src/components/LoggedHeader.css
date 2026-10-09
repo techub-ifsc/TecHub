@@ -352,3 +352,61 @@
     display: none;
   }
 }
+
+/* Opção de edição disponível para criadores e administradores */
+.logged-header__profile-edit {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0.625rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.625rem;
+  color: #d2d5d9;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.logged-header__profile-edit:hover,
+.logged-header__profile-edit:focus-visible {
+  color: var(--tc-green);
+  background: rgb(120 220 80 / 10%);
+  outline: none;
+}
+
+.logged-header__profile-edit i {
+  width: 16px;
+  text-align: center;
+}
+/* Padronização das opções do menu da conta */
+.site-header
+  .logged-header__dropdown
+  button.logged-header__logout {
+  color: #d2d5d9;
+  background: transparent !important;
+}
+
+.site-header
+  .logged-header__dropdown
+  button.logged-header__logout:hover,
+.site-header
+  .logged-header__dropdown
+  button.logged-header__logout:focus-visible {
+  color: var(--tc-green);
+  background: rgb(120 220 80 / 10%) !important;
+  outline: none;
+}
+
+.site-header
+  .logged-header__dropdown
+  button.logged-header__logout i {
+  width: 16px;
+  text-align: center;
+}

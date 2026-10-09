@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import ConfirmationModal from "./ConfirmationModal";
 import "./Header.css";
 import "./LoggedHeader.css";
 
@@ -14,6 +15,8 @@ const ROLE_LABELS = {
 export default function LoggedHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] =
+    useState(false);
   const accountMenuRef = useRef(null);
 
   const { user, logout } = useAuth();
@@ -217,10 +220,38 @@ export default function LoggedHeader() {
                   className="logged-header__dropdown"
                   role="menu"
                 >
+                  {isCreator && (
+                    <>
+                      <Link
+                        to={`/criadores/${user?.id}/editar`}
+                        className="logged-header__profile-edit"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          closeMenu();
+                        }}
+                        role="menuitem"
+                      >
+                        <i
+                          className="fa-solid fa-user-pen"
+                          aria-hidden="true"
+                        />
+                        Editar perfil
+                      </Link>
+
+                      <div
+                        className="logged-header__divider"
+                        aria-hidden="true"
+                      />
+                    </>
+                  )}
+
                   <button
                     type="button"
                     className="logged-header__logout"
-                    onClick={handleLogout}
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      setLogoutConfirmationOpen(true);
+                    }}
                     role="menuitem"
                   >
                     <i
@@ -235,6 +266,19 @@ export default function LoggedHeader() {
           </div>
         </div>
       </div>
-    </header>
+    <ConfirmationModal
+        open={logoutConfirmationOpen}
+        tone="danger"
+        title="Sair da conta?"
+        description="Você precisará entrar novamente para acessar os recursos da sua conta."
+        confirmLabel="Sim, sair"
+        cancelLabel="Cancelar"
+        onCancel={() => setLogoutConfirmationOpen(false)}
+        onConfirm={() => {
+          setLogoutConfirmationOpen(false);
+          handleLogout();
+        }}
+      />
+      </header>
   );
 }

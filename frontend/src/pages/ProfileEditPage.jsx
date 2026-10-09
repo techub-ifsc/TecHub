@@ -1,23 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
+import ConfirmationModal from "../components/ConfirmationModal";
+import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
 
-const INITIAL_BIO =
-  "Olá! Sou Antoni Ferraz, estudante de Ciência da Computação no IFSC Câmpus Lages, atualmente na 8ª fase do curso. Apaixonado por tecnologia desde cedo, encontrei no desenvolvimento web minha principal área de interesse e atuação.\n\nTenho experiência prática com React, Node.js e PostgreSQL, desenvolvendo aplicações web completas — do planejamento ao deploy. Também me interesso por testes de software, tendo trabalhado com ferramentas de automação e QA em projetos colaborativos.";
+const INITIAL_BIO = "";
 
-const INITIAL_INTERESTS = [
-  "React",
-  "Node.js",
-  "Python",
-  "PostgreSQL",
-  "CSS",
-  "HTML",
-  "Git",
-  "Figma",
-  "Agile",
-];
+const INITIAL_INTERESTS = [];
 
 const TECHNOLOGY_OPTIONS = [
   "JavaScript",
@@ -101,26 +92,68 @@ const COURSE_OPTIONS = [
   "Técnico em Desenvolvimento de Sistemas",
 ];
 
-const STATUS_OPTIONS = [
-  "Em formação",
-  "Formado",
-  "Egresso",
-  "Matrícula trancada",
-];
-
-const INITIAL_FORM = {
-  name: "Antoni Ferraz",
-  slug: "antoni-ferraz",
-  bio: INITIAL_BIO,
-  github: "https://github.com/antoni-ferraz",
-  linkedin: "https://linkedin.com/in/antoni-ferraz",
-  campus: "IFSC Câmpus Lages",
-  course: "Ciência da Computação",
-  conclusionYear: "2026",
-  conclusionSemester: "2",
-  academicStatus: "Em formação",
+const COURSE_PHASES = {
+  "Ciência da Computação": 8,
+  "Técnico em Informática para Internet": 4,
+  "Técnico em Desenvolvimento de Sistemas": 3,
 };
 
+const INITIAL_FORM = {
+  name: "",
+  slug: "",
+  bio: INITIAL_BIO,
+  github: "",
+  linkedin: "",
+  campus: "IFSC Câmpus Lages",
+  course: "",
+  phase: "",
+};
+
+const INITIAL_PROFILE_PROJECTS = [
+  {
+    id: 1,
+    title: "Sistema de Monitoramento Ambiental",
+    description:
+      "Plataforma para acompanhar sensores ambientais em tempo real.",
+    status: "Em desenvolvimento",
+    technologies: ["React", "Node.js", "PostgreSQL"],
+    updatedAt: "Atualizado hoje",
+  },
+  {
+    id: 2,
+    title: "Biblioteca Digital IFSC",
+    description:
+      "Aplicação para organizar e disponibilizar materiais acadêmicos.",
+    status: "Em design",
+    technologies: ["React", "Express", "Sequelize"],
+    updatedAt: "Atualizado ontem",
+  },
+  {
+    id: 3,
+    title: "Controle Inteligente de Laboratórios",
+    description:
+      "Sistema para reservas e acompanhamento dos laboratórios.",
+    status: "Concluído",
+    technologies: ["JavaScript", "Vite", "PostgreSQL"],
+    updatedAt: "Atualizado em 7 de outubro",
+  },
+];
+
+const PROJECT_STATUS_OPTIONS = [
+  "Em design",
+  "Em desenvolvimento",
+  "Concluído",
+  "Pausado",
+];
+function readStoredProfile(storageKey) {
+  try {
+    const storedValue = localStorage.getItem(storageKey);
+
+    return storedValue ? JSON.parse(storedValue) : null;
+  } catch {
+    return null;
+  }
+}
 function normalizeSlug(value) {
   return value
     .normalize("NFD")
@@ -148,9 +181,32 @@ function isValidUrl(value) {
 export default function ProfileEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
 
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [interests, setInterests] = useState(INITIAL_INTERESTS);
+  const profileStorageKey =
+    `techub:creator-profile:${user?.id || id}`;
+
+  const storedProfile = useMemo(
+    () => readStoredProfile(profileStorageKey),
+    [profileStorageKey],
+  );
+
+  const [form, setForm] = useState(() => {
+    const accountName = user?.name?.trim() || "";
+
+    return {
+      ...INITIAL_FORM,
+      ...(storedProfile?.form || {}),
+      name: storedProfile?.form?.name || accountName,
+      slug:
+        storedProfile?.form?.slug ||
+        normalizeSlug(accountName),
+    };
+  });
+
+  const [interests, setInterests] = useState(
+    () => storedProfile?.interests || INITIAL_INTERESTS,
+  );
   const [interestInput, setInterestInput] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
@@ -162,9 +218,40 @@ export default function ProfileEditPage() {
 
   const [portfolioFile, setPortfolioFile] = useState(null);
 
+  const [profileProjects, setProfileProjects] = useState(
+    INITIAL_PROFILE_PROJECTS,
+  );
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [projectEditForm, setProjectEditForm] = useState({
+    title: "",
+    description: "",
+    status: "",
+  });
+  const [projectToDelete, setProjectToDelete] = useState(null);
+
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  const profileInitials =
+    form.name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase() || "U";
+
+  const phaseOptions = form.course
+    ? [
+        ...Array.from(
+          { length: COURSE_PHASES[form.course] || 0 },
+          (_, index) => `${index + 1}ª fase`,
+        ),
+        "Curso concluído",
+      ]
+    : [];
 
   const filteredTechnologies = useMemo(() => {
     const search = interestInput.trim().toLowerCase();
@@ -192,6 +279,7 @@ export default function ProfileEditPage() {
     setForm((currentForm) => ({
       ...currentForm,
       [name]: name === "slug" ? normalizeSlug(value) : value,
+      ...(name === "course" ? { phase: "" } : {}),
     }));
 
     setErrors((currentErrors) => ({
@@ -304,56 +392,113 @@ export default function ProfileEditPage() {
     if (!form.name.trim()) {
       validationErrors.name = "Informe o nome do criador.";
     } else if (form.name.trim().length < 3) {
-      validationErrors.name = "O nome deve possuir pelo menos 3 caracteres.";
+      validationErrors.name =
+        "O nome deve possuir pelo menos 3 caracteres.";
     }
 
     if (!form.slug.trim()) {
-      validationErrors.slug = "Informe um endereço para o perfil.";
-    }
-
-    if (!form.bio.trim()) {
-      validationErrors.bio = "Escreva uma apresentação para o perfil.";
-    } else if (form.bio.trim().length < 20) {
-      validationErrors.bio =
-        "A apresentação deve possuir pelo menos 20 caracteres.";
+      validationErrors.slug =
+        "Informe um endereço para o perfil.";
     }
 
     if (!isValidUrl(form.github)) {
-      validationErrors.github = "Informe uma URL válida para o GitHub.";
+      validationErrors.github =
+        "Informe uma URL válida para o GitHub.";
     }
 
     if (!isValidUrl(form.linkedin)) {
-      validationErrors.linkedin = "Informe uma URL válida para o LinkedIn.";
-    }
-
-    if (!form.campus.trim()) {
-      validationErrors.campus = "Informe o campus.";
+      validationErrors.linkedin =
+        "Informe uma URL válida para o LinkedIn.";
     }
 
     if (!form.course) {
       validationErrors.course = "Selecione o curso.";
     }
 
-    if (!form.conclusionYear) {
-      validationErrors.conclusionYear =
-        "Informe o ano previsto para conclusão.";
-    }
-
-    if (!form.conclusionSemester) {
-      validationErrors.conclusionSemester = "Selecione o semestre.";
-    }
-
-    if (!form.academicStatus) {
-      validationErrors.academicStatus = "Selecione o vínculo acadêmico.";
-    }
-
-    if (interests.length === 0) {
-      validationErrors.interests = "Adicione pelo menos uma área de interesse.";
+    if (!form.phase) {
+      validationErrors.phase =
+        "Selecione a fase ou informe que o curso foi concluído.";
     }
 
     return validationErrors;
   }
 
+  function startEditingProject(project) {
+    setEditingProjectId(project.id);
+    setProjectEditForm({
+      title: project.title,
+      description: project.description,
+      status: project.status,
+    });
+    clearFeedback();
+  }
+
+  function handleProjectEditChange(event) {
+    const { name, value } = event.target;
+
+    setProjectEditForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
+  }
+
+  function saveProjectEdit() {
+    const title = projectEditForm.title.trim();
+    const description = projectEditForm.description.trim();
+
+    if (!title || !description || !projectEditForm.status) {
+      setFeedbackType("error");
+      setFeedbackMessage(
+        "Preencha título, descrição e status antes de salvar o projeto.",
+      );
+      return;
+    }
+
+    setProfileProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === editingProjectId
+          ? {
+              ...project,
+              title,
+              description,
+              status: projectEditForm.status,
+              updatedAt: "Atualizado agora",
+            }
+          : project,
+      ),
+    );
+
+    setEditingProjectId(null);
+    setFeedbackType("success");
+    setFeedbackMessage("Projeto atualizado com sucesso.");
+  }
+
+  function cancelProjectEdit() {
+    setEditingProjectId(null);
+    setProjectEditForm({
+      title: "",
+      description: "",
+      status: "",
+    });
+    clearFeedback();
+  }
+
+  function confirmProjectDeletion() {
+    if (!projectToDelete) {
+      return;
+    }
+
+    setProfileProjects((currentProjects) =>
+      currentProjects.filter(
+        (project) => project.id !== projectToDelete.id,
+      ),
+    );
+
+    setProjectToDelete(null);
+    setEditingProjectId(null);
+    setFeedbackType("success");
+    setFeedbackMessage("Projeto excluído com sucesso.");
+  }
   function handleSubmit(event) {
     event.preventDefault();
 
@@ -389,6 +534,24 @@ export default function ProfileEditPage() {
       portfolioFile,
     };
 
+    localStorage.setItem(
+      profileStorageKey,
+      JSON.stringify({
+        form: {
+          name: profileData.name,
+          slug: profileData.slug,
+          bio: profileData.bio,
+          github: profileData.github,
+          linkedin: profileData.linkedin,
+          campus: profileData.campus,
+          course: profileData.course,
+          phase: profileData.phase,
+        },
+        interests,
+        savedAt: new Date().toISOString(),
+      }),
+    );
+
     console.log("Perfil pronto para atualização:", profileData);
 
     setFeedbackType("success");
@@ -415,7 +578,7 @@ export default function ProfileEditPage() {
 
         <div className="profile-edit-page__heading">
           <div>
-            <p>Configurações do perfil</p>
+
             <h1>Editar perfil</h1>
           </div>
 
@@ -466,7 +629,9 @@ export default function ProfileEditPage() {
                         alt="Prévia da nova foto de perfil"
                       />
                     ) : (
-                      <span aria-hidden="true">AF</span>
+                      <span aria-hidden="true">
+                        {profileInitials}
+                      </span>
                     )}
 
                     <span className="profile-edit-avatar__overlay">
@@ -696,7 +861,7 @@ export default function ProfileEditPage() {
                     )}
                   </div>
 
-                  <div className="profile-edit-field">
+                  <div className="profile-edit-portfolio-row">
                     <span className="profile-edit-label">
                       <i
                         className="fa-solid fa-file-arrow-up"
@@ -705,12 +870,19 @@ export default function ProfileEditPage() {
                       Currículo ou portfólio
                     </span>
 
+                    <span
+                      className="profile-edit-portfolio-divider"
+                      aria-hidden="true"
+                    />
+
                     <label className="profile-edit-file">
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,.zip"
                         onChange={(event) =>
-                          setPortfolioFile(event.target.files?.[0] || null)
+                          setPortfolioFile(
+                            event.target.files?.[0] || null,
+                          )
                         }
                       />
 
@@ -736,7 +908,6 @@ export default function ProfileEditPage() {
                   <div className="profile-edit-field">
                     <label htmlFor="profile-campus">
                       Campus
-                      <span aria-hidden="true">*</span>
                     </label>
 
                     <input
@@ -744,15 +915,10 @@ export default function ProfileEditPage() {
                       name="campus"
                       type="text"
                       value={form.campus}
-                      onChange={handleChange}
-                      className={errors.campus ? "is-invalid" : ""}
+                      readOnly
+                      aria-readonly="true"
+                      className="is-readonly"
                     />
-
-                    {errors.campus && (
-                      <span className="profile-edit-error" role="alert">
-                        {errors.campus}
-                      </span>
-                    )}
                   </div>
 
                   <div className="profile-edit-field">
@@ -787,90 +953,41 @@ export default function ProfileEditPage() {
                     )}
                   </div>
 
-                  <div className="profile-edit-conclusion">
-                    <div className="profile-edit-field">
-                      <label htmlFor="profile-conclusion-year">
-                        Ano
-                        <span aria-hidden="true">*</span>
-                      </label>
-
-                      <input
-                        id="profile-conclusion-year"
-                        name="conclusionYear"
-                        type="number"
-                        min="2025"
-                        max="2100"
-                        value={form.conclusionYear}
-                        onChange={handleChange}
-                        className={errors.conclusionYear ? "is-invalid" : ""}
-                      />
-                    </div>
-
-                    <div className="profile-edit-field">
-                      <label htmlFor="profile-conclusion-semester">
-                        Semestre
-                        <span aria-hidden="true">*</span>
-                      </label>
-
-                      <CustomSelect
-                        id="profile-conclusion-semester"
-                        name="conclusionSemester"
-                        value={form.conclusionSemester}
-                        onChange={handleChange}
-                        invalid={Boolean(errors.conclusionSemester)}
-                        placeholder="Selecione"
-                        options={[
-                          {
-                            value: "",
-                            label: "Selecione",
-                          },
-                          {
-                            value: "1",
-                            label: "1º semestre",
-                          },
-                          {
-                            value: "2",
-                            label: "2º semestre",
-                          },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  {(errors.conclusionYear || errors.conclusionSemester) && (
-                    <span className="profile-edit-error" role="alert">
-                      {errors.conclusionYear || errors.conclusionSemester}
-                    </span>
-                  )}
-
                   <div className="profile-edit-field">
-                    <label htmlFor="profile-academic-status">
-                      Vínculo acadêmico
+                    <label htmlFor="profile-phase">
+                      Fase
                       <span aria-hidden="true">*</span>
                     </label>
 
                     <CustomSelect
-                      id="profile-academic-status"
-                      name="academicStatus"
-                      value={form.academicStatus}
+                      id="profile-phase"
+                      name="phase"
+                      value={form.phase}
                       onChange={handleChange}
-                      invalid={Boolean(errors.academicStatus)}
-                      placeholder="Selecione o vínculo"
+                      disabled={!form.course}
+                      invalid={Boolean(errors.phase)}
+                      placeholder={
+                        form.course
+                          ? "Selecione a fase"
+                          : "Selecione primeiro o curso"
+                      }
                       options={[
                         {
                           value: "",
-                          label: "Selecione o vínculo",
+                          label: form.course
+                            ? "Selecione a fase"
+                            : "Selecione primeiro o curso",
                         },
-                        ...STATUS_OPTIONS.map((status) => ({
-                          value: status,
-                          label: status,
+                        ...phaseOptions.map((phase) => ({
+                          value: phase,
+                          label: phase,
                         })),
                       ]}
                     />
 
-                    {errors.academicStatus && (
+                    {errors.phase && (
                       <span className="profile-edit-error" role="alert">
-                        {errors.academicStatus}
+                        {errors.phase}
                       </span>
                     )}
                   </div>
@@ -879,6 +996,197 @@ export default function ProfileEditPage() {
             </aside>
           </div>
 
+          <section className="profile-edit-card profile-edit-projects">
+            <div className="profile-edit-projects__heading">
+              <div>
+                <h2>Meus projetos</h2>
+                <p>
+                  Gerencie os projetos vinculados ao seu perfil de criador.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="profile-edit-projects__create"
+                onClick={() => navigate("/projeto/novo")}
+              >
+                <i className="fa-solid fa-plus" aria-hidden="true" />
+                Novo projeto
+              </button>
+            </div>
+
+            {profileProjects.length > 0 ? (
+              <div className="profile-edit-projects__list">
+                {profileProjects.map((project) => {
+                  const isEditing = editingProjectId === project.id;
+
+                  return (
+                    <article
+                      key={project.id}
+                      className={`profile-edit-project${
+                        isEditing ? " is-editing" : ""
+                      }`}
+                    >
+                      <div className="profile-edit-project__header">
+                        <span className="profile-edit-project__icon">
+                          <i
+                            className="fa-regular fa-folder-open"
+                            aria-hidden="true"
+                          />
+                        </span>
+
+                        <div>
+                          <span className="profile-edit-project__status">
+                            {project.status}
+                          </span>
+                          <small>{project.updatedAt}</small>
+                        </div>
+                      </div>
+
+                      {isEditing ? (
+                        <div className="profile-edit-project__editor">
+                          <div className="profile-edit-field">
+                            <label htmlFor={`project-title-${project.id}`}>
+                              Título
+                            </label>
+
+                            <input
+                              id={`project-title-${project.id}`}
+                              name="title"
+                              type="text"
+                              value={projectEditForm.title}
+                              onChange={handleProjectEditChange}
+                              maxLength={100}
+                            />
+                          </div>
+
+                          <div className="profile-edit-field">
+                            <label
+                              htmlFor={`project-description-${project.id}`}
+                            >
+                              Descrição
+                            </label>
+
+                            <textarea
+                              id={`project-description-${project.id}`}
+                              name="description"
+                              value={projectEditForm.description}
+                              onChange={handleProjectEditChange}
+                              maxLength={500}
+                            />
+                          </div>
+
+                          <div className="profile-edit-field">
+                            <label htmlFor={`project-status-${project.id}`}>
+                              Status
+                            </label>
+
+                            <CustomSelect
+                              id={`project-status-${project.id}`}
+                              name="status"
+                              value={projectEditForm.status}
+                              onChange={handleProjectEditChange}
+                              options={PROJECT_STATUS_OPTIONS.map(
+                                (statusOption) => ({
+                                  value: statusOption,
+                                  label: statusOption,
+                                }),
+                              )}
+                            />
+                          </div>
+
+                          <div className="profile-edit-project__edit-actions">
+                            <button
+                              type="button"
+                              className="profile-edit-project__cancel"
+                              onClick={cancelProjectEdit}
+                            >
+                              Cancelar
+                            </button>
+
+                            <button
+                              type="button"
+                              className="profile-edit-project__save"
+                              onClick={saveProjectEdit}
+                            >
+                              <i
+                                className="fa-solid fa-check"
+                                aria-hidden="true"
+                              />
+                              Salvar projeto
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="profile-edit-project__content">
+                            <h3>{project.title}</h3>
+                            <p>{project.description}</p>
+
+                            <div className="profile-edit-project__technologies">
+                              {project.technologies.map((technology) => (
+                                <span key={technology}>{technology}</span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="profile-edit-project__actions">
+                            <button
+                              type="button"
+                              className="profile-edit-project__view"
+                              onClick={() =>
+                                navigate(`/projetos/${project.id}`)
+                              }
+                            >
+                              <i
+                                className="fa-regular fa-eye"
+                                aria-hidden="true"
+                              />
+                              Visualizar
+                            </button>
+
+                            <button
+                              type="button"
+                              className="profile-edit-project__edit"
+                              onClick={() =>
+                                navigate(`/projetos/${project.id}/editar`)
+                              }
+                            >
+                              <i
+                                className="fa-solid fa-pen"
+                                aria-hidden="true"
+                              />
+                              Editar
+                            </button>
+
+                            <button
+                              type="button"
+                              className="profile-edit-project__delete"
+                              onClick={() => setProjectToDelete(project)}
+                            >
+                              <i
+                                className="fa-regular fa-trash-can"
+                                aria-hidden="true"
+                              />
+                              Excluir
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="profile-edit-projects__empty">
+                <i className="fa-regular fa-folder-open" aria-hidden="true" />
+                <strong>Nenhum projeto publicado</strong>
+                <p>
+                  Crie seu primeiro projeto para exibi-lo no perfil.
+                </p>
+              </div>
+            )}
+          </section>
           {feedbackMessage && (
             <p
               className={`profile-edit-feedback ${feedbackType}`}
@@ -903,6 +1211,21 @@ export default function ProfileEditPage() {
           </div>
         </form>
       </div>
-    </main>
+    <ConfirmationModal
+        open={Boolean(projectToDelete)}
+        tone="danger"
+        title="Excluir projeto?"
+        description={
+          projectToDelete
+            ? `O projeto "${projectToDelete.title}" será removido do seu perfil. Esta ação não poderá ser desfeita.`
+            : ""
+        }
+        confirmLabel="Sim, excluir"
+        cancelLabel="Cancelar"
+        onCancel={() => setProjectToDelete(null)}
+        onConfirm={confirmProjectDeletion}
+      />
+
+      </main>
   );
 }

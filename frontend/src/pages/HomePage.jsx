@@ -45,7 +45,11 @@ export default function HomePage() {
             state={
               canPublish
                 ? undefined
-                : { from: { pathname: "/projeto/novo" } }
+                : {
+                    from: { pathname: "/projeto/novo" },
+                    accessMessage:
+                      "Apenas contas de criador podem publicar projetos.",
+                  }
             }
             className="home-hero__primary-button"
           >

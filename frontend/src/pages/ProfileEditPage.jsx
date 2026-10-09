@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 import ConfirmationModal from "../components/ConfirmationModal";
@@ -217,6 +217,7 @@ export default function ProfileEditPage() {
   const [bannerPreview, setBannerPreview] = useState("");
 
   const [portfolioFile, setPortfolioFile] = useState(null);
+  const portfolioInputRef = useRef(null);
 
   const [profileProjects, setProfileProjects] = useState(
     INITIAL_PROFILE_PROJECTS,
@@ -734,7 +735,16 @@ export default function ProfileEditPage() {
 
             <aside className="profile-edit-sidebar">
               <section className="profile-edit-card">
-                <h2>Áreas de interesse</h2>
+                <div className="profile-edit-card__title-row">
+                  <h2>Áreas de interesse</h2>
+                  <span
+                    className={`profile-edit-interest-count ${
+                      interests.length >= 12 ? "is-full" : ""
+                    }`}
+                  >
+                    {interests.length}/12
+                  </span>
+                </div>
 
                 <p className="profile-edit-card__description">
                   Selecione até 12 tecnologias e áreas de atuação.
@@ -774,19 +784,25 @@ export default function ProfileEditPage() {
                       onKeyDown={handleInterestKeyDown}
                       placeholder="Buscar tecnologia"
                       autoComplete="off"
+                      disabled={interests.length >= 12}
                     />
 
                     <button
                       type="button"
                       onClick={() => addInterest()}
                       aria-label="Adicionar interesse"
-                      title="Adicionar interesse"
+                      title={
+                        interests.length >= 12
+                          ? "Limite de 12 áreas atingido"
+                          : "Adicionar interesse"
+                      }
+                      disabled={interests.length >= 12}
                     >
                       <i className="fa-solid fa-plus" aria-hidden="true" />
                     </button>
                   </div>
 
-                  {suggestionsOpen && filteredTechnologies.length > 0 && (
+                  {suggestionsOpen && interests.length < 12 && filteredTechnologies.length > 0 && (
                     <ul className="profile-edit-suggestions">
                       {filteredTechnologies.map((technology) => (
                         <li key={technology}>
@@ -803,6 +819,20 @@ export default function ProfileEditPage() {
                     </ul>
                   )}
                 </div>
+
+                {interests.length >= 12 && (
+                  <p
+                    className="profile-edit-interest-limit"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <i
+                      className="fa-solid fa-circle-info"
+                      aria-hidden="true"
+                    />
+                    Limite de 12 áreas de interesse atingido.
+                  </p>
+                )}
 
                 {errors.interests && (
                   <span className="profile-edit-error" role="alert">
@@ -875,28 +905,65 @@ export default function ProfileEditPage() {
                       aria-hidden="true"
                     />
 
-                    <label className="profile-edit-file">
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.zip"
-                        onChange={(event) =>
-                          setPortfolioFile(
-                            event.target.files?.[0] || null,
-                          )
-                        }
-                      />
+                    <div className="profile-edit-portfolio-control">
+                      <label className="profile-edit-file">
+                        <input
+                          ref={portfolioInputRef}
+                          type="file"
+                          accept=".pdf,.doc,.docx,.zip"
+                          onChange={(event) =>
+                            setPortfolioFile(
+                              event.target.files?.[0] || null,
+                            )
+                          }
+                        />
 
-                      <i
-                        className="fa-solid fa-cloud-arrow-up"
-                        aria-hidden="true"
-                      />
+                        <i
+                          className="fa-solid fa-cloud-arrow-up"
+                          aria-hidden="true"
+                        />
 
-                      <span>
-                        {portfolioFile
-                          ? portfolioFile.name
-                          : "Selecionar arquivo"}
-                      </span>
-                    </label>
+                        <span>
+                          {portfolioFile
+                            ? "Substituir arquivo"
+                            : "Selecionar arquivo"}
+                        </span>
+                      </label>
+
+                      {portfolioFile && (
+                        <div className="profile-edit-portfolio-file">
+                          <i
+                            className="fa-solid fa-file-lines"
+                            aria-hidden="true"
+                          />
+
+                          <div>
+                            <strong>{portfolioFile.name}</strong>
+                            <small>
+                              {(portfolioFile.size / 1024).toFixed(1)} KB
+                            </small>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPortfolioFile(null);
+
+                              if (portfolioInputRef.current) {
+                                portfolioInputRef.current.value = "";
+                              }
+                            }}
+                            aria-label={`Remover ${portfolioFile.name}`}
+                            title="Remover arquivo"
+                          >
+                            <i
+                              className="fa-solid fa-xmark"
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </section>

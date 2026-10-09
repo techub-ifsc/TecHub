@@ -12,12 +12,6 @@ const INITIAL_FORM = {
   confirmPassword: "",
 };
 
-// A tela usa os rótulos em português; a API espera "creator" / "visitor".
-const ACCOUNT_TYPE_API = {
-  criador: "creator",
-  visitante: "visitor",
-};
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateForm(form) {
@@ -122,7 +116,7 @@ export default function SignUpPage() {
           name: form.username,
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          accountType: ACCOUNT_TYPE_API[accountType],
+          accountType,
         }),
       });
 
@@ -363,15 +357,7 @@ export default function SignUpPage() {
           </span>
         )}
 
-        {successMessage && (
-          <p
-            className="signup-form__success"
-            role="status"
-            aria-live="polite"
-          >
-            {successMessage}
-          </p>
-        )}
+
 
         <div className="signup-form__actions">
           <button

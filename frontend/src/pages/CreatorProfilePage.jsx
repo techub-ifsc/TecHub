@@ -271,7 +271,7 @@ export default function CreatorProfilePage() {
             </section>
 
             <section className="creator-profile-card creator-profile-bio">
-              <h2>Bio / Apresentação</h2>
+              <h2>Bio</h2>
 
               <div className="creator-profile-bio__content">
                 {profileInfo.bio.map((paragraph, index) => (

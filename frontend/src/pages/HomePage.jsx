@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+
+import { useAuth } from "../context/AuthContext";
 import FeatureCard from "../components/FeatureCard";
 import logoTecHub from "../assets/LogoTecHub.svg";
 import RadarNetworkIcon from "../assets/RadarNetworkIcon.svg";
@@ -7,6 +9,15 @@ import GraduationIcon from "../assets/GraduationIcon.svg";
 import "./HomePage.css";
 
 export default function HomePage() {
+  const { user } = useAuth();
+
+  const canPublish =
+    user?.role === "creator" || user?.role === "super_admin";
+
+  const publishDestination = canPublish
+    ? "/projeto/novo"
+    : "/login";
+
   return (
     <div className="home-page">
       <section className="home-hero">
@@ -29,7 +40,15 @@ export default function HomePage() {
         </p>
 
         <div className="home-hero__actions">
-          <Link to="/projeto/novo" className="home-hero__primary-button">
+          <Link
+            to={publishDestination}
+            state={
+              canPublish
+                ? undefined
+                : { from: { pathname: "/projeto/novo" } }
+            }
+            className="home-hero__primary-button"
+          >
             Publique seu projeto
           </Link>
 

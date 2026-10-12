@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
+import CustomSelect from "../components/CustomSelect";
 
 import { API_URL } from "../api/apiUrl";
 import ProjectGallery from "../components/ProjectGallery";
@@ -117,6 +119,106 @@ const COLLABORATOR_RULES = [
   "Somente o proprietário pode excluir o projeto.",
 ];
 
+const MOCK_EDIT_PROJECTS = {
+  1: {
+    title: "Sistema de Monitoramento Ambiental",
+    description:
+      "Plataforma para acompanhar sensores ambientais em tempo real, exibindo informações sobre temperatura, umidade e qualidade do ar.",
+    course: "Ciência da Computação",
+    phase: "5ª Fase",
+    tags: ["React", "Node.js", "PostgreSQL"],
+    collaborators: [
+      { id: 1, name: "Antoni Ferraz", color: "#3a5a8a" },
+      { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/monitoramento-ambiental",
+    status: "Em desenvolvimento",
+    files: [
+      {
+        name: "dashboard-monitoramento.png",
+        size: 1887436,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-ambiental-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "sensores-em-funcionamento.jpg",
+        size: 2516582,
+        type: "image/jpeg",
+        preview:
+          "https://picsum.photos/seed/techub-edit-ambiental-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+  2: {
+    title: "Biblioteca Digital IFSC",
+    description:
+      "Aplicação para organizar, pesquisar e disponibilizar materiais acadêmicos produzidos por estudantes.",
+    course: "Técnico em Desenvolvimento de Sistemas",
+    phase: "3ª Fase",
+    tags: ["React", "Express", "SQLite"],
+    collaborators: [
+      { id: 3, name: "Marcio Zunique", color: "#555555" },
+      { id: 4, name: "Lucas Mendes", color: "#4a7a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/biblioteca-digital",
+    status: "Em design",
+    files: [
+      {
+        name: "pagina-inicial-biblioteca.png",
+        size: 1572864,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-biblioteca-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "pesquisa-de-materiais.png",
+        size: 2202009,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-biblioteca-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+  3: {
+    title: "Controle Inteligente de Laboratórios",
+    description:
+      "Sistema para reserva de laboratórios, controle de equipamentos e acompanhamento das atividades acadêmicas.",
+    course: "Ciência da Computação",
+    phase: "6ª Fase",
+    tags: ["JavaScript", "Vite", "PostgreSQL"],
+    collaborators: [
+      { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
+    ],
+    github: "https://github.com/techub-ifsc/TecHub",
+    liveUrl: "https://example.com/controle-laboratorios",
+    status: "Concluído",
+    files: [
+      {
+        name: "painel-laboratorios.png",
+        size: 1992294,
+        type: "image/png",
+        preview:
+          "https://picsum.photos/seed/techub-edit-laboratorio-1/800/450",
+        isExisting: true,
+      },
+      {
+        name: "demonstracao-laboratorios.mp4",
+        size: 12582912,
+        type: "video/mp4",
+        preview:
+          "https://picsum.photos/seed/techub-edit-laboratorio-2/800/450",
+        isExisting: true,
+      },
+    ],
+  },
+};
 function isValidUrl(value) {
   try {
     const url = new URL(value);
@@ -179,6 +281,10 @@ function validateForm({
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+
+  const projectToEdit = id ? MOCK_EDIT_PROJECTS[id] : null;
+  const isEditing = Boolean(projectToEdit);
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
@@ -222,12 +328,30 @@ export default function NewProjectPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
 
-  const gallery = useProjectMedia({
-    onError: (message) =>
-      message
-        ? setErrors((curr) => ({ ...curr, files: message }))
-        : clearFieldError("files"),
-  });
+  useEffect(() => {
+    if (!projectToEdit) {
+      return;
+    }
+
+    setTitle(projectToEdit.title);
+    setDescriptionHtml(projectToEdit.description);
+    setDescriptionText(projectToEdit.description);
+    setCourse(projectToEdit.course);
+    setPhase(projectToEdit.phase);
+    setTags(projectToEdit.tags);
+    setCollaborators(projectToEdit.collaborators);
+    setGithub(projectToEdit.github);
+    setLiveUrl(projectToEdit.liveUrl);
+    setStatus(projectToEdit.status);
+    setFiles(projectToEdit.files);
+
+    window.requestAnimationFrame(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = projectToEdit.description;
+      }
+    });
+  }, [id]);
+
 
   const phaseOptions = course
     ? Array.from(
@@ -371,6 +495,18 @@ export default function NewProjectPage() {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
     updateEditorState();
+
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      strikeThrough: document.queryCommandState("strikeThrough"),
+      unorderedList: document.queryCommandState("insertUnorderedList"),
+      orderedList: document.queryCommandState("insertOrderedList"),
+      justifyLeft: document.queryCommandState("justifyLeft"),
+      justifyCenter: document.queryCommandState("justifyCenter"),
+      justifyRight: document.queryCommandState("justifyRight"),
+    });
   }
 
   function updateEditorState() {
@@ -457,7 +593,73 @@ export default function NewProjectPage() {
   }
 
   function removeCollaborator(id) {
-    setCollaborators((curr) => curr.filter((c) => c.id !== id));
+    setCollaborators((currentCollaborators) =>
+      currentCollaborators.filter((collaborator) => collaborator.id !== id),
+    );
+  }
+
+  function addFiles(fileList) {
+    const incomingFiles = Array.from(fileList);
+    const acceptedFiles = [];
+    const rejectedMessages = [];
+
+    for (const file of incomingFiles) {
+      const isAcceptedType =
+        file.type.startsWith("image/") || file.type.startsWith("video/");
+
+      if (!isAcceptedType) {
+        rejectedMessages.push(`${file.name}: formato não permitido.`);
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        rejectedMessages.push(`${file.name}: tamanho superior a 20 MB.`);
+        continue;
+      }
+
+      const isDuplicate = [...files, ...acceptedFiles].some(
+        (savedFile) =>
+          savedFile.name === file.name && savedFile.size === file.size,
+      );
+
+      if (isDuplicate) {
+        rejectedMessages.push(`${file.name}: arquivo já adicionado.`);
+        continue;
+      }
+
+      if (files.length + acceptedFiles.length >= MAX_FILES) {
+        rejectedMessages.push(`O limite é de ${MAX_FILES} arquivos.`);
+        break;
+      }
+
+      acceptedFiles.push({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        preview: URL.createObjectURL(file),
+        originalFile: file,
+        isExisting: false,
+      });
+    }
+
+    if (acceptedFiles.length > 0) {
+      setFiles((currentFiles) => [...currentFiles, ...acceptedFiles]);
+
+      clearFieldError("files");
+    }
+
+    if (rejectedMessages.length > 0) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        files: rejectedMessages.join(" "),
+      }));
+    }
+  }
+
+  function removeFile(position) {
+    setFiles((currentFiles) =>
+      currentFiles.filter((_, index) => index !== position),
+    );
   }
 
   function handleSaveDraft() {
@@ -611,7 +813,9 @@ export default function NewProjectPage() {
 
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">
+        {isEditing ? "Editar projeto" : "Novo projeto"}
+      </h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -679,12 +883,14 @@ export default function NewProjectPage() {
                   active={activeFormats.italic}
                   onClick={() => applyEditorCommand("italic")}
                 />
+
                 <EditorButton
                   label="Sublinhado"
                   icon="fa-underline"
                   active={activeFormats.underline}
                   onClick={() => applyEditorCommand("underline")}
                 />
+
                 <EditorButton
                   label="Tachado"
                   icon="fa-strikethrough"
@@ -702,6 +908,7 @@ export default function NewProjectPage() {
                   active={activeFormats.unorderedList}
                   onClick={() => applyEditorCommand("insertUnorderedList")}
                 />
+
                 <EditorButton
                   label="Lista numerada"
                   icon="fa-list-ol"
@@ -719,12 +926,14 @@ export default function NewProjectPage() {
                   active={activeFormats.justifyLeft}
                   onClick={() => applyEditorCommand("justifyLeft")}
                 />
+
                 <EditorButton
                   label="Centralizar"
                   icon="fa-align-center"
                   active={activeFormats.justifyCenter}
                   onClick={() => applyEditorCommand("justifyCenter")}
                 />
+
                 <EditorButton
                   label="Alinhar à direita"
                   icon="fa-align-right"
@@ -741,6 +950,7 @@ export default function NewProjectPage() {
                   icon="fa-eraser"
                   onClick={() => applyEditorCommand("removeFormat")}
                 />
+
                 <EditorButton
                   label="Desfazer"
                   icon="fa-rotate-left"
@@ -790,24 +1000,33 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-course"
-              className={errors.course ? "project-select is-invalid" : "project-select"}
               value={course}
               onChange={handleCourseChange}
-              aria-invalid={Boolean(errors.course)}
-              required
-            >
-              <option value="">Selecione o curso</option>
-              {Object.keys(COURSE_PHASES).map((courseOption) => (
-                <option key={courseOption} value={courseOption}>
-                  {courseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.course)}
+              ariaDescribedBy={
+                errors.course ? "project-course-error" : undefined
+              }
+              placeholder="Selecione o curso"
+              options={[
+                {
+                  value: "",
+                  label: "Selecione o curso",
+                },
+                ...Object.keys(COURSE_PHASES).map((courseOption) => ({
+                  value: courseOption,
+                  label: courseOption,
+                })),
+              ]}
+            />
 
             {errors.course && (
-              <span className="field-error" role="alert">
+              <span
+                id="project-course-error"
+                className="field-error"
+                role="alert"
+              >
                 {errors.course}
               </span>
             )}
@@ -821,28 +1040,32 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-phase"
-              className={errors.phase ? "project-select is-invalid" : "project-select"}
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
                 clearFieldError("phase");
               }}
               disabled={!course}
-              aria-invalid={Boolean(errors.phase)}
-              required
-            >
-              <option value="">
-                {course ? "Selecione a fase" : "Selecione primeiro o curso"}
-              </option>
-              {phaseOptions.map((phaseOption) => (
-                <option key={phaseOption} value={phaseOption}>
-                  {phaseOption}
-                </option>
-              ))}
-            </select>
-
+              invalid={Boolean(errors.phase)}
+              ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
+              placeholder={
+                course ? "Selecione a fase" : "Selecione primeiro o curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: course
+                    ? "Selecione a fase"
+                    : "Selecione primeiro o curso",
+                },
+                ...phaseOptions.map((phaseOption) => ({
+                  value: phaseOption,
+                  label: phaseOption,
+                })),
+              ]}
+            />
             {errors.phase && (
               <span className="field-error" role="alert">
                 {errors.phase}
@@ -1095,11 +1318,99 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        <ProjectGallery
-          gallery={gallery}
-          error={errors.files}
-          onInputChange={() => clearFieldError("files")}
-        />
+        <div className="form-field">
+          <span className="form-label">
+            Galeria do projeto
+            <span className="required" aria-hidden="true">
+              *
+            </span>
+          </span>
+
+          <label
+            className={`upload-area ${
+              dragOver ? "drag-over" : ""
+            } ${errors.files ? "is-invalid" : ""}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              className="upload-input"
+              onChange={(event) => {
+                addFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+
+            <i className="fa-solid fa-plus upload-icon" aria-hidden="true" />
+
+            <div className="upload-text">
+              <p className="upload-title">Adicionar fotos ou vídeos</p>
+
+              <p className="upload-helper">
+                Até {MAX_FILES} arquivos de no máximo 20 MB cada
+              </p>
+            </div>
+          </label>
+
+          {errors.files && (
+            <span className="field-error" role="alert">
+              {errors.files}
+            </span>
+          )}
+
+          {files.length > 0 && (
+            <ul className="upload-file-list">
+              {files.map((file, index) => (
+                <li key={`${file.name}-${file.size}`} className="upload-file">
+                  <div className="upload-file-preview">
+                    {file.preview ? (
+                      <img
+                        src={file.preview}
+                        alt={`Prévia de ${file.name}`}
+                      />
+                    ) : (
+                      <i
+                        className="fa-solid fa-paperclip"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    {file.type.startsWith("video/") && (
+                      <span className="upload-file-preview__video">
+                        <i
+                          className="fa-solid fa-play"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="upload-file-information">
+                    <strong>{file.name}</strong>
+                    <small>{formatFileSize(file.size)}</small>
+                  </span>
+
+                  <button
+                    type="button"
+                    className="upload-file-remove"
+                    onClick={() => removeFile(index)}
+                    aria-label={`Remover ${file.name}`}
+                    title={`Remover ${file.name}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <fieldset className="status-section">
           <legend className="form-label">Status</legend>
@@ -1156,9 +1467,11 @@ export default function NewProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => (isEditing ? navigate(-1) : navigate("/"))}
         >
-          Cancelar e voltar para a página inicial
+          {isEditing
+            ? "Cancelar e voltar"
+            : "Cancelar e voltar para a página inicial"}
         </button>
       </form>
     </main>

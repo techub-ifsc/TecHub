@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
 import "./NewProjectPage.css";
@@ -93,14 +94,6 @@ const TECHNOLOGY_OPTIONS = [
   "Web",
   "WebSocket",
   "WordPress",
-];
-
-// Usando o UUID fornecido para o primeiro usuário de teste
-const MOCK_COLLABORATORS = [
-  { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
-  { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
-  { id: "b2222222-2222-2222-2222-222222222222", name: "Marcio Zunique", color: "#555555" },
-  { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
 ];
 
 // O backend espera exatamente estes valores definidos nas constantes/Zod
@@ -210,6 +203,8 @@ export default function NewProjectPage() {
 
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [collaborators, setCollaborators] = useState([]);
+  const [collaboratorOptions, setCollaboratorOptions] = useState([]);
+  const [collaboratorSearchStatus, setCollaboratorSearchStatus] = useState("idle");
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
 
   const [github, setGithub] = useState("");
@@ -246,19 +241,56 @@ export default function NewProjectPage() {
     }).slice(0, 10);
   }, [tagInput, tags]);
 
+  useEffect(() => {
+    const query = collaboratorInput.trim();
+    if (query.length < 2) {
+      setCollaboratorOptions([]);
+      setCollaboratorSearchStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    setCollaboratorOptions([]);
+    setCollaboratorSearchStatus("searching");
+
+    const timer = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
+        const response = await fetch(
+          `${API_URL}/projects/collaborators/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) throw new Error("Falha ao pesquisar colaboradores");
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setCollaboratorOptions(Array.isArray(data.users) ? data.users : []);
+          setCollaboratorSearchStatus("done");
+        }
+      } catch (error) {
+        if (error.name !== "AbortError" && !controller.signal.aborted) {
+          setCollaboratorOptions([]);
+          setCollaboratorSearchStatus("error");
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [collaboratorInput]);
+
   const collaboratorSuggestions = useMemo(() => {
-    const search = collaboratorInput.trim().toLowerCase();
-
-    if (!search) return [];
-
-    return MOCK_COLLABORATORS.filter((person) => {
-      const matchesSearch = person.name.toLowerCase().includes(search);
+    return collaboratorOptions.filter((person) => {
       const isNotSelected = !collaborators.some(
         (collaborator) => collaborator.id === person.id
       );
-      return matchesSearch && isNotSelected;
+      return isNotSelected;
     });
-  }, [collaboratorInput, collaborators]);
+  }, [collaboratorOptions, collaborators]);
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -514,7 +546,7 @@ export default function NewProjectPage() {
     let created = false;
 
     try {
-      const token = localStorage.getItem("techub_token");
+      const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
 
       // 1. Envia ao storage os arquivos que ainda não subiram e monta o campo media.
       if (gallery.hasPendingUploads) {
@@ -973,9 +1005,13 @@ export default function NewProjectPage() {
               />
             </div>
 
-            {collaboratorsOpen && collaboratorInput.trim() && (
+            {collaboratorsOpen && collaboratorInput.trim().length >= 2 && (
               <ul className="collaborator-suggestions">
-                {collaboratorSuggestions.length > 0 ? (
+                {collaboratorSearchStatus === "searching" ? (
+                  <li className="collaborator-empty">Pesquisando colaboradores...</li>
+                ) : collaboratorSearchStatus === "error" ? (
+                  <li className="collaborator-empty">Não foi possível buscar colaboradores. Tente novamente.</li>
+                ) : collaboratorSuggestions.length > 0 ? (
                   collaboratorSuggestions.map((person) => (
                     <li key={person.id}>
                       <button
@@ -984,12 +1020,11 @@ export default function NewProjectPage() {
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => addCollaborator(person)}
                       >
-                        <span
-                          className="collaborator-suggestion-avatar"
-                          style={{ backgroundColor: person.color }}
-                        >
-                          {person.name.charAt(0)}
-                        </span>
+                        <CollaboratorAvatar
+                          name={person.name}
+                          profilePhotoUrl={person.profilePhotoUrl}
+                          compact
+                        />
                         {person.name}
                       </button>
                     </li>
@@ -1016,12 +1051,10 @@ export default function NewProjectPage() {
                       ×
                     </button>
 
-                    <div
-                      className="collaborator-avatar"
-                      style={{ backgroundColor: collaborator.color }}
-                    >
-                      {collaborator.name.charAt(0)}
-                    </div>
+                    <CollaboratorAvatar
+                      name={collaborator.name}
+                      profilePhotoUrl={collaborator.profilePhotoUrl}
+                    />
 
                     <span className="collaborator-name">{collaborator.name}</span>
                   </div>

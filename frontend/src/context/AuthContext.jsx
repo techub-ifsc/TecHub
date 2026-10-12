@@ -9,16 +9,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('techub_token');
     if (!token) {
       setLoading(false);
       return;
     }
 
+    localStorage.setItem('token', token);
     fetchCurrentUser()
-      .then(setUser)
+      .then((currentUser) => {
+        localStorage.setItem('techub_token', token);
+        localStorage.setItem('techub_user', JSON.stringify(currentUser));
+        setUser(currentUser);
+      })
       .catch(() => {
         localStorage.removeItem('token');
+        localStorage.removeItem('techub_token');
+        localStorage.removeItem('techub_user');
         localStorage.removeItem('user');
       })
       .finally(() => setLoading(false));
@@ -28,6 +35,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     const { user: loggedUser, token } = await loginUser(credentials);
     localStorage.setItem('token', token);
+    localStorage.setItem('techub_token', token);
+    localStorage.setItem('techub_user', JSON.stringify(loggedUser));
     setUser(loggedUser);
     return loggedUser;
   }, []);
@@ -43,6 +52,8 @@ export function AuthProvider({ children }) {
   // Remove os dados locais de autenticação e encerra a sessão atual.
   const logout = useCallback(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem('techub_token');
+    localStorage.removeItem('techub_user');
     localStorage.removeItem('user');
     setUser(null);
   }, []);
@@ -50,6 +61,7 @@ export function AuthProvider({ children }) {
   // Persiste as alterações e sincroniza o usuário disponível no contexto.
   const updateProfile = useCallback(async (payload) => {
     const updatedUser = await updateProfileApi(payload);
+    localStorage.setItem('techub_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
     return updatedUser;
   }, []);

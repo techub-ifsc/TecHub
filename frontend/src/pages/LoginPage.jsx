@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import "./LoginPage.css";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const INITIAL_FORM = {
   email: "",
@@ -38,6 +37,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
@@ -72,33 +72,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-        }),
+      await login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrors({
-          general: data.message || "Não foi possível realizar o login.",
-        });
-        return;
-      }
-
-      // Salva a sessão no navegador
-      localStorage.setItem("techub_token", data.token);
-      localStorage.setItem("techub_user", JSON.stringify(data.user));
 
       setSuccessMessage("Login efetuado com sucesso! Redirecionando...");
       setTimeout(() => navigate("/"), 1000);
     } catch (err) {
       setErrors({
-        general: "Erro ao conectar ao servidor. Verifique se o back-end está ativo.",
+        general: err.response?.data?.message ||
+          (err.response
+            ? "Não foi possível realizar o login."
+            : "Erro ao conectar ao servidor. Verifique se o back-end está ativo."),
       });
     } finally {
       setLoading(false);
@@ -226,9 +212,15 @@ export default function LoginPage() {
           </p>
         )}
 
+        {errors.general && (
+          <p className="login-form__error" role="alert">
+            {errors.general}
+          </p>
+        )}
+
         <div className="login-form__actions">
-          <button type="submit" className="login-form__submit">
-            Entrar
+          <button type="submit" className="login-form__submit" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
           </button>
 
           <p className="login-form__signup">

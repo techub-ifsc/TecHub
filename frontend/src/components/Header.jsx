@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import "./Header.css";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   function closeMenu() {
     setMenuOpen(false);
@@ -15,19 +17,7 @@ export default function Header() {
     event.preventDefault();
     closeMenu();
 
-    const token =
-      localStorage.getItem("techub_token") ||
-      localStorage.getItem("token");
-
-    const rawUser = localStorage.getItem("techub_user");
-    let user = null;
-    try {
-      user = rawUser ? JSON.parse(rawUser) : null;
-    } catch {
-      user = null;
-    }
-
-    if (!token || !user?.id) {
+    if (!isAuthenticated || !user?.id) {
       alert("Entre na sua conta primeiro.");
       navigate("/login");
       return;
@@ -101,25 +91,29 @@ export default function Header() {
           </nav>
 
           <div className="site-header__actions">
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                `site-header__login${isActive ? " is-active" : ""}`
-              }
-              onClick={closeMenu}
-            >
-              Entrar
-            </NavLink>
+            {!isAuthenticated && (
+              <>
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) =>
+                    `site-header__login${isActive ? " is-active" : ""}`
+                  }
+                  onClick={closeMenu}
+                >
+                  Entrar
+                </NavLink>
 
-            <NavLink
-              to="/cadastro"
-              className={({ isActive }) =>
-                `site-header__signup${isActive ? " is-active" : ""}`
-              }
-              onClick={closeMenu}
-            >
-              Criar conta
-            </NavLink>
+                <NavLink
+                  to="/cadastro"
+                  className={({ isActive }) =>
+                    `site-header__signup${isActive ? " is-active" : ""}`
+                  }
+                  onClick={closeMenu}
+                >
+                  Criar conta
+                </NavLink>
+              </>
+            )}
 
             <NavLink
               to="/perfil"

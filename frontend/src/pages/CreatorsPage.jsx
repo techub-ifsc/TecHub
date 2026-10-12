@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import CustomSelect from "../components/CustomSelect";
+
 import "./CreatorsPage.css";
 
 const COURSE_PHASES = {
@@ -170,35 +172,44 @@ export default function CreatorsPage() {
           <label>
             <span>Curso</span>
 
-            <select value={course} onChange={handleCourseChange}>
-              <option value="">Todos os cursos</option>
-
-              {Object.keys(COURSE_PHASES).map((courseOption) => (
-                <option key={courseOption} value={courseOption}>
-                  {courseOption}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              id="creator-course-filter"
+              value={course}
+              onChange={handleCourseChange}
+              placeholder="Todos os cursos"
+              options={[
+                {
+                  value: "",
+                  label: "Todos os cursos",
+                },
+                ...Object.keys(COURSE_PHASES).map((courseOption) => ({
+                  value: courseOption,
+                  label: courseOption,
+                })),
+              ]}
+            />
           </label>
 
           <label>
             <span>Fase</span>
 
-            <select
+            <CustomSelect
+              id="creator-phase-filter"
               value={phase}
               onChange={(event) => setPhase(event.target.value)}
               disabled={!course}
-            >
-              <option value="">
-                {course ? "Todas as fases" : "Selecione um curso"}
-              </option>
-
-              {phaseOptions.map((phaseOption) => (
-                <option key={phaseOption} value={phaseOption}>
-                  {phaseOption}
-                </option>
-              ))}
-            </select>
+              placeholder={course ? "Todas as fases" : "Selecione um curso"}
+              options={[
+                {
+                  value: "",
+                  label: course ? "Todas as fases" : "Selecione um curso",
+                },
+                ...phaseOptions.map((phaseOption) => ({
+                  value: phaseOption,
+                  label: phaseOption,
+                })),
+              ]}
+            />
           </label>
 
           <button

@@ -32,7 +32,7 @@ export default function Footer() {
 
         <div className="site-footer__information">
           <p>
-            © {currentYear} TecHub — IFSC Câmpus Lages
+            © {currentYear} TecHub IFSC — Câmpus Lages
           </p>
 
           <p>

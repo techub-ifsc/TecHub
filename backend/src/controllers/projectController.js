@@ -131,8 +131,9 @@ async function create(req, res, next) {
     if (req.body.status === 'Concluido') {
       req.body.status = 'Concluído';
     }
+
     const data = createProjectSchema.parse(req.body);
-    const { technologies, collaborators, media, ...projectData } = data;
+    const { technologies, collaborators, media = [], ...projectData } = data;
 
     const ownerId = req.user?.id || req.userId;
 
@@ -149,7 +150,8 @@ async function create(req, res, next) {
     if (Array.isArray(technologies) && technologies.length > 0) {
       const techRecords = technologies.map((techName) => ({
         projectId: project.id,
-        name: techName.trim(),
+        project_id: project.id, // Garante compatibilidade camelCase e snake_case
+        name: typeof techName === 'string' ? techName.trim() : techName,
       }));
 
       await ProjectTechnology.bulkCreate(techRecords, { transaction });
@@ -158,11 +160,13 @@ async function create(req, res, next) {
     // 3. Insere os colaboradores
     if (Array.isArray(collaborators) && collaborators.length > 0) {
       const collaboratorRecords = collaborators.map((item) => {
-        // Trata caso venha objeto { userId, contribution } ou string com o próprio userId
         const isObject = typeof item === 'object' && item !== null;
+        const targetUserId = isObject ? item.userId : item;
         return {
           projectId: project.id,
-          userId: isObject ? item.userId : item,
+          project_id: project.id,
+          userId: targetUserId,
+          user_id: targetUserId,
           contribution: isObject ? (item.contribution || null) : null,
         };
       });
@@ -170,11 +174,17 @@ async function create(req, res, next) {
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
-    // 4. Insere as mídias (URLs já enviadas ao Cloudinary com assinatura do POST /media/signature)
-    const mediaRecords = await ProjectMedia.bulkCreate(
-      media.map((item) => ({ ...item, projectId: project.id })),
-      { transaction }
-    );
+    // 4. Insere as mídias (apenas se houver itens no array)
+    let mediaRecords = [];
+    if (Array.isArray(media) && media.length > 0) {
+      const formattedMedia = media.map((item) => ({
+        ...item,
+        projectId: project.id,
+        project_id: project.id,
+      }));
+
+      mediaRecords = await ProjectMedia.bulkCreate(formattedMedia, { transaction });
+    }
 
     // 5. Confirma todas as operações
     await transaction.commit();
@@ -184,7 +194,12 @@ async function create(req, res, next) {
         ...project.toJSON(),
         technologies: technologies || [],
         collaborators: collaborators || [],
-        media: mediaRecords.map(({ id, url, mediaType, isCover }) => ({ id, url, mediaType, isCover })),
+        media: (mediaRecords || []).map((m) => ({
+          id: m.id,
+          url: m.url,
+          mediaType: m.mediaType || m.media_type,
+          isCover: m.isCover || m.is_cover,
+        })),
       },
     });
   } catch (err) {

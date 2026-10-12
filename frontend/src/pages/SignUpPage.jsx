@@ -113,7 +113,12 @@ export default function SignUpPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(createRegistrationPayload(form, accountType)),
+        body: JSON.stringify({
+          name: form.username,
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+          accountType: accountType,
+        }),
       });
 
       const data = await response.json();

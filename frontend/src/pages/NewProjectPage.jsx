@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
+import CustomSelect from "../components/CustomSelect";
 import { API_URL } from "../api/apiUrl";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
@@ -172,6 +173,8 @@ function validateForm({
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
@@ -403,6 +406,18 @@ export default function NewProjectPage() {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
     updateEditorState();
+
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      strikeThrough: document.queryCommandState("strikeThrough"),
+      unorderedList: document.queryCommandState("insertUnorderedList"),
+      orderedList: document.queryCommandState("insertOrderedList"),
+      justifyLeft: document.queryCommandState("justifyLeft"),
+      justifyCenter: document.queryCommandState("justifyCenter"),
+      justifyRight: document.queryCommandState("justifyRight"),
+    });
   }
 
   function updateEditorState() {
@@ -548,7 +563,6 @@ export default function NewProjectPage() {
     try {
       const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
 
-      // 1. Envia ao storage os arquivos que ainda não subiram e monta o campo media.
       if (gallery.hasPendingUploads) {
         setFeedbackType("");
         setFeedbackMessage("Enviando fotos e vídeos...");
@@ -567,24 +581,20 @@ export default function NewProjectPage() {
       setFeedbackType("");
       setFeedbackMessage("Enviando projeto...");
 
-      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
 
-      // Monta o payload conforme o contrato do Backend/Zod
       const payload = {
         title: title.trim(),
         description: descriptionText.trim(),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        // Envia o objeto no formato esperado: { userId, contribution }
         collaborators: collaborators.map((c) => ({
           userId: c.id,
         })),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
-        // 2. Envia as URLs das mídias junto com o projeto.
         media,
       };
 
@@ -636,14 +646,15 @@ export default function NewProjectPage() {
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
     } finally {
-      // Após o sucesso o botão continua bloqueado até o redirecionamento.
       if (!created) setIsSubmitting(false);
     }
   }
 
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">
+        {isEditing ? "Editar projeto" : "Novo projeto"}
+      </h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -822,24 +833,33 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-course"
-              className={errors.course ? "project-select is-invalid" : "project-select"}
               value={course}
               onChange={handleCourseChange}
-              aria-invalid={Boolean(errors.course)}
-              required
-            >
-              <option value="">Selecione o curso</option>
-              {Object.keys(COURSE_PHASES).map((courseOption) => (
-                <option key={courseOption} value={courseOption}>
-                  {courseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.course)}
+              ariaDescribedBy={
+                errors.course ? "project-course-error" : undefined
+              }
+              placeholder="Selecione o curso"
+              options={[
+                {
+                  value: "",
+                  label: "Selecione o curso",
+                },
+                ...Object.keys(COURSE_PHASES).map((courseOption) => ({
+                  value: courseOption,
+                  label: courseOption,
+                })),
+              ]}
+            />
 
             {errors.course && (
-              <span className="field-error" role="alert">
+              <span
+                id="project-course-error"
+                className="field-error"
+                role="alert"
+              >
                 {errors.course}
               </span>
             )}
@@ -853,27 +873,32 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-phase"
-              className={errors.phase ? "project-select is-invalid" : "project-select"}
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
                 clearFieldError("phase");
               }}
               disabled={!course}
-              aria-invalid={Boolean(errors.phase)}
-              required
-            >
-              <option value="">
-                {course ? "Selecione a fase" : "Selecione primeiro o curso"}
-              </option>
-              {phaseOptions.map((phaseOption) => (
-                <option key={phaseOption} value={phaseOption}>
-                  {phaseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.phase)}
+              ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
+              placeholder={
+                course ? "Selecione a fase" : "Selecione primeiro o curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: course
+                    ? "Selecione a fase"
+                    : "Selecione primeiro o curso",
+                },
+                ...phaseOptions.map((phaseOption) => ({
+                  value: phaseOption,
+                  label: phaseOption,
+                })),
+              ]}
+            />
 
             {errors.phase && (
               <span className="field-error" role="alert">
@@ -1189,9 +1214,11 @@ export default function NewProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => (isEditing ? navigate(-1) : navigate("/"))}
         >
-          Cancelar e voltar para a página inicial
+          {isEditing
+            ? "Cancelar e voltar"
+            : "Cancelar e voltar para a página inicial"}
         </button>
       </form>
     </main>

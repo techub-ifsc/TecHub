@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
 import "./LoginPage.css";
 
 const INITIAL_FORM = {
@@ -37,6 +36,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const accessMessage = location.state?.accessMessage || "";
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -78,10 +79,14 @@ export default function LoginPage() {
       });
 
       setSuccessMessage("Login efetuado com sucesso! Redirecionando...");
-      setTimeout(() => navigate("/"), 1000);
+
+      window.setTimeout(() => {
+        navigate("/");
+      }, 700);
     } catch (err) {
       setErrors({
-        general: err.response?.data?.message ||
+        general:
+          err.response?.data?.message ||
           (err.response
             ? "Não foi possível realizar o login."
             : "Erro ao conectar ao servidor. Verifique se o back-end está ativo."),
@@ -203,32 +208,4 @@ export default function LoginPage() {
             title="A recuperação de senha estará disponível em breve"
           >
             Esqueceu a senha?
-          </button>
-        </div>
-
-        {successMessage && (
-          <p className="login-form__success" role="status">
-            {successMessage}
-          </p>
-        )}
-
-        {errors.general && (
-          <p className="login-form__error" role="alert">
-            {errors.general}
-          </p>
-        )}
-
-        <div className="login-form__actions">
-          <button type="submit" className="login-form__submit" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-
-          <p className="login-form__signup">
-            Ainda não possui uma conta?{" "}
-            <Link to="/cadastro">Criar conta</Link>
-          </p>
-        </div>
-      </form>
-    </main>
-  );
-}
+          </button

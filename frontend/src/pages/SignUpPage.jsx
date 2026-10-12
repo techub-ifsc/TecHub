@@ -117,7 +117,7 @@ export default function SignUpPage() {
           name: form.username,
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          accountType: accountType,
+          accountType,
         }),
       });
 
@@ -348,15 +348,7 @@ export default function SignUpPage() {
           </span>
         )}
 
-        {successMessage && (
-          <p
-            className="signup-form__success"
-            role="status"
-            aria-live="polite"
-          >
-            {successMessage}
-          </p>
-        )}
+
 
         <div className="signup-form__actions">
           <button

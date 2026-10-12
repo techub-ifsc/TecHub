@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
+import LoggedHeader from "./LoggedHeader";
 import "./Header.css";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
 
   function closeMenu() {
     setMenuOpen(false);
@@ -24,6 +24,26 @@ export default function Header() {
     }
 
     navigate(`/criadores/${user.id}`);
+  }
+
+  if (loading) {
+    return (
+      <header className="site-header">
+        <div className="site-header__content">
+          <Link to="/" className="site-header__brand">
+            <span className="site-header__symbol" aria-hidden="true">
+              &lt;/&gt;
+            </span>
+
+            <span className="logo-title-navbar">TecHub</span>
+          </Link>
+        </div>
+      </header>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <LoggedHeader />;
   }
 
   return (
@@ -69,6 +89,7 @@ export default function Header() {
             >
               Início
             </NavLink>
+
             <NavLink
               to="/projetos"
               className={({ isActive }) =>

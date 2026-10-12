@@ -345,3 +345,23 @@
     width: 100% !important;
   }
 }
+.login-form__notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  color: #f3c969;
+  background: rgba(243, 201, 105, 0.08);
+  border: 1px solid rgba(243, 201, 105, 0.55);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.login-form__notice i {
+  flex-shrink: 0;
+}

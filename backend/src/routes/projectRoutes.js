@@ -1,7 +1,8 @@
 const { Router } = require('express');
 const router = Router();
 const projectController = require('../controllers/projectController');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, authorize } = require('../middlewares/auth');
+const { ROLES } = require('../constants/roles');
 
 /**
  * @openapi
@@ -36,8 +37,10 @@ const { authenticate } = require('../middlewares/auth');
  *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Não autenticado. Token ausente ou inválido.
+ *       403:
+ *         description: Somente criadores podem cadastrar projetos.
  */
-router.post('/', authenticate, projectController.create);
+router.post('/', authenticate, authorize(ROLES.CREATOR), projectController.create);
 
 /**
  * @openapi
@@ -115,6 +118,8 @@ router.get('/', projectController.list);
  *     responses:
  *       200:
  *         description: Até 10 usuários, apenas com ID e nome.
+ *         error:
+ *         description: Erro ao buscar.
  *       401:
  *         description: Não autenticado.
  */
@@ -244,7 +249,7 @@ router.get('/:id', projectController.getById);
  *       500:
  *         description: Erro interno do servidor.
  */
-router.put('/:id', authenticate, projectController.update);
+router.put('/:id', authenticate, authorize(ROLES.CREATOR), projectController.update);
 
 /**
  * @openapi

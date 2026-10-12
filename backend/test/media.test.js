@@ -15,19 +15,14 @@ const { cloudinary } = require('../src/config/cloudinary');
 const { errorHandler } = require('../src/middlewares/errorHandler');
 const { signToken } = require('../src/utils/jwt');
 const { createProjectSchema } = require('../src/validators/projectValidators');
-const { matchesDeclaredType } = require('../src/services/mediaStorageService');
+const { createUploadSignature } = require('../src/services/mediaStorageService');
 
 const CLOUD_BASE = 'https://res.cloudinary.com/techub-test';
-// Mesmo formato das URLs geradas por uploadMedia.
+// Mesmo formato das URLs geradas pelas assinaturas de upload.
 const mediaName = (n) => `media_${1700000000000 + n}_${'ab12cd34ef56ab78'}`;
 const imageUrl = (n = 1) => `${CLOUD_BASE}/image/upload/v1700000000/techub/projects/${mediaName(n)}.webp`;
 const videoUrl = `${CLOUD_BASE}/video/upload/v1700000000/techub/projects/${mediaName(99)}.mp4`;
 
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
-const WEBP = Buffer.from('RIFF\0\0\0\0WEBPVP8 ', 'binary');
-const MP4 = Buffer.from('\0\0\0\x18ftypmp42', 'binary');
-const WEBM = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f]);
 
 const baseProject = {
   title: 'Projeto de teste',
@@ -108,45 +103,70 @@ describe('validação das mídias do projeto', () => {
   });
 });
 
-describe('assinatura binária dos arquivos', () => {
-  test('reconhece os formatos permitidos', () => {
-    assert.equal(matchesDeclaredType(PNG, 'image/png'), true);
-    assert.equal(matchesDeclaredType(JPEG, 'image/jpeg'), true);
-    assert.equal(matchesDeclaredType(WEBP, 'image/webp'), true);
-    assert.equal(matchesDeclaredType(MP4, 'video/mp4'), true);
-    assert.equal(matchesDeclaredType(WEBM, 'video/webm'), true);
+describe('assinatura de upload direto', () => {
+  test('trava pasta, nome, conversão para webp e impede sobrescrever (imagem)', () => {
+    const { mediaType, uploadUrl, fields } = createUploadSignature('image/png');
+    assert.equal(mediaType, 'image');
+    assert.equal(uploadUrl, 'https://api.cloudinary.com/v1_1/techub-test/image/upload');
+    assert.equal(fields.folder, 'techub/projects');
+    assert.match(fields.public_id, /^media_\d+_[0-9a-f]{16}$/);
+    assert.equal(fields.format, 'webp');
+    assert.equal(fields.transformation, 'c_limit,h_1920,q_auto,w_1920');
+    assert.equal(fields.overwrite, false);
+    // allowed_formats desativa a conversão de formato no Cloudinary
+    assert.equal(fields.allowed_formats, undefined);
+    assert.equal(fields.api_key, 'test-key');
+    assert.equal(JSON.stringify(fields).includes('test-secret'), false);
   });
 
-  test('rejeita conteúdo que não corresponde ao tipo declarado', () => {
-    assert.equal(matchesDeclaredType(Buffer.from('<script>alert(1)</script>'), 'image/png'), false);
-    assert.equal(matchesDeclaredType(PNG, 'image/jpeg'), false);
+  test('vídeos aceitam somente mp4 e webm, sem conversão', () => {
+    const { mediaType, uploadUrl, fields } = createUploadSignature('video/webm');
+    assert.equal(mediaType, 'video');
+    assert.match(uploadUrl, /\/video\/upload$/);
+    assert.equal(fields.allowed_formats, 'mp4,webm');
+    assert.equal(fields.format, undefined);
+    assert.equal(fields.transformation, undefined);
+  });
+
+  test('a assinatura cobre todos os parâmetros travados', () => {
+    const { fields } = createUploadSignature('image/jpeg');
+    const { signature, api_key: apiKey, ...signed } = fields;
+    assert.equal(signature, cloudinary.utils.api_sign_request(signed, 'test-secret'));
+    // Alterar qualquer parâmetro muda a assinatura esperada.
+    for (const key of ['folder', 'public_id', 'format', 'transformation', 'overwrite']) {
+      const tampered = { ...signed, [key]: key === 'overwrite' ? true : 'outro' };
+      assert.notEqual(signature, cloudinary.utils.api_sign_request(tampered, 'test-secret'), key);
+    }
+  });
+
+  test('cada assinatura gera um nome de arquivo diferente', () => {
+    const names = new Set(Array.from({ length: 20 }, () => createUploadSignature('image/png').fields.public_id));
+    assert.equal(names.size, 20);
+  });
+
+  test('a URL que o Cloudinary devolve é aceita no cadastro do projeto', () => {
+    const { fields } = createUploadSignature('image/png');
+    const url = `${CLOUD_BASE}/image/upload/v1700000000/${fields.folder}/${fields.public_id}.webp`;
+    assert.equal(parseMedia([{ url, mediaType: 'image' }]).success, true);
   });
 });
 
-describe('POST /api/media/upload', () => {
+describe('POST /api/media/signature', () => {
   let server;
   let baseUrl;
-  let uploads;
   const user = User.build({ name: 'Criador', email: 'criador@ifsc.edu.br', password: 'x', role: 'creator' });
 
   beforeEach(async (t) => {
-    uploads = [];
     t.mock.method(User, 'findByPk', async (id) => (id === user.id ? user : null));
-    t.mock.method(cloudinary.uploader, 'upload_stream', (options, callback) => ({
-      end: () => {
-        uploads.push(options);
-        const ext = options.format;
-        callback(null, { secure_url: `${CLOUD_BASE}/${options.resource_type}/upload/v1/${options.folder}/${options.public_id}.${ext}` });
-      },
-    }));
 
     delete require.cache[require.resolve('../src/routes/mediaRoutes')];
     const app = express();
+    app.use(express.json());
     app.use('/api/media', require('../src/routes/mediaRoutes'));
     app.use(errorHandler);
     server = app.listen(0, '127.0.0.1');
     await new Promise((resolve) => server.once('listening', resolve));
-    baseUrl = `http://127.0.0.1:${server.address().port}/api/media/upload`;
+    baseUrl = `http://127.0.0.1:${server.address().port}/api/media/signature`;
   });
 
   afterEach(async () => {
@@ -154,82 +174,71 @@ describe('POST /api/media/upload', () => {
     await new Promise((resolve) => server.close(resolve));
   });
 
-  function send(files, { auth = true } = {}) {
-    const form = new FormData();
-    for (const [name, type, buffer] of files) {
-      form.append('files', new Blob([buffer], { type }), name);
-    }
-    const headers = auth ? { Authorization: `Bearer ${signToken({ sub: user.id, role: user.role })}` } : {};
-    return fetch(baseUrl, { method: 'POST', body: form, headers });
+  function request(body, { auth = true } = {}) {
+    return fetch(baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(auth && { Authorization: `Bearer ${signToken({ sub: user.id, role: user.role })}` }),
+      },
+      body: JSON.stringify(body),
+    });
   }
 
-  test('envia imagens e vídeos e devolve as URLs na ordem', async () => {
-    const res = await send([['capa.png', 'image/png', PNG], ['demo.mp4', 'video/mp4', MP4]]);
+  test('assina o envio de uma imagem', async () => {
+    const res = await request({ type: 'image/jpeg', size: 2 * 1024 * 1024 });
     assert.equal(res.status, 201);
     const body = await res.json();
-    assert.deepEqual(body.media.map((m) => m.mediaType), ['image', 'video']);
-    assert.match(body.media[0].url, /\/techub\/projects\/media_\d+_[0-9a-f]{16}\.webp$/);
-    assert.equal(uploads[0].format, 'webp');
-    assert.equal(uploads[1].resource_type, 'video');
-
-    // As URLs devolvidas precisam ser aceitas pelo cadastro do projeto.
-    assert.equal(parseMedia(body.media).success, true);
+    assert.equal(body.mediaType, 'image');
+    assert.equal(body.fields.format, 'webp');
+    assert.ok(body.fields.signature);
   });
 
-  test('aceita webm como vídeo e mantém o formato', async () => {
-    const res = await send([['demo.webm', 'video/webm', WEBM]]);
+  test('assina o envio de um vídeo', async () => {
+    const res = await request({ type: 'video/mp4', size: 5 * 1024 * 1024 });
     assert.equal(res.status, 201);
-    const body = await res.json();
-    assert.match(body.media[0].url, /\.webm$/);
-    assert.equal(parseMedia(body.media).success, true);
+    assert.equal((await res.json()).fields.allowed_formats, 'mp4,webm');
+  });
+
+  test('exige autenticação', async () => {
+    const res = await request({ type: 'image/png', size: 1000 }, { auth: false });
+    assert.equal(res.status, 401);
   });
 
   test('recusa visitantes', async () => {
     const original = user.role;
     user.role = 'visitor';
     try {
-      const res = await send([['capa.png', 'image/png', PNG]]);
+      const res = await request({ type: 'image/png', size: 1000 });
       assert.equal(res.status, 403);
-      assert.equal(uploads.length, 0);
     } finally {
       user.role = original;
     }
   });
 
-  test('exige autenticação', async () => {
-    const res = await send([['capa.png', 'image/png', PNG]], { auth: false });
-    assert.equal(res.status, 401);
-    assert.equal(uploads.length, 0);
-  });
+  const invalidCases = [
+    ['formato não permitido (GIF)', { type: 'image/gif', size: 1000 }],
+    ['formato não permitido (MOV)', { type: 'video/quicktime', size: 1000 }],
+    ['arquivo acima de 10 MB', { type: 'image/png', size: 10 * 1024 * 1024 + 1 }],
+    ['arquivo vazio', { type: 'image/png', size: 0 }],
+    ['sem tamanho', { type: 'image/png' }],
+  ];
 
-  test('rejeita formato não permitido', async () => {
-    const res = await send([['anim.gif', 'image/gif', Buffer.from('GIF89a')]]);
-    assert.equal(res.status, 400);
-    assert.equal(uploads.length, 0);
-  });
+  for (const [name, body] of invalidCases) {
+    test(`recusa ${name}`, async () => {
+      const res = await request(body);
+      assert.equal(res.status, 400);
+    });
+  }
 
-  test('rejeita arquivo disfarçado e não envia nenhum dos arquivos', async () => {
-    const res = await send([['ok.png', 'image/png', PNG], ['fake.png', 'image/png', Buffer.from('<html>')]]);
-    assert.equal(res.status, 400);
-    assert.equal(uploads.length, 0);
-  });
-
-  test('rejeita arquivo acima de 20 MB', async () => {
-    const big = Buffer.concat([PNG, Buffer.alloc(20 * 1024 * 1024)]);
-    const res = await send([['grande.png', 'image/png', big]]);
-    assert.equal(res.status, 400);
-    assert.equal((await res.json()).message, 'Cada arquivo deve ter no máximo 20 MB.');
-  });
-
-  test('rejeita mais de 10 arquivos', async () => {
-    const files = Array.from({ length: 11 }, (_, i) => [`f${i}.png`, 'image/png', PNG]);
-    const res = await send(files);
-    assert.equal(res.status, 400);
-    assert.equal(uploads.length, 0);
-  });
-
-  test('rejeita envio sem arquivos', async () => {
-    const res = await send([]);
-    assert.equal(res.status, 400);
+  test('responde 503 quando o Cloudinary não está configurado', async () => {
+    const secret = process.env.CLOUDINARY_API_SECRET;
+    delete process.env.CLOUDINARY_API_SECRET;
+    try {
+      const res = await request({ type: 'image/png', size: 1000 });
+      assert.equal(res.status, 503);
+    } finally {
+      process.env.CLOUDINARY_API_SECRET = secret;
+    }
   });
 });

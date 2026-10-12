@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import CustomSelect from "../components/CustomSelect";
 
+import { API_URL } from "../api/apiUrl";
 import "./ProjectsPage.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 const COURSES = {
   "Ciência da Computação": 8,
   "Técnico em Informática para Internet": 4,
@@ -259,37 +260,49 @@ export default function ProjectsPage() {
         <div className="projects-page__filters">
           <div className="projects-page__select-group">
             <label htmlFor="course-filter">Curso</label>
-            <select
+
+            <CustomSelect
               id="course-filter"
               value={selectedCourse}
               onChange={handleCourseChange}
-            >
-              <option value="">Todos os cursos</option>
-              {Object.keys(COURSES).map((course) => (
-                <option key={course} value={course}>
-                  {course}
-                </option>
-              ))}
-            </select>
+              placeholder="Todos os cursos"
+              options={[
+                {
+                  value: "",
+                  label: "Todos os cursos",
+                },
+                ...Object.keys(COURSES).map((course) => ({
+                  value: course,
+                  label: course,
+                })),
+              ]}
+            />
           </div>
 
           <div className="projects-page__select-group">
             <label htmlFor="phase-filter">Fase</label>
-            <select
+
+            <CustomSelect
               id="phase-filter"
               value={selectedPhase}
               onChange={(event) => setSelectedPhase(event.target.value)}
               disabled={!selectedCourse}
-            >
-              <option value="">
-                {selectedCourse ? "Todas as fases" : "Selecione um curso"}
-              </option>
-              {phaseOptions.map((phase) => (
-                <option key={phase} value={phase}>
-                  {phase}
-                </option>
-              ))}
-            </select>
+              placeholder={
+                selectedCourse ? "Todas as fases" : "Selecione um curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: selectedCourse
+                    ? "Todas as fases"
+                    : "Selecione um curso",
+                },
+                ...phaseOptions.map((phase) => ({
+                  value: phase,
+                  label: phase,
+                })),
+              ]}
+            />
           </div>
 
           <div className="projects-page__tag-filter" ref={tagsContainerRef}>
@@ -470,7 +483,7 @@ function ProjectCard({ project }) {
       aria-label={`Ver detalhes do projeto ${project.title}`}
     >
       <div
-        className={`project-card__image${project.coverUrl ? " has-cover" : ""}`}
+        className={`project-card__image ${project.coverUrl ? "has-cover" : ""}`}
         style={{ backgroundColor: project.color }}
       >
         {project.coverUrl ? (
@@ -496,14 +509,19 @@ function ProjectCard({ project }) {
           </div>
         </div>
 
-        <div
-          className="project-card__tags"
-          aria-label="Tecnologias do projeto"
-        >
+        <div className="project-card__tags" aria-label="Tecnologias do projeto">
           {project.tags.map((tag) => (
             <span key={tag}>{tag}</span>
           ))}
         </div>
+
+        <span className="project-card__details">
+          <i
+            className="fa-solid fa-arrow-up-right-from-square"
+            aria-hidden="true"
+          />
+          Ver projeto
+        </span>
       </div>
     </Link>
   );
@@ -538,7 +556,10 @@ function Pagination({
           aria-label="Primeira página"
           title="Primeira página"
         >
-          «
+          <i
+            className="fa-solid fa-angles-left"
+            aria-hidden="true"
+          />
         </button>
 
         <button
@@ -548,12 +569,15 @@ function Pagination({
           aria-label="Página anterior"
           title="Página anterior"
         >
-          ‹
+          <i
+            className="fa-solid fa-chevron-left"
+            aria-hidden="true"
+          />
         </button>
 
         {visiblePages.map((page, index) =>
           page === "..." ? (
-            <span key={`ellipsis-${index}`}>…</span>
+            <span key={`ellipsis-${index}`}>...</span>
           ) : (
             <button
               key={page}
@@ -574,7 +598,10 @@ function Pagination({
           aria-label="Próxima página"
           title="Próxima página"
         >
-          ›
+          <i
+            className="fa-solid fa-chevron-right"
+            aria-hidden="true"
+          />
         </button>
 
         <button
@@ -584,14 +611,17 @@ function Pagination({
           aria-label="Última página"
           title="Última página"
         >
-          »
+          <i
+            className="fa-solid fa-angles-right"
+            aria-hidden="true"
+          />
         </button>
       </div>
 
       <p>
         Mostrando{" "}
         <strong>
-          {startItem}–{endItem}
+          {startItem}-{endItem}
         </strong>{" "}
         de <strong>{totalItems}</strong> projetos
       </p>

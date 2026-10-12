@@ -5,7 +5,9 @@ const MEDIA_TYPES = Object.freeze({
 });
 
 const MAX_MEDIA_PER_PROJECT = 10;
-const MAX_MEDIA_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+// Limite do plano gratuito do Cloudinary para imagens. O arquivo vai direto do
+// navegador ao Cloudinary, que não permite impor um limite próprio por upload.
+const MAX_MEDIA_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // Somente estes formatos são aceitos no upload, mapeados para o tipo salvo no banco.
 const ALLOWED_MIME_TYPES = Object.freeze({

@@ -1,6 +1,6 @@
-const { describe, test, beforeEach, afterEach } = require('node:test');
+const { test, describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { randomBytes } = require('node:crypto');
+const { randomBytes, randomUUID } = require('node:crypto');
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = randomBytes(48).toString('hex');
@@ -11,7 +11,7 @@ process.env.CLOUDINARY_API_SECRET = 'test-secret';
 
 const express = require('express');
 const sequelize = require('../src/config/database');
-const User = require('../src/models/User');
+const { User } = require('../src/models');
 const Project = require('../src/models/Project');
 const ProjectMedia = require('../src/models/ProjectMedia');
 const ProjectTechnology = require('../src/models/ProjectTechnology');
@@ -19,60 +19,54 @@ const ProjectCollaborator = require('../src/models/ProjectCollaborator');
 const { errorHandler } = require('../src/middlewares/errorHandler');
 const { signToken } = require('../src/utils/jwt');
 
-const projectId = '11111111-1111-4111-8111-111111111111';
-const ownerId = '22222222-2222-4222-8222-222222222222';
-const collaboratorId = '33333333-3333-4333-8333-333333333333';
-const outsiderId = '44444444-4444-4444-8444-444444444444';
-const imageUrl = (n) => `https://res.cloudinary.com/techub-test/image/upload/v1700000000/techub/projects/media_${1700000000000 + n}_ab12cd34ef56ab78.webp`;
+const imageUrl = (n) =>
+  `https://res.cloudinary.com/techub-test/image/upload/v1700000000/techub/projects/media_${1700000000000 + n}_ab12cd34ef56ab78.webp`;
 
-describe('edição e exclusão de projetos', () => {
+// Banco simulado: as rotas, middlewares, validadores e controllers são reais.
+describe('rotas de projetos', () => {
   let server;
   let baseUrl;
-  let project;
-  let media;
-  let technologies;
-  let collaborators;
-  let mediaDeletes;
+  let users;
+  let calls;
 
   beforeEach(async (t) => {
-    project = { id: projectId, ownerId, title: 'Projeto original', description: 'Descrição original', status: 'Em desenvolvimento' };
-    media = [{ id: 'media-1', projectId, url: imageUrl(1), mediaType: 'image', isCover: true }];
-    technologies = ['React'];
-    collaborators = [{ projectId, userId: collaboratorId, contribution: null }];
-    mediaDeletes = 0;
+    users = new Map();
+    calls = {
+      mediaDestroy: [],
+      mediaCreate: [],
+      projectCreate: 0,
+      projectDestroy: 0,
+      collaboratorDestroy: 0,
+      collaboratorCreate: [],
+    };
 
-    t.mock.method(sequelize, 'transaction', async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }));
-    t.mock.method(User, 'findByPk', async (id) => (
-      [ownerId, collaboratorId, outsiderId].includes(id) ? { id, role: 'creator' } : null
-    ));
-    t.mock.method(User, 'findAll', async () => [{ id: collaboratorId, name: 'Colega' }]);
-    t.mock.method(Project, 'findByPk', async (id) => {
-      if (!project || id !== projectId) return null;
-      return {
-        id: project.id,
-        ownerId: project.ownerId,
-        update: async (data) => Object.assign(project, data),
-        destroy: async () => { project = null; },
-        toJSON: () => ({
-          ...project,
-          technologies: technologies.map((name) => ({ name })),
-          collaborators: [...collaborators],
-          media: [...media],
-        }),
-      };
+    t.mock.method(User, 'findByPk', async (id) => users.get(id) || null);
+    t.mock.method(sequelize, 'transaction', async (callback) => {
+      const transaction = { LOCK: { UPDATE: 'UPDATE' }, commit: async () => {}, rollback: async () => {} };
+      return typeof callback === 'function' ? callback(transaction) : transaction;
     });
-    t.mock.method(ProjectMedia, 'destroy', async () => { mediaDeletes += 1; media = []; });
-    t.mock.method(ProjectMedia, 'bulkCreate', async (items) => {
-      media = items.map((item, index) => ({ id: `media-${index + 2}`, ...item }));
-      return media;
+    t.mock.method(Project, 'create', async (data) => {
+      calls.projectCreate += 1;
+      return Project.build({ ...data, id: randomUUID() });
     });
-    t.mock.method(ProjectTechnology, 'destroy', async () => { technologies = []; });
-    t.mock.method(ProjectTechnology, 'bulkCreate', async (items) => { technologies = items.map((item) => item.name); });
-    t.mock.method(ProjectCollaborator, 'findOne', async ({ where }) => (
-      collaborators.find((item) => item.projectId === where.projectId && item.userId === where.userId) || null
-    ));
-    t.mock.method(ProjectCollaborator, 'destroy', async () => { collaborators = []; });
-    t.mock.method(ProjectCollaborator, 'bulkCreate', async (items) => { collaborators = items; });
+    t.mock.method(ProjectTechnology, 'destroy', async () => 0);
+    t.mock.method(ProjectTechnology, 'bulkCreate', async () => []);
+    t.mock.method(ProjectCollaborator, 'destroy', async () => {
+      calls.collaboratorDestroy += 1;
+      return 0;
+    });
+    t.mock.method(ProjectCollaborator, 'bulkCreate', async (records) => {
+      calls.collaboratorCreate = records;
+      return records;
+    });
+    t.mock.method(ProjectCollaborator, 'findOne', async () => null);
+    t.mock.method(ProjectMedia, 'destroy', async (options) => calls.mediaDestroy.push(options.where));
+    t.mock.method(ProjectMedia, 'bulkCreate', async (records) => {
+      calls.mediaCreate.push(records);
+      return records.map((r) => ProjectMedia.build({ ...r, id: randomUUID() }));
+    });
+
+    delete require.cache[require.resolve('../src/routes/projectRoutes')];
 
     const app = express();
     app.use(express.json());
@@ -80,7 +74,7 @@ describe('edição e exclusão de projetos', () => {
     app.use(errorHandler);
     server = app.listen(0, '127.0.0.1');
     await new Promise((resolve) => server.once('listening', resolve));
-    baseUrl = `http://127.0.0.1:${server.address().port}/api/projects/${projectId}`;
+    baseUrl = `http://127.0.0.1:${server.address().port}/api/projects`;
   });
 
   afterEach(async () => {
@@ -88,111 +82,238 @@ describe('edição e exclusão de projetos', () => {
     await new Promise((resolve) => server.close(resolve));
   });
 
-  function request(method, userId, body) {
-    return fetch(baseUrl, {
+  function createUser(role) {
+    const user = User.build({ name: role, email: `${role}@ifsc.edu.br`, password: 'x', role });
+    users.set(user.id, user);
+    return user;
+  }
+
+  function request(method, path, user, body) {
+    return fetch(baseUrl + path, {
       method,
       headers: {
-        ...(userId ? { Authorization: `Bearer ${signToken({ sub: userId })}` } : {}),
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        'Content-Type': 'application/json',
+        ...(user && { Authorization: `Bearer ${signToken({ sub: user.id, role: user.role })}` }),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      body: body && JSON.stringify(body),
     });
   }
 
-  test('edita texto sem apagar as mídias existentes', async () => {
-    const response = await request('PUT', ownerId, { title: 'Novo título' });
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).project.media[0].url, imageUrl(1));
-    assert.equal(project.title, 'Novo título');
-    assert.equal(mediaDeletes, 0);
+  const validProject = {
+    title: 'Projeto teste',
+    description: 'Descrição do projeto teste',
+    media: [{ url: 'https://youtu.be/dQw4w9WgXcQ', mediaType: 'video' }],
+  };
+
+  test('visitante não pode cadastrar projeto, nem só com link do YouTube', async () => {
+    const res = await request('POST', '/', createUser('visitor'), validProject);
+    assert.equal(res.status, 403);
+    assert.equal(calls.projectCreate, 0);
   });
 
-  test('substitui a lista de mídias e troca a capa', async () => {
-    const response = await request('PUT', ownerId, {
-      media: [
-        { url: imageUrl(1), mediaType: 'image' },
-        { url: imageUrl(2), mediaType: 'image', isCover: true },
-      ],
+  test('criador cadastra projeto com mídia', async () => {
+    const res = await request('POST', '/', createUser('creator'), validProject);
+    assert.equal(res.status, 201);
+    assert.equal(calls.mediaCreate[0][0].url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  });
+
+  test('visitante não pode editar projeto', async () => {
+    const res = await request('PUT', `/${randomUUID()}`, createUser('visitor'), { title: 'Novo título' });
+    assert.equal(res.status, 403);
+  });
+
+  describe('edição de mídias', () => {
+    let owner;
+    let project;
+
+    beforeEach((t) => {
+      owner = createUser('creator');
+      project = Project.build({ id: randomUUID(), title: 'Antigo', ownerId: owner.id });
+      t.mock.method(project, 'update', async () => project);
+      t.mock.method(Project, 'findByPk', async () => project);
     });
-    assert.equal(response.status, 200);
-    assert.equal(mediaDeletes, 1);
-    assert.deepEqual(media.map((item) => item.isCover), [false, true]);
-    assert.equal((await response.json()).project.media.length, 2);
-  });
 
-  test('recusa galeria vazia sem modificar registros', async () => {
-    const response = await request('PUT', ownerId, { media: [] });
-    assert.equal(response.status, 400);
-    assert.equal(mediaDeletes, 0);
-    assert.equal(media.length, 1);
-  });
-
-  test('recusa URL de mídia inválida sem modificar a galeria', async () => {
-    const response = await request('PUT', ownerId, {
-      media: [{ url: 'https://outro-site.example/imagem.webp', mediaType: 'image' }],
+    test('substitui as mídias quando a lista é enviada', async () => {
+      const res = await request('PUT', `/${project.id}`, owner, {
+        media: [
+          { url: imageUrl(1), mediaType: 'image' },
+          { url: imageUrl(2), mediaType: 'image', isCover: true },
+        ],
+      });
+      assert.equal(res.status, 200);
+      assert.deepEqual(calls.mediaDestroy, [{ projectId: project.id }]);
+      assert.deepEqual(
+        calls.mediaCreate[0].map(({ url, isCover, projectId }) => ({ url, isCover, projectId })),
+        [
+          { url: imageUrl(1), isCover: false, projectId: project.id },
+          { url: imageUrl(2), isCover: true, projectId: project.id },
+        ]
+      );
     });
-    assert.equal(response.status, 400);
-    assert.equal(mediaDeletes, 0);
+
+    test('mantém as mídias quando o campo não é enviado', async () => {
+      const res = await request('PUT', `/${project.id}`, owner, { title: 'Novo título' });
+      assert.equal(res.status, 200);
+      assert.equal(calls.mediaDestroy.length, 0);
+      assert.equal(calls.mediaCreate.length, 0);
+    });
+
+    test('não permite remover todas as mídias', async () => {
+      const res = await request('PUT', `/${project.id}`, owner, { media: [] });
+      assert.equal(res.status, 400);
+      assert.equal(calls.mediaDestroy.length, 0);
+    });
+
+    test('não aceita URL de fora da plataforma', async () => {
+      const res = await request('PUT', `/${project.id}`, owner, {
+        media: [{ url: 'https://evil.example.com/a.webp', mediaType: 'image' }],
+      });
+      assert.equal(res.status, 400);
+      assert.equal(calls.mediaDestroy.length, 0);
+    });
+
+    test('outro criador não pode editar as mídias', async () => {
+      const res = await request('PUT', `/${project.id}`, createUser('creator'), {
+        media: [{ url: imageUrl(1), mediaType: 'image' }],
+      });
+      assert.equal(res.status, 403);
+      assert.equal(calls.mediaDestroy.length, 0);
+    });
   });
 
-  test('colaborador edita conteúdo, mas não a lista de colaboradores', async () => {
-    const edit = await request('PUT', collaboratorId, { description: 'Descrição atualizada' });
+  test('colaborador pode editar conteúdo e mídia, mas não gerenciar colaboradores', async (t) => {
+    const owner = createUser('creator');
+    const collaborator = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Antigo', ownerId: owner.id });
+    t.mock.method(project, 'update', async () => project);
+    t.mock.method(Project, 'findByPk', async () => project);
+    ProjectCollaborator.findOne.mock.mockImplementation(async ({ where }) =>
+      where.userId === collaborator.id ? { userId: collaborator.id } : null
+    );
+
+    const edit = await request('PUT', `/${project.id}`, collaborator, {
+      title: 'Novo título',
+      media: [{ url: imageUrl(3), mediaType: 'image' }],
+    });
     assert.equal(edit.status, 200);
-    assert.equal(project.description, 'Descrição atualizada');
-    const gallery = await request('PUT', collaboratorId, {
-      media: [{ url: imageUrl(2), mediaType: 'image' }],
-    });
-    assert.equal(gallery.status, 200);
-    assert.equal(media[0].url, imageUrl(2));
-    const manage = await request('PUT', collaboratorId, { collaborators: [] });
+    assert.equal(calls.mediaCreate.length, 1);
+
+    const manage = await request('PUT', `/${project.id}`, collaborator, { collaborators: [] });
     assert.equal(manage.status, 403);
-    assert.equal(collaborators.length, 1);
+    assert.equal(calls.collaboratorDestroy, 0);
   });
 
-  test('usuário sem vínculo não edita nem exclui', async () => {
-    assert.equal((await request('PUT', outsiderId, { title: 'Invadido' })).status, 403);
-    assert.equal((await request('DELETE', outsiderId)).status, 403);
-    assert.ok(project);
-  });
-
-  test('colaborador não exclui', async () => {
-    assert.equal((await request('DELETE', collaboratorId)).status, 403);
-    assert.ok(project);
-  });
-
-  test('dono exclui projeto, mídias e demais relações', async () => {
-    const response = await request('DELETE', ownerId);
-    assert.equal(response.status, 200);
-    assert.equal(project, null);
-    assert.deepEqual(media, []);
-    assert.deepEqual(technologies, []);
-    assert.deepEqual(collaborators, []);
-    assert.equal((await request('GET')).status, 404);
-  });
-
-  test('detalhe devolve mídias e nomes reais dos colaboradores', async () => {
-    const response = await request('GET');
-    assert.equal(response.status, 200);
-    const { project: result } = await response.json();
-    assert.equal(result.media[0].url, imageUrl(1));
-    assert.equal(result.collaborators[0].name, 'Colega');
-  });
-
-  test('busca colaboradores reais com autenticação', async () => {
-    const searchUrl = baseUrl.replace(projectId, 'collaborators/search?q=Co');
-    const unauthorized = await fetch(searchUrl);
-    assert.equal(unauthorized.status, 401);
-    const response = await fetch(searchUrl, {
-      headers: { Authorization: `Bearer ${signToken({ sub: ownerId })}` },
+  test('somente dono exclui; dependências são removidas na mesma transação', async (t) => {
+    const owner = createUser('creator');
+    const collaborator = createUser('creator');
+    const outsider = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
+    t.mock.method(project, 'destroy', async () => {
+      calls.projectDestroy += 1;
     });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { users: [{ id: collaboratorId, name: 'Colega' }] });
+    t.mock.method(Project, 'findByPk', async () => project);
+    ProjectCollaborator.findOne.mock.mockImplementation(async ({ where }) =>
+      where.userId === collaborator.id ? { userId: collaborator.id } : null
+    );
+
+    assert.equal((await request('DELETE', `/${project.id}`, outsider)).status, 403);
+    assert.equal((await request('DELETE', `/${project.id}`, collaborator)).status, 403);
+    assert.equal(calls.projectDestroy, 0);
+
+    const deleted = await request('DELETE', `/${project.id}`, owner);
+    assert.equal(deleted.status, 200);
+    assert.equal(calls.projectDestroy, 1);
+    assert.equal(calls.collaboratorDestroy, 1);
+    assert.deepEqual(calls.mediaDestroy, [{ projectId: project.id }]);
   });
 
-  test('exige autenticação e responde 404 para projeto inexistente', async () => {
-    assert.equal((await request('DELETE')).status, 401);
-    project = null;
-    assert.equal((await request('PUT', ownerId, { title: 'Nada' })).status, 404);
-    assert.equal((await request('DELETE', ownerId)).status, 404);
+  test('dono pode gerenciar colaboradores; usuário sem vínculo não pode editar', async (t) => {
+    const owner = createUser('creator');
+    const outsider = createUser('creator');
+    const newCollaborator = createUser('creator');
+    const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
+    t.mock.method(project, 'update', async () => project);
+    t.mock.method(Project, 'findByPk', async () => project);
+
+    const denied = await request('PUT', `/${project.id}`, outsider, { title: 'Alterado' });
+    assert.equal(denied.status, 403);
+
+    const managed = await request('PUT', `/${project.id}`, owner, {
+      collaborators: [{ userId: newCollaborator.id }],
+    });
+    assert.equal(managed.status, 200);
+    assert.equal(calls.collaboratorDestroy, 1);
+    assert.deepEqual(calls.collaboratorCreate, [
+      {
+        projectId: project.id,
+        userId: newCollaborator.id,
+        contribution: null,
+      },
+    ]);
+  });
+
+  test('busca nomes reais de colaboradores com autenticação', async (t) => {
+    const creator = createUser('creator');
+    let options;
+    t.mock.method(User, 'findAll', async (query) => {
+      options = query;
+      return [{ id: creator.id, name: 'Colega' }];
+    });
+    assert.equal((await request('GET', '/collaborators/search?q=Co')).status, 401);
+    const response = await request('GET', '/collaborators/search?q=Co', creator);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { users: [{ id: creator.id, name: 'Colega' }] });
+    assert.deepEqual(options.attributes, ['id', 'name']);
+  });
+
+  test('recusa links externos que não sejam http(s)', async () => {
+    const creator = createUser('creator');
+    for (const link of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {
+      const res = await request('POST', '/', creator, { ...validProject, githubURL: link, liveURL: link });
+      assert.equal(res.status, 400);
+    }
+    assert.equal(calls.projectCreate, 0);
+  });
+
+  test('detalhe do projeto traz o nome do autor sem o e-mail', async (t) => {
+    let options;
+    t.mock.method(Project, 'findByPk', async (id, opts) => {
+      options = opts;
+      return Project.build({ id, title: 'Projeto' });
+    });
+
+    const res = await request('GET', `/${randomUUID()}`);
+    assert.equal(res.status, 200);
+    const author = options.include.find((i) => i.as === 'author');
+    assert.deepEqual(author.attributes, ['id', 'name']);
+  });
+
+  test('listagem devolve a URL da capa (ou null) em coverUrl', async (t) => {
+    const withCover = Project.build(
+      { id: randomUUID(), title: 'Com capa', media: [{ url: imageUrl(1) }] },
+      { include: [{ model: ProjectMedia, as: 'media' }] }
+    );
+    const withoutCover = Project.build(
+      { id: randomUUID(), title: 'Só vídeo', media: [] },
+      { include: [{ model: ProjectMedia, as: 'media' }] }
+    );
+    let options;
+    t.mock.method(Project, 'findAndCountAll', async (opts) => {
+      options = opts;
+      return { count: 2, rows: [withCover, withoutCover] };
+    });
+
+    const res = await request('GET', '/');
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(
+      body.projects.map((p) => p.coverUrl),
+      [imageUrl(1), null]
+    );
+    assert.equal(body.projects[0].media, undefined);
+
+    const mediaInclude = options.include.find((i) => i.as === 'media');
+    assert.deepEqual(mediaInclude.where, { isCover: true });
+    assert.equal(mediaInclude.required, false);
   });
 });

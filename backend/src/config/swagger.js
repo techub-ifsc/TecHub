@@ -208,17 +208,22 @@ const definition = {
           },
         },
       },
-      UploadedMedia: {
+      MediaUploadSignature: {
         type: 'object',
         properties: {
-          url: { type: 'string', format: 'uri', example: 'https://res.cloudinary.com/demo/image/upload/v1/techub/projects/media_1759600000000_a1b2c3d4e5f6a7b8.webp' },
           mediaType: { type: 'string', enum: ['image', 'video'], example: 'image' },
+          uploadUrl: { type: 'string', format: 'uri', example: 'https://api.cloudinary.com/v1_1/demo/image/upload' },
+          fields: {
+            type: 'object',
+            description: 'Campos assinados a enviar junto com o arquivo, sem alterações.',
+            additionalProperties: true,
+          },
         },
       },
       ProjectMediaInput: {
         type: 'object',
         required: ['url', 'mediaType'],
-        description: 'URL devolvida pelo POST /media/upload ou link do YouTube (mediaType video).',
+        description: 'secure_url devolvida pelo Cloudinary (envio autorizado por POST /media/signature) ou link do YouTube (mediaType video).',
         properties: {
           url: { type: 'string', format: 'uri', maxLength: 500, example: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
           mediaType: { type: 'string', enum: ['image', 'video'], example: 'video' },
@@ -256,6 +261,7 @@ const definition = {
           liveURL: { type: 'string', format: 'uri', nullable: true, example: 'https://techub.vercel.app' },
           status: { type: 'string', nullable: true, example: 'Em design' },
           media: { type: 'array', items: { $ref: '#/components/schemas/ProjectMedia' } },
+          coverUrl: { type: 'string', format: 'uri', nullable: true, description: 'Somente na listagem: URL da imagem de capa.' },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },

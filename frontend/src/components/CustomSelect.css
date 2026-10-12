@@ -1,0 +1,197 @@
+.custom-select {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.custom-select__trigger {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  appearance: none;
+  background-color: #181a1c !important;
+  border: 1.5px solid #404449 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.custom-select__trigger:hover:not(:disabled) {
+  background-color: #1d2022 !important;
+  border-color: #62676c !important;
+}
+
+.custom-select.is-open .custom-select__trigger,
+.custom-select__trigger:focus-visible {
+  border-color: var(--tc-green, #78dc50) !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%) !important;
+}
+
+.custom-select__value,
+.custom-select__placeholder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select__value {
+  color: #ffffff;
+}
+
+.custom-select__placeholder {
+  color: #74797e;
+}
+
+.custom-select__trigger > i {
+  flex-shrink: 0;
+  color: #a0a4a8;
+  font-size: 0.7rem;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.custom-select.is-open
+  .custom-select__trigger
+  > i {
+  color: var(--tc-green, #78dc50);
+  transform: rotate(180deg);
+}
+
+.custom-select__options {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  left: 0;
+  z-index: 300;
+  max-height: 240px;
+  margin: 0;
+  padding: 0.4rem;
+  overflow-y: auto;
+  list-style: none;
+  background-color: #17191b;
+  border: 1px solid #45494e;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgb(0 0 0 / 42%);
+}
+
+.custom-select__options li {
+  margin: 0;
+  padding: 0;
+}
+
+.custom-select .custom-select__option {
+  width: 100%;
+  min-height: 38px;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  color: #b5b8bc !important;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    color 130ms ease;
+}
+
+.custom-select .custom-select__option:hover,
+.custom-select
+  .custom-select__option.is-active {
+  background-color: #292d2f !important;
+  color: #ffffff !important;
+}
+
+.custom-select
+  .custom-select__option.is-selected {
+  background-color: rgb(120 220 80 / 10%) !important;
+  color: var(--tc-green, #78dc50) !important;
+  font-weight: 700;
+}
+
+.custom-select__option i {
+  flex-shrink: 0;
+  color: var(--tc-green, #78dc50);
+  font-size: 0.7rem;
+}
+
+.custom-select.is-invalid
+  .custom-select__trigger {
+  border-color: #ff7168 !important;
+}
+
+.custom-select.is-invalid.is-open
+  .custom-select__trigger,
+.custom-select.is-invalid
+  .custom-select__trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgb(255 113 104 / 12%) !important;
+}
+
+.custom-select.is-disabled
+  .custom-select__trigger {
+  background-color: #1b1d1f !important;
+  color: #6f7479 !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.custom-select.is-disabled
+  .custom-select__placeholder,
+.custom-select.is-disabled
+  .custom-select__value {
+  color: #6f7479;
+}
+
+.custom-select__options::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-select__options::-webkit-scrollbar-track {
+  background-color: #17191b;
+  border-radius: 999px;
+}
+
+.custom-select__options::-webkit-scrollbar-thumb {
+  background-color: #464b4f;
+  border-radius: 999px;
+}
+
+.custom-select__options::-webkit-scrollbar-thumb:hover {
+  background-color: var(--tc-green, #78dc50);
+}
+
+.custom-select
+  button.custom-select__trigger {
+  border-radius: 8px !important;
+}
+
+.custom-select
+  button.custom-select__option {
+  border-radius: 5px !important;
+}

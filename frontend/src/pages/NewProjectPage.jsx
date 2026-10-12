@@ -1,25 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { getYoutubeVideoId } from "../utils/youtube";
+import CustomSelect from "../components/CustomSelect";
+import { API_URL } from "../api/apiUrl";
+import CollaboratorAvatar from "../components/CollaboratorAvatar";
+import ProjectGallery from "../components/ProjectGallery";
+import { useProjectMedia } from "../hooks/useProjectMedia";
 import "./NewProjectPage.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_TAGS = 8;
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
-// Formatos aceitos pelo backend (POST /media/upload) e o tipo de mídia correspondente.
-const ALLOWED_MEDIA_TYPES = {
-  "image/jpeg": "image",
-  "image/png": "image",
-  "image/webp": "image",
-  "video/mp4": "video",
-  "video/webm": "video",
-};
-
 const COURSE_PHASES = {
   "Ciência da Computação": 8,
   "Técnico em Informática para Internet": 4,
@@ -107,14 +97,6 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
-// Usando o UUID fornecido para o primeiro usuário de teste
-const MOCK_COLLABORATORS = [
-  { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
-  { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
-  { id: "b2222222-2222-2222-2222-222222222222", name: "Marcio Zunique", color: "#555555" },
-  { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
-];
-
 // O backend espera exatamente estes valores definidos nas constantes/Zod
 const STATUS_OPTIONS = [
   "Em design",
@@ -136,13 +118,6 @@ function isValidUrl(value) {
   } catch {
     return false;
   }
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function validateForm({
@@ -198,6 +173,8 @@ function validateForm({
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
@@ -229,31 +206,26 @@ export default function NewProjectPage() {
 
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [collaborators, setCollaborators] = useState([]);
+  const [collaboratorOptions, setCollaboratorOptions] = useState([]);
+  const [collaboratorSearchStatus, setCollaboratorSearchStatus] = useState("idle");
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
   const [status, setStatus] = useState("Em design");
 
-  // Cada item é um arquivo local ({ kind: "file", file, previewUrl }) ou um link do YouTube ({ kind: "youtube", url }).
-  const [media, setMedia] = useState([]);
-  const [coverId, setCoverId] = useState(null);
-  const [youtubeInput, setYoutubeInput] = useState("");
-  const [dragOver, setDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const nextMediaId = useRef(0);
-  const mediaRef = useRef(media);
-  mediaRef.current = media;
 
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
 
-  // A capa é a imagem escolhida pelo usuário ou, por padrão, a primeira imagem adicionada.
-  const imageItems = media.filter((item) => item.mediaType === "image");
-  const coverItemId = imageItems.some((item) => item.id === coverId)
-    ? coverId
-    : imageItems[0]?.id ?? null;
+  const gallery = useProjectMedia({
+    onError: (message) =>
+      message
+        ? setErrors((curr) => ({ ...curr, files: message }))
+        : clearFieldError("files"),
+  });
 
   const phaseOptions = course
     ? Array.from(
@@ -272,19 +244,56 @@ export default function NewProjectPage() {
     }).slice(0, 10);
   }, [tagInput, tags]);
 
+  useEffect(() => {
+    const query = collaboratorInput.trim();
+    if (query.length < 2) {
+      setCollaboratorOptions([]);
+      setCollaboratorSearchStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    setCollaboratorOptions([]);
+    setCollaboratorSearchStatus("searching");
+
+    const timer = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
+        const response = await fetch(
+          `${API_URL}/projects/collaborators/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
+          }
+        );
+        if (!response.ok) throw new Error("Falha ao pesquisar colaboradores");
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setCollaboratorOptions(Array.isArray(data.users) ? data.users : []);
+          setCollaboratorSearchStatus("done");
+        }
+      } catch (error) {
+        if (error.name !== "AbortError" && !controller.signal.aborted) {
+          setCollaboratorOptions([]);
+          setCollaboratorSearchStatus("error");
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [collaboratorInput]);
+
   const collaboratorSuggestions = useMemo(() => {
-    const search = collaboratorInput.trim().toLowerCase();
-
-    if (!search) return [];
-
-    return MOCK_COLLABORATORS.filter((person) => {
-      const matchesSearch = person.name.toLowerCase().includes(search);
+    return collaboratorOptions.filter((person) => {
       const isNotSelected = !collaborators.some(
         (collaborator) => collaborator.id === person.id
       );
-      return matchesSearch && isNotSelected;
+      return isNotSelected;
     });
-  }, [collaboratorInput, collaborators]);
+  }, [collaboratorOptions, collaborators]);
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -306,15 +315,6 @@ export default function NewProjectPage() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
-
-  // Libera as pré-visualizações criadas com URL.createObjectURL ao sair da página.
-  useEffect(() => {
-    return () => {
-      mediaRef.current.forEach((item) => {
-        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-      });
     };
   }, []);
 
@@ -406,6 +406,18 @@ export default function NewProjectPage() {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
     updateEditorState();
+
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      strikeThrough: document.queryCommandState("strikeThrough"),
+      unorderedList: document.queryCommandState("insertUnorderedList"),
+      orderedList: document.queryCommandState("insertOrderedList"),
+      justifyLeft: document.queryCommandState("justifyLeft"),
+      justifyCenter: document.queryCommandState("justifyCenter"),
+      justifyRight: document.queryCommandState("justifyRight"),
+    });
   }
 
   function updateEditorState() {
@@ -495,130 +507,6 @@ export default function NewProjectPage() {
     setCollaborators((curr) => curr.filter((c) => c.id !== id));
   }
 
-  function createMediaId() {
-    nextMediaId.current += 1;
-    return nextMediaId.current;
-  }
-
-  function addFiles(fileList) {
-    const incomingFiles = Array.from(fileList);
-    const acceptedItems = [];
-    const rejectedMessages = [];
-
-    for (const file of incomingFiles) {
-      const mediaType = ALLOWED_MEDIA_TYPES[file.type];
-
-      if (!mediaType) {
-        rejectedMessages.push(`${file.name}: formato não permitido.`);
-        continue;
-      }
-
-      if (file.size > MAX_FILE_SIZE) {
-        rejectedMessages.push(`${file.name}: tamanho superior a 20 MB.`);
-        continue;
-      }
-
-      const isDuplicate = [...media, ...acceptedItems].some(
-        (item) =>
-          item.kind === "file" &&
-          item.file.name === file.name &&
-          item.file.size === file.size
-      );
-
-      if (isDuplicate) {
-        rejectedMessages.push(`${file.name}: arquivo já adicionado.`);
-        continue;
-      }
-
-      if (media.length + acceptedItems.length >= MAX_FILES) {
-        rejectedMessages.push(`O limite é de ${MAX_FILES} mídias.`);
-        break;
-      }
-
-      acceptedItems.push({
-        id: createMediaId(),
-        kind: "file",
-        file,
-        mediaType,
-        previewUrl: mediaType === "image" ? URL.createObjectURL(file) : null,
-      });
-    }
-
-    if (acceptedItems.length > 0) {
-      setMedia((curr) => [...curr, ...acceptedItems]);
-      clearFieldError("files");
-    }
-
-    if (rejectedMessages.length > 0) {
-      setErrors((curr) => ({
-        ...curr,
-        files: rejectedMessages.join(" "),
-      }));
-    }
-  }
-
-  function addYoutubeLink() {
-    const videoId = getYoutubeVideoId(youtubeInput.trim());
-    let message = "";
-
-    if (!videoId) {
-      message = "Informe um link válido do YouTube.";
-    } else if (media.some((item) => item.kind === "youtube" && item.videoId === videoId)) {
-      message = "Esse vídeo do YouTube já foi adicionado.";
-    } else if (media.length >= MAX_FILES) {
-      message = `O limite é de ${MAX_FILES} mídias.`;
-    }
-
-    if (message) {
-      setErrors((curr) => ({ ...curr, files: message }));
-      return;
-    }
-
-    setMedia((curr) => [
-      ...curr,
-      {
-        id: createMediaId(),
-        kind: "youtube",
-        videoId,
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        mediaType: "video",
-      },
-    ]);
-    setYoutubeInput("");
-    clearFieldError("files");
-  }
-
-  function removeMedia(id) {
-    const item = media.find((current) => current.id === id);
-    if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
-    setMedia((curr) => curr.filter((current) => current.id !== id));
-  }
-
-  // Envia os arquivos locais ao storage e devolve as URLs na mesma ordem.
-  async function uploadMediaFiles(fileItems, token) {
-    const formData = new FormData();
-    fileItems.forEach((item) => formData.append("files", item.file));
-
-    const response = await fetch(`${API_URL}/media/upload`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.message || "Não foi possível enviar as mídias.");
-    }
-
-    return data.media.map((uploaded) => uploaded.url);
-  }
-
-  function handleDrop(event) {
-    event.preventDefault();
-    setDragOver(false);
-    addFiles(event.dataTransfer.files);
-  }
-
   function handleSaveDraft() {
     const draft = {
       title: title.trim(),
@@ -655,7 +543,7 @@ export default function NewProjectPage() {
       tags,
       github,
       liveUrl,
-      mediaCount: media.length,
+      mediaCount: gallery.media.length,
     };
 
     const validationErrors = validateForm(projectData);
@@ -673,63 +561,41 @@ export default function NewProjectPage() {
     let created = false;
 
     try {
-      const token = localStorage.getItem("techub_token");
+      const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
 
-      // 1. Envia ao storage somente os arquivos que ainda não subiram (links do YouTube
-      // não precisam de upload). Assim, reenviar após um erro não duplica arquivos.
-      const uploadedUrlById = new Map(
-        media.filter((item) => item.uploadedUrl).map((item) => [item.id, item.uploadedUrl])
-      );
-      const pendingItems = media.filter((item) => item.kind === "file" && !item.uploadedUrl);
-
-      if (pendingItems.length > 0) {
+      if (gallery.hasPendingUploads) {
         setFeedbackType("");
         setFeedbackMessage("Enviando fotos e vídeos...");
+      }
 
-        try {
-          const urls = await uploadMediaFiles(pendingItems, token);
-          pendingItems.forEach((item, index) => uploadedUrlById.set(item.id, urls[index]));
-          setMedia((curr) =>
-            curr.map((item) =>
-              uploadedUrlById.has(item.id)
-                ? { ...item, uploadedUrl: uploadedUrlById.get(item.id) }
-                : item
-            )
-          );
-        } catch (uploadError) {
-          setErrors({ files: uploadError.message });
-          setFeedbackType("error");
-          setFeedbackMessage(uploadError.message);
-          return;
-        }
+      let media;
+      try {
+        media = await gallery.buildMediaPayload(token);
+      } catch (uploadError) {
+        setErrors({ files: uploadError.message });
+        setFeedbackType("error");
+        setFeedbackMessage(uploadError.message);
+        return;
       }
 
       setFeedbackType("");
       setFeedbackMessage("Enviando projeto...");
 
-      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
 
-      // Monta o payload conforme o contrato do Backend/Zod
       const payload = {
         title: title.trim(),
         description: descriptionText.trim(),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        // Envia o objeto no formato esperado: { userId, contribution }
         collaborators: collaborators.map((c) => ({
           userId: c.id,
         })),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
-        // 2. Envia as URLs das mídias junto com o projeto.
-        media: media.map((item) => ({
-          url: item.kind === "file" ? uploadedUrlById.get(item.id) : item.url,
-          mediaType: item.mediaType,
-          isCover: item.id === coverItemId,
-        })),
+        media,
       };
 
       const response = await fetch(`${API_URL}/projects`, {
@@ -780,14 +646,15 @@ export default function NewProjectPage() {
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
     } finally {
-      // Após o sucesso o botão continua bloqueado até o redirecionamento.
       if (!created) setIsSubmitting(false);
     }
   }
 
   return (
     <main className="new-project-page">
-      <h1 className="new-project-title">Novo projeto</h1>
+      <h1 className="new-project-title">
+        {isEditing ? "Editar projeto" : "Novo projeto"}
+      </h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
         <div className="form-field">
@@ -966,24 +833,33 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-course"
-              className={errors.course ? "project-select is-invalid" : "project-select"}
               value={course}
               onChange={handleCourseChange}
-              aria-invalid={Boolean(errors.course)}
-              required
-            >
-              <option value="">Selecione o curso</option>
-              {Object.keys(COURSE_PHASES).map((courseOption) => (
-                <option key={courseOption} value={courseOption}>
-                  {courseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.course)}
+              ariaDescribedBy={
+                errors.course ? "project-course-error" : undefined
+              }
+              placeholder="Selecione o curso"
+              options={[
+                {
+                  value: "",
+                  label: "Selecione o curso",
+                },
+                ...Object.keys(COURSE_PHASES).map((courseOption) => ({
+                  value: courseOption,
+                  label: courseOption,
+                })),
+              ]}
+            />
 
             {errors.course && (
-              <span className="field-error" role="alert">
+              <span
+                id="project-course-error"
+                className="field-error"
+                role="alert"
+              >
                 {errors.course}
               </span>
             )}
@@ -997,27 +873,32 @@ export default function NewProjectPage() {
               </span>
             </label>
 
-            <select
+            <CustomSelect
               id="project-phase"
-              className={errors.phase ? "project-select is-invalid" : "project-select"}
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
                 clearFieldError("phase");
               }}
               disabled={!course}
-              aria-invalid={Boolean(errors.phase)}
-              required
-            >
-              <option value="">
-                {course ? "Selecione a fase" : "Selecione primeiro o curso"}
-              </option>
-              {phaseOptions.map((phaseOption) => (
-                <option key={phaseOption} value={phaseOption}>
-                  {phaseOption}
-                </option>
-              ))}
-            </select>
+              invalid={Boolean(errors.phase)}
+              ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
+              placeholder={
+                course ? "Selecione a fase" : "Selecione primeiro o curso"
+              }
+              options={[
+                {
+                  value: "",
+                  label: course
+                    ? "Selecione a fase"
+                    : "Selecione primeiro o curso",
+                },
+                ...phaseOptions.map((phaseOption) => ({
+                  value: phaseOption,
+                  label: phaseOption,
+                })),
+              ]}
+            />
 
             {errors.phase && (
               <span className="field-error" role="alert">
@@ -1149,9 +1030,13 @@ export default function NewProjectPage() {
               />
             </div>
 
-            {collaboratorsOpen && collaboratorInput.trim() && (
+            {collaboratorsOpen && collaboratorInput.trim().length >= 2 && (
               <ul className="collaborator-suggestions">
-                {collaboratorSuggestions.length > 0 ? (
+                {collaboratorSearchStatus === "searching" ? (
+                  <li className="collaborator-empty">Pesquisando colaboradores...</li>
+                ) : collaboratorSearchStatus === "error" ? (
+                  <li className="collaborator-empty">Não foi possível buscar colaboradores. Tente novamente.</li>
+                ) : collaboratorSuggestions.length > 0 ? (
                   collaboratorSuggestions.map((person) => (
                     <li key={person.id}>
                       <button
@@ -1160,12 +1045,11 @@ export default function NewProjectPage() {
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => addCollaborator(person)}
                       >
-                        <span
-                          className="collaborator-suggestion-avatar"
-                          style={{ backgroundColor: person.color }}
-                        >
-                          {person.name.charAt(0)}
-                        </span>
+                        <CollaboratorAvatar
+                          name={person.name}
+                          profilePhotoUrl={person.profilePhotoUrl}
+                          compact
+                        />
                         {person.name}
                       </button>
                     </li>
@@ -1192,12 +1076,10 @@ export default function NewProjectPage() {
                       ×
                     </button>
 
-                    <div
-                      className="collaborator-avatar"
-                      style={{ backgroundColor: collaborator.color }}
-                    >
-                      {collaborator.name.charAt(0)}
-                    </div>
+                    <CollaboratorAvatar
+                      name={collaborator.name}
+                      profilePhotoUrl={collaborator.profilePhotoUrl}
+                    />
 
                     <span className="collaborator-name">{collaborator.name}</span>
                   </div>
@@ -1271,143 +1153,11 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        <div className="form-field">
-          <span className="form-label">
-            Galeria do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
-          </span>
-
-          <label
-            className={`upload-area ${dragOver ? "drag-over" : ""} ${
-              errors.files ? "is-invalid" : ""
-            }`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
-            <input
-              type="file"
-              multiple
-              accept={Object.keys(ALLOWED_MEDIA_TYPES).join(",")}
-              className="upload-input"
-              onChange={(event) => {
-                addFiles(event.target.files);
-                event.target.value = "";
-              }}
-            />
-
-            <i className="fa-solid fa-plus upload-icon" aria-hidden="true" />
-
-            <div className="upload-text">
-              <p className="upload-title">Adicionar fotos ou vídeos</p>
-              <p className="upload-helper">
-                JPG, PNG, WEBP, MP4 ou WEBM · até {MAX_FILES} mídias de no máximo 20 MB cada
-              </p>
-            </div>
-          </label>
-
-          <div className="youtube-link-field">
-            <i className="fa-brands fa-youtube" aria-hidden="true" />
-            <input
-              type="url"
-              className="project-input"
-              placeholder="Ou cole um link do YouTube"
-              aria-label="Link de vídeo do YouTube"
-              value={youtubeInput}
-              onChange={(event) => {
-                setYoutubeInput(event.target.value);
-                clearFieldError("files");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addYoutubeLink();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="youtube-link-add"
-              onClick={addYoutubeLink}
-              disabled={!youtubeInput.trim()}
-            >
-              Adicionar
-            </button>
-          </div>
-
-          {errors.files && (
-            <span className="field-error" role="alert">
-              {errors.files}
-            </span>
-          )}
-
-          {media.length > 0 && (
-            <ul className="upload-file-list">
-              {media.map((item) => {
-                const isImage = item.mediaType === "image";
-                const isCover = item.id === coverItemId;
-                const name = item.kind === "file" ? item.file.name : item.url;
-
-                return (
-                  <li
-                    key={item.id}
-                    className={`upload-file ${isCover ? "is-cover" : ""}`}
-                  >
-                    {item.previewUrl ? (
-                      <img className="upload-file-thumb" src={item.previewUrl} alt="" />
-                    ) : (
-                      <span className="upload-file-thumb" aria-hidden="true">
-                        <i
-                          className={
-                            item.kind === "youtube"
-                              ? "fa-brands fa-youtube"
-                              : "fa-solid fa-film"
-                          }
-                        />
-                      </span>
-                    )}
-
-                    <span className="upload-file-information">
-                      <strong>{name}</strong>
-                      <small>
-                        {item.kind === "file"
-                          ? formatFileSize(item.file.size)
-                          : "Vídeo do YouTube"}
-                      </small>
-                    </span>
-
-                    {isImage && (
-                      <label className="upload-file-cover">
-                        <input
-                          type="radio"
-                          name="project-cover"
-                          checked={isCover}
-                          onChange={() => setCoverId(item.id)}
-                        />
-                        Capa
-                      </label>
-                    )}
-
-                    <button
-                      type="button"
-                      className="upload-file-remove"
-                      onClick={() => removeMedia(item.id)}
-                      aria-label={`Remover ${name}`}
-                      title={`Remover ${name}`}
-                    >
-                      ×
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <ProjectGallery
+          gallery={gallery}
+          error={errors.files}
+          onInputChange={() => clearFieldError("files")}
+        />
 
         <fieldset className="status-section">
           <legend className="form-label">Status</legend>
@@ -1464,9 +1214,11 @@ export default function NewProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate("/")}
+          onClick={() => (isEditing ? navigate(-1) : navigate("/"))}
         >
-          Cancelar e voltar para a página inicial
+          {isEditing
+            ? "Cancelar e voltar"
+            : "Cancelar e voltar para a página inicial"}
         </button>
       </form>
     </main>

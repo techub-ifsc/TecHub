@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { API_URL } from "../api/apiUrl";
 import "./CreatorProfilePage.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
 
@@ -96,8 +96,8 @@ export default function CreatorProfilePage() {
         const allProjects = Array.isArray(data.projects)
           ? data.projects
           : Array.isArray(data)
-            ? data
-            : [];
+          ? data
+          : [];
 
         // Filtra projetos onde o usuário atual é autor ou colaborador
         const userProjects = [];
@@ -110,8 +110,8 @@ export default function CreatorProfilePage() {
 
           const isCollaborator = Array.isArray(p.collaborators)
             ? p.collaborators.some(
-              (c) => c.userId === id || c.user_id === id || c.id === id
-            )
+                (c) => c.userId === id || c.user_id === id || c.id === id
+              )
             : false;
 
           if (isAuthor) {
@@ -381,7 +381,7 @@ export default function CreatorProfilePage() {
                         </div>
                       </Link>
 
-                      {/* O colaborador edita conteúdo; somente o dono pode excluir. */}
+                      {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
                       {isOwner && (
                         <div
                           style={{
@@ -425,40 +425,42 @@ export default function CreatorProfilePage() {
                             Editar
                           </button>
 
-                          {project.role === "autor" && <button
-                            type="button"
-                            onClick={(e) => handleDeleteProject(e, project.id)}
-                            disabled={deletingProjectId === project.id}
-                            style={{
-                              flex: "1 1 0",
-                              width: 0,
-                              boxSizing: "border-box",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "0.4rem",
-                              padding: "0.45rem 0.5rem",
-                              borderRadius: "6px",
-                              border: "1px solid #dc3545",
-                              background: "#dc3545",
-                              color: "#fff",
-                              cursor: "pointer",
-                              fontSize: "0.85rem",
-                              fontWeight: 600,
-                              transition: "all 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "#b02a37";
-                              e.currentTarget.style.borderColor = "#b02a37";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "#dc3545";
-                              e.currentTarget.style.borderColor = "#dc3545";
-                            }}
-                          >
-                            <i className="fa-solid fa-trash" aria-hidden="true" />
-                            Excluir
-                          </button>}
+                          {project.role === "autor" && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteProject(e, project.id)}
+                              disabled={deletingProjectId === project.id}
+                              style={{
+                                flex: "1 1 0",
+                                width: 0,
+                                boxSizing: "border-box",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "0.4rem",
+                                padding: "0.45rem 0.5rem",
+                                borderRadius: "6px",
+                                border: "1px solid #dc3545",
+                                background: "#dc3545",
+                                color: "#fff",
+                                cursor: "pointer",
+                                fontSize: "0.85rem",
+                                fontWeight: 600,
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "#b02a37";
+                                e.currentTarget.style.borderColor = "#b02a37";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "#dc3545";
+                                e.currentTarget.style.borderColor = "#dc3545";
+                              }}
+                            >
+                              <i className="fa-solid fa-trash" aria-hidden="true" />
+                              Excluir
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

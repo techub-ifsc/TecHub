@@ -10,6 +10,7 @@ const { ROLES } = require('../constants/roles');
 const Project = require('../models/Project');
 const sequelize = require('../config/database');
 
+
 // Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
   try {
@@ -30,7 +31,7 @@ async function list(req, res, next) {
         {
           model: User,
           as: 'author',
-          attributes: ['id', 'name', 'email'],
+          attributes: ['id', 'name', 'email'], // busca só os dados públicos do autor
         },
         {
           model: ProjectTechnology,
@@ -47,15 +48,16 @@ async function list(req, res, next) {
           as: 'media',
           attributes: ['url'],
           where: { isCover: true },
-          required: false,
+          required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
         },
       ],
       limit: Number(limit),
       offset: Number(offset),
       order: [['created_at', 'DESC']],
-      distinct: true,
+      distinct: true, // Garante que a contagem seja correta mesmo com includes
     });
 
+    // Formata o retorno: tecnologias como array de strings e a capa como coverUrl
     const formattedProjects = projects.map((p) => {
       const { media, ...json } = p.toJSON();
       return {
@@ -86,11 +88,12 @@ async function getById(req, res, next) {
 
     const project = await Project.findByPk(req.params.id, {
       include: [
-        { model: User, as: 'author', attributes: ['id', 'name'] },
+        { model: User, as: 'author', attributes: ['id', 'name'] }, // sem e-mail na página pública
         { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
         { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
         { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
       ],
+      // A capa vem primeiro; as demais seguem a ordem de cadastro.
       order: [
         [{ model: ProjectMedia, as: 'media' }, 'is_cover', 'DESC'],
         [{ model: ProjectMedia, as: 'media' }, 'created_at', 'ASC'],
@@ -134,6 +137,7 @@ async function create(req, res, next) {
 
     const ownerId = req.user?.id || req.userId;
 
+    // 1. Cria o registro principal do projeto
     const project = await Project.create(
       {
         ...projectData,
@@ -142,16 +146,18 @@ async function create(req, res, next) {
       { transaction }
     );
 
+    // 2. Insere as tecnologias
     if (Array.isArray(technologies) && technologies.length > 0) {
       const techRecords = technologies.map((techName) => ({
         projectId: project.id,
-        project_id: project.id,
+        project_id: project.id, // Garante compatibilidade camelCase e snake_case
         name: typeof techName === 'string' ? techName.trim() : techName,
       }));
 
       await ProjectTechnology.bulkCreate(techRecords, { transaction });
     }
 
+    // 3. Insere os colaboradores
     if (Array.isArray(collaborators) && collaborators.length > 0) {
       const collaboratorRecords = collaborators.map((item) => {
         const isObject = typeof item === 'object' && item !== null;
@@ -168,6 +174,165 @@ async function create(req, res, next) {
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
+    // 4. Insere as mídias (apenas se houver itens no array)
     let mediaRecords = [];
     if (Array.isArray(media) && media.length > 0) {
       const formattedMedia = media.map((item) => ({
+        ...item,
+        projectId: project.id,
+        project_id: project.id,
+      }));
+
+      mediaRecords = await ProjectMedia.bulkCreate(formattedMedia, { transaction });
+    }
+
+    // 5. Confirma todas as operações
+    await transaction.commit();
+
+    return res.status(201).json({
+      project: {
+        ...project.toJSON(),
+        technologies: technologies || [],
+        collaborators: collaborators || [],
+        media: (mediaRecords || []).map((m) => ({
+          id: m.id,
+          url: m.url,
+          mediaType: m.mediaType || m.media_type,
+          isCover: m.isCover || m.is_cover,
+        })),
+      },
+    });
+  } catch (err) {
+    await transaction.rollback();
+    console.error('>>> ERRO DETALHADO NO CREATE PROJECT:', err);
+    next(err);
+  }
+}
+// Edita o projeto e as relações em uma transação única.
+async function update(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
+    const userId = req.user?.id || req.userId;
+    const result = await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Projeto não encontrado.');
+
+      const isOwner = project.ownerId === userId;
+      const isCollaborator = !isOwner && await ProjectCollaborator.findOne({
+        where: { projectId: id, userId }, transaction,
+      });
+      if (!isOwner && !isCollaborator) {
+        throw new ApiError(403, 'Você não tem permissão para editar este projeto.');
+      }
+
+      const data = updateProjectSchema.parse(req.body);
+      const { technologies, collaborators, media, ...projectData } = data;
+      if (!isOwner && collaborators !== undefined) {
+        throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
+      }
+
+      await project.update(projectData, { transaction });
+      if (technologies !== undefined) {
+        await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+        if (technologies.length) {
+          await ProjectTechnology.bulkCreate(
+            technologies.map((name) => ({ projectId: id, name: name.trim() })),
+            { transaction }
+          );
+        }
+      }
+      if (collaborators !== undefined) {
+        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+        if (collaborators.length) {
+          await ProjectCollaborator.bulkCreate(
+            collaborators.map((item) => ({
+              projectId: id,
+              userId: typeof item === 'string' ? item : item.userId,
+              contribution: typeof item === 'string' ? null : (item.contribution || null),
+            })),
+            { transaction }
+          );
+        }
+      }
+      // Campo ausente preserva a galeria; campo presente é a lista final desejada.
+      if (media !== undefined) {
+        await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+        await ProjectMedia.bulkCreate(
+          media.map((item) => ({ ...item, projectId: id })),
+          { transaction }
+        );
+      }
+
+      const updatedProject = await Project.findByPk(id, {
+        transaction,
+        include: [
+          { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
+          { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
+          { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
+        ],
+        order: [
+          [{ model: ProjectMedia, as: 'media' }, 'is_cover', 'DESC'],
+          [{ model: ProjectMedia, as: 'media' }, 'created_at', 'ASC'],
+        ],
+      });
+      const json = updatedProject.toJSON();
+      return { ...json, technologies: (json.technologies || []).map((t) => t.name) };
+    });
+    return res.status(200).json({
+      message: 'Projeto atualizado com sucesso.',
+      project: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Busca contas reais para o seletor de colaboradores.
+async function searchCollaborators(req, res, next) {
+  try {
+    const query = String(req.query.q || '').trim();
+    if (query.length < 2) return res.json({ users: [] });
+    if (query.length > 100) throw new ApiError(400, 'Pesquisa muito longa.');
+    const users = await User.findAll({
+      where: { role: ROLES.CREATOR, name: { [likeOperator()]: `%${query}%` } },
+      attributes: ['id', 'name'],
+      limit: 10,
+      order: [['name', 'ASC']],
+    });
+    return res.json({ users });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Exclusão definitiva nesta primeira entrega; lixeira e restauração são futuras features.
+async function destroy(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
+    const userId = req.user?.id || req.userId;
+    await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Projeto não encontrado.');
+      if (project.ownerId !== userId) {
+        throw new ApiError(403, 'Apenas o proprietário do projeto pode excluí-lo.');
+      }
+
+      await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+      await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+      await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+      await project.destroy({ transaction });
+    });
+
+    return res.status(200).json({ message: 'Projeto excluído com sucesso.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, getById, searchCollaborators, create, update, destroy };

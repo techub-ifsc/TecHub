@@ -118,8 +118,8 @@ router.get('/', projectController.list);
  *     responses:
  *       200:
  *         description: Até 10 usuários, apenas com ID e nome.
- *         error:
- *         description: Erro ao buscar.
+ *       400:
+ *         description: Erro na busca de colaboradores.
  *       401:
  *         description: Não autenticado.
  */

@@ -1,4 +1,4 @@
-﻿import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 import {
   fetchCurrentUser,
@@ -33,17 +33,25 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("techub_token");
 
     if (!token) {
       setLoading(false);
       return;
     }
 
+    localStorage.setItem("token", token);
     fetchCurrentUser()
-      .then(setUser)
+      .then((currentUser) => {
+        localStorage.setItem("techub_token", token);
+        localStorage.setItem("techub_user", JSON.stringify(currentUser));
+        setUser(currentUser);
+      })
       .catch(() => {
         localStorage.removeItem("token");
+        localStorage.removeItem("techub_token");
+        localStorage.removeItem("techub_user");
         localStorage.removeItem("user");
       })
       .finally(() => setLoading(false));
@@ -52,6 +60,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     const { user: loggedUser, token } = await loginUser(credentials);
     localStorage.setItem("token", token);
+    localStorage.setItem("techub_token", token);
+    localStorage.setItem("techub_user", JSON.stringify(loggedUser));
     setUser(loggedUser);
     return loggedUser;
   }, []);
@@ -61,6 +71,8 @@ export function AuthProvider({ children }) {
 
     if (token) {
       localStorage.setItem("token", token);
+      localStorage.setItem("techub_token", token);
+      localStorage.setItem("techub_user", JSON.stringify(newUser));
     }
 
     setUser(newUser);
@@ -69,12 +81,15 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
+    localStorage.removeItem("techub_token");
+    localStorage.removeItem("techub_user");
     localStorage.removeItem("user");
     setUser(null);
   }, []);
 
   const updateProfile = useCallback(async (payload) => {
     const updatedUser = await updateProfileApi(payload);
+    localStorage.setItem("techub_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
     return updatedUser;
   }, []);

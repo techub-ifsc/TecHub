@@ -6,6 +6,8 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = randomBytes(48).toString('hex');
 process.env.JWT_EXPIRES_IN = '1d';
 process.env.CLOUDINARY_CLOUD_NAME = 'techub-test';
+process.env.CLOUDINARY_API_KEY = 'test-key';
+process.env.CLOUDINARY_API_SECRET = 'test-secret';
 
 const express = require('express');
 const sequelize = require('../src/config/database');
@@ -30,8 +32,12 @@ describe('rotas de projetos', () => {
   beforeEach(async (t) => {
     users = new Map();
     calls = {
-      mediaDestroy: [], mediaCreate: [], projectCreate: 0,
-      projectDestroy: 0, collaboratorDestroy: 0, collaboratorCreate: [],
+      mediaDestroy: [],
+      mediaCreate: [],
+      projectCreate: 0,
+      projectDestroy: 0,
+      collaboratorDestroy: 0,
+      collaboratorCreate: [],
     };
 
     t.mock.method(User, 'findByPk', async (id) => users.get(id) || null);
@@ -45,7 +51,10 @@ describe('rotas de projetos', () => {
     });
     t.mock.method(ProjectTechnology, 'destroy', async () => 0);
     t.mock.method(ProjectTechnology, 'bulkCreate', async () => []);
-    t.mock.method(ProjectCollaborator, 'destroy', async () => { calls.collaboratorDestroy += 1; return 0; });
+    t.mock.method(ProjectCollaborator, 'destroy', async () => {
+      calls.collaboratorDestroy += 1;
+      return 0;
+    });
     t.mock.method(ProjectCollaborator, 'bulkCreate', async (records) => {
       calls.collaboratorCreate = records;
       return records;
@@ -58,6 +67,7 @@ describe('rotas de projetos', () => {
     });
 
     delete require.cache[require.resolve('../src/routes/projectRoutes')];
+
     const app = express();
     app.use(express.json());
     app.use('/api/projects', require('../src/routes/projectRoutes'));
@@ -182,7 +192,8 @@ describe('rotas de projetos', () => {
     );
 
     const edit = await request('PUT', `/${project.id}`, collaborator, {
-      title: 'Novo título', media: [{ url: imageUrl(3), mediaType: 'image' }],
+      title: 'Novo título',
+      media: [{ url: imageUrl(3), mediaType: 'image' }],
     });
     assert.equal(edit.status, 200);
     assert.equal(calls.mediaCreate.length, 1);
@@ -197,7 +208,9 @@ describe('rotas de projetos', () => {
     const collaborator = createUser('creator');
     const outsider = createUser('creator');
     const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
-    t.mock.method(project, 'destroy', async () => { calls.projectDestroy += 1; });
+    t.mock.method(project, 'destroy', async () => {
+      calls.projectDestroy += 1;
+    });
     t.mock.method(Project, 'findByPk', async () => project);
     ProjectCollaborator.findOne.mock.mockImplementation(async ({ where }) =>
       where.userId === collaborator.id ? { userId: collaborator.id } : null
@@ -230,9 +243,13 @@ describe('rotas de projetos', () => {
     });
     assert.equal(managed.status, 200);
     assert.equal(calls.collaboratorDestroy, 1);
-    assert.deepEqual(calls.collaboratorCreate, [{
-      projectId: project.id, userId: newCollaborator.id, contribution: null,
-    }]);
+    assert.deepEqual(calls.collaboratorCreate, [
+      {
+        projectId: project.id,
+        userId: newCollaborator.id,
+        contribution: null,
+      },
+    ]);
   });
 
   test('busca nomes reais de colaboradores com autenticação', async (t) => {
@@ -289,7 +306,10 @@ describe('rotas de projetos', () => {
     const res = await request('GET', '/');
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.deepEqual(body.projects.map((p) => p.coverUrl), [imageUrl(1), null]);
+    assert.deepEqual(
+      body.projects.map((p) => p.coverUrl),
+      [imageUrl(1), null]
+    );
     assert.equal(body.projects[0].media, undefined);
 
     const mediaInclude = options.include.find((i) => i.as === 'media');

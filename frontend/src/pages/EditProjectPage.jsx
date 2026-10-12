@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
 import "./NewProjectPage.css";
@@ -279,7 +280,7 @@ export default function EditProjectPage() {
           const mappedCollabs = currentProject.collaborators.map((c) => ({
             id: c.userId || c.id,
             name: c.name || "Colaborador",
-            color: "#4f46e5",
+            profilePhotoUrl: c.profilePhotoUrl || null,
             contribution: c.contribution || null,
           }));
           initialCollaboratorsRef.current = mappedCollabs.map(({ id, contribution }) => ({ id, contribution }));
@@ -1086,12 +1087,11 @@ export default function EditProjectPage() {
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => addCollaborator(person)}
                       >
-                        <span
-                          className="collaborator-suggestion-avatar"
-                          style={{ backgroundColor: person.color }}
-                        >
-                          {person.name.charAt(0)}
-                        </span>
+                        <CollaboratorAvatar
+                          name={person.name}
+                          profilePhotoUrl={person.profilePhotoUrl}
+                          compact
+                        />
                         {person.name}
                       </button>
                     </li>
@@ -1118,12 +1118,10 @@ export default function EditProjectPage() {
                       ×
                     </button>
 
-                    <div
-                      className="collaborator-avatar"
-                      style={{ backgroundColor: collaborator.color }}
-                    >
-                      {collaborator.name.charAt(0)}
-                    </div>
+                    <CollaboratorAvatar
+                      name={collaborator.name}
+                      profilePhotoUrl={collaborator.profilePhotoUrl}
+                    />
 
                     <span className="collaborator-name">{collaborator.name}</span>
                   </div>

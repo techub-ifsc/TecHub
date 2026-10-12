@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { createRegistrationPayload } from "../utils/registrationPayload";
 
 import "./SignUpPage.css";
 
@@ -10,12 +11,6 @@ const INITIAL_FORM = {
   email: "",
   password: "",
   confirmPassword: "",
-};
-
-// A tela usa os rótulos em português; a API espera "creator" / "visitor".
-const ACCOUNT_TYPE_API = {
-  criador: "creator",
-  visitante: "visitor",
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -118,12 +113,7 @@ export default function SignUpPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: form.username,
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-          accountType: ACCOUNT_TYPE_API[accountType],
-        }),
+        body: JSON.stringify(createRegistrationPayload(form, accountType)),
       });
 
       const data = await response.json();
@@ -151,7 +141,7 @@ export default function SignUpPage() {
       }
 
       // Sucesso (Status 201)
-      setSuccessMessage(data.message);
+      setSuccessMessage("Conta criada! Agora você pode entrar com seu e-mail e senha.");
       setForm(INITIAL_FORM); // Reseta os campos do formulário
     } catch (err) {
       setErrors({ general: "Não foi possível conectar ao servidor. Verifique se a API está ativa." });
@@ -342,16 +332,6 @@ export default function SignUpPage() {
             </span>
           )}
         </div>
-
-        {successMessage && (
-          <p
-            className="signup-form__success"
-            role="status"
-            aria-live="polite"
-          >
-            {successMessage}
-          </p>
-        )}
 
         {errors.general && (
           <span

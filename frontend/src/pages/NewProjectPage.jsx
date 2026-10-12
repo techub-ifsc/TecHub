@@ -3,13 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import CustomSelect from "../components/CustomSelect";
 
+import { API_URL } from "../api/apiUrl";
+import ProjectGallery from "../components/ProjectGallery";
+import { useProjectMedia } from "../hooks/useProjectMedia";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_TAGS = 8;
-const MAX_FILES = 10;
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
 const COURSE_PHASES = {
   "Ciência da Computação": 8,
   "Técnico em Informática para Internet": 4,
@@ -97,13 +97,15 @@ const TECHNOLOGY_OPTIONS = [
   "WordPress",
 ];
 
+// Usando o UUID fornecido para o primeiro usuário de teste
 const MOCK_COLLABORATORS = [
-  { id: 1, name: "Antoni Ferraz", color: "#3a5a8a" },
-  { id: 2, name: "Gabriela Rodrigues", color: "#8a3a5a" },
-  { id: 3, name: "Marcio Zunique", color: "#555555" },
-  { id: 4, name: "Lucas Mendes", color: "#4a7a5a" },
+  { id: "e986790f-aa4e-461b-aa8f-145e4b3c17b0", name: "teste2", color: "#3a5a8a" },
+  { id: "a1111111-1111-1111-1111-111111111111", name: "Gabriela Rodrigues", color: "#8a3a5a" },
+  { id: "b2222222-2222-2222-2222-222222222222", name: "Marcio Zunique", color: "#555555" },
+  { id: "c3333333-3333-3333-3333-333333333333", name: "Lucas Mendes", color: "#4a7a5a" },
 ];
 
+// O backend espera exatamente estes valores definidos nas constantes/Zod
 const STATUS_OPTIONS = [
   "Em design",
   "Em desenvolvimento",
@@ -220,19 +222,10 @@ const MOCK_EDIT_PROJECTS = {
 function isValidUrl(value) {
   try {
     const url = new URL(value);
-
     return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
   }
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function validateForm({
@@ -243,7 +236,7 @@ function validateForm({
   tags,
   github,
   liveUrl,
-  files,
+  mediaCount,
 }) {
   const errors = {};
 
@@ -272,17 +265,15 @@ function validateForm({
   }
 
   if (github.trim() && !isValidUrl(github.trim())) {
-    errors.github =
-      "Informe uma URL válida, começando com http:// ou https://.";
+    errors.github = "Informe uma URL válida, começando com http:// ou https://.";
   }
 
   if (liveUrl.trim() && !isValidUrl(liveUrl.trim())) {
-    errors.liveUrl =
-      "Informe uma URL válida, começando com http:// ou https://.";
+    errors.liveUrl = "Informe uma URL válida, começando com http:// ou https://.";
   }
 
-  if (files.length === 0) {
-    errors.files = "Adicione pelo menos uma imagem ou vídeo do projeto.";
+  if (mediaCount === 0) {
+    errors.files = "Adicione pelo menos uma imagem, vídeo ou link do YouTube.";
   }
 
   return errors;
@@ -312,7 +303,6 @@ export default function NewProjectPage() {
   });
 
   const [title, setTitle] = useState("");
-
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [descriptionText, setDescriptionText] = useState("");
 
@@ -330,11 +320,9 @@ export default function NewProjectPage() {
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
-
   const [status, setStatus] = useState("Em design");
 
-  const [files, setFiles] = useState([]);
-  const [dragOver, setDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -368,7 +356,7 @@ export default function NewProjectPage() {
   const phaseOptions = course
     ? Array.from(
         { length: COURSE_PHASES[course] },
-        (_, index) => `${index + 1}ª Fase`,
+        (_, index) => `${index + 1}ª Fase`
       )
     : [];
 
@@ -377,9 +365,7 @@ export default function NewProjectPage() {
 
     return TECHNOLOGY_OPTIONS.filter((technology) => {
       const matchesSearch = technology.toLowerCase().includes(search);
-
       const isNotSelected = !tags.includes(technology);
-
       return matchesSearch && isNotSelected;
     }).slice(0, 10);
   }, [tagInput, tags]);
@@ -387,17 +373,13 @@ export default function NewProjectPage() {
   const collaboratorSuggestions = useMemo(() => {
     const search = collaboratorInput.trim().toLowerCase();
 
-    if (!search) {
-      return [];
-    }
+    if (!search) return [];
 
     return MOCK_COLLABORATORS.filter((person) => {
       const matchesSearch = person.name.toLowerCase().includes(search);
-
       const isNotSelected = !collaborators.some(
-        (collaborator) => collaborator.id === person.id,
+        (collaborator) => collaborator.id === person.id
       );
-
       return matchesSearch && isNotSelected;
     });
   }, [collaboratorInput, collaborators]);
@@ -420,7 +402,6 @@ export default function NewProjectPage() {
     }
 
     document.addEventListener("mousedown", handleOutsideClick);
-
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
@@ -454,7 +435,6 @@ export default function NewProjectPage() {
     }
 
     document.addEventListener("selectionchange", handleSelectionChange);
-
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
@@ -465,7 +445,6 @@ export default function NewProjectPage() {
       ...currentErrors,
       [field]: "",
     }));
-
     setFeedbackMessage("");
     setFeedbackType("");
   }
@@ -499,7 +478,6 @@ export default function NewProjectPage() {
 
   function handleEditorBeforeInput(event) {
     const isInsertion = event.nativeEvent.inputType?.startsWith("insert");
-
     if (isInsertion && descriptionText.length >= MAX_DESCRIPTION_LENGTH) {
       event.preventDefault();
     }
@@ -507,12 +485,9 @@ export default function NewProjectPage() {
 
   function handleEditorPaste(event) {
     event.preventDefault();
-
     const pastedText = event.clipboardData.getData("text/plain");
     const availableCharacters = MAX_DESCRIPTION_LENGTH - descriptionText.length;
-
     const acceptedText = pastedText.slice(0, availableCharacters);
-
     document.execCommand("insertText", false, acceptedText);
   }
 
@@ -535,10 +510,7 @@ export default function NewProjectPage() {
   }
 
   function updateEditorState() {
-    if (!editorRef.current) {
-      return;
-    }
-
+    if (!editorRef.current) return;
     setDescriptionHtml(editorRef.current.innerHTML);
     setDescriptionText(editorRef.current.innerText);
     clearFieldError("description");
@@ -554,19 +526,13 @@ export default function NewProjectPage() {
   function handleTagKeyDown(event) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-
-      setActiveTagIndex((currentIndex) =>
-        Math.min(currentIndex + 1, filteredTags.length - 1),
-      );
-
+      setActiveTagIndex((curr) => Math.min(curr + 1, filteredTags.length - 1));
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-
-      setActiveTagIndex((currentIndex) => Math.max(currentIndex - 1, 0));
-
+      setActiveTagIndex((curr) => Math.max(curr - 1, 0));
       return;
     }
 
@@ -577,7 +543,6 @@ export default function NewProjectPage() {
 
     if (event.key === "Enter") {
       event.preventDefault();
-
       if (filteredTags.length > 0) {
         addTag(filteredTags[activeTagIndex] ?? filteredTags[0]);
       }
@@ -586,33 +551,30 @@ export default function NewProjectPage() {
 
   function addTag(technology) {
     if (!TECHNOLOGY_OPTIONS.includes(technology)) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: "Selecione uma tecnologia apresentada na lista.",
       }));
-
       return;
     }
 
     if (tags.includes(technology)) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: "Essa tecnologia já foi adicionada.",
       }));
-
       return;
     }
 
     if (tags.length >= MAX_TAGS) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
+      setErrors((curr) => ({
+        ...curr,
         tags: `Você pode adicionar no máximo ${MAX_TAGS} tecnologias.`,
       }));
-
       return;
     }
 
-    setTags((currentTags) => [...currentTags, technology]);
+    setTags((curr) => [...curr, technology]);
     setTagInput("");
     setTagsOpen(false);
     setActiveTagIndex(0);
@@ -620,18 +582,12 @@ export default function NewProjectPage() {
   }
 
   function removeTag(tagToRemove) {
-    setTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
-
-    setTagInput("");
+    setTags((curr) => curr.filter((t) => t !== tagToRemove));
     clearFieldError("tags");
   }
 
   function addCollaborator(person) {
-    setCollaborators((currentCollaborators) => [
-      ...currentCollaborators,
-      person,
-    ]);
-
+    setCollaborators((curr) => [...curr, person]);
     setCollaboratorInput("");
     setCollaboratorsOpen(false);
   }
@@ -706,83 +662,153 @@ export default function NewProjectPage() {
     );
   }
 
-  function handleDrop(event) {
-    event.preventDefault();
-    setDragOver(false);
-    addFiles(event.dataTransfer.files);
-  }
-
-  function getProjectData() {
-    return {
+  function handleSaveDraft() {
+    const draft = {
       title: title.trim(),
       description: descriptionHtml,
       descriptionText: descriptionText.trim(),
       course,
       phase,
       tags,
-      collaborators: collaborators.map(({ id, name }) => ({
-        id,
-        name,
-      })),
+      collaborators,
       github: github.trim(),
       liveUrl: liveUrl.trim(),
       status,
-      files,
-    };
-  }
-
-  function handleSaveDraft() {
-    const draft = getProjectData();
-
-    const storableDraft = {
-      ...draft,
-      files: files.map((file) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      })),
       savedAt: new Date().toISOString(),
     };
 
-    localStorage.setItem(
-      "techub:new-project-draft",
-      JSON.stringify(storableDraft),
-    );
-
+    localStorage.setItem("techub:new-project-draft", JSON.stringify(draft));
     setFeedbackType("success");
-    setFeedbackMessage("Rascunho salvo neste navegador.");
+    setFeedbackMessage("Rascunho salvo localmente neste navegador.");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    if (isSubmitting) return;
 
-    const projectData = getProjectData();
+    setErrors({});
+    setFeedbackMessage("");
+    setFeedbackType("");
+
+    const projectData = {
+      title,
+      descriptionText,
+      course,
+      phase,
+      tags,
+      github,
+      liveUrl,
+      mediaCount: gallery.media.length,
+    };
+
     const validationErrors = validateForm(projectData);
-
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
       setFeedbackType("error");
-      setFeedbackMessage(
-        "Revise os campos destacados antes de enviar o projeto.",
-      );
-
-      const firstInvalidField = document.querySelector(".field-error");
-
-      firstInvalidField?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-
+      setFeedbackMessage("Revise os campos destacados antes de enviar o projeto.");
+      const firstInvalidField = document.querySelector(".is-invalid");
+      firstInvalidField?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    setFeedbackType("success");
-    setFeedbackMessage(
-      "Projeto validado com sucesso! A integração com o backend será realizada na próxima etapa.",
-    );
+    setIsSubmitting(true);
+    let created = false;
 
-    console.log("Projeto pronto para envio:", projectData);
+    try {
+      const token = localStorage.getItem("techub_token");
+
+      // 1. Envia ao storage os arquivos que ainda não subiram e monta o campo media.
+      if (gallery.hasPendingUploads) {
+        setFeedbackType("");
+        setFeedbackMessage("Enviando fotos e vídeos...");
+      }
+
+      let media;
+      try {
+        media = await gallery.buildMediaPayload(token);
+      } catch (uploadError) {
+        setErrors({ files: uploadError.message });
+        setFeedbackType("error");
+        setFeedbackMessage(uploadError.message);
+        return;
+      }
+
+      setFeedbackType("");
+      setFeedbackMessage("Enviando projeto...");
+
+      // Extrai apenas o número da fase (ex: "4ª Fase" -> 4)
+      const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
+
+      // Monta o payload conforme o contrato do Backend/Zod
+      const payload = {
+        title: title.trim(),
+        description: descriptionText.trim(),
+        major: course || null,
+        semester: isNaN(semesterNumber) ? 0 : semesterNumber,
+        technologies: tags,
+        // Envia o objeto no formato esperado: { userId, contribution }
+        collaborators: collaborators.map((c) => ({
+          userId: c.id,
+        })),
+        githubURL: github.trim() || null,
+        liveURL: liveUrl.trim() || null,
+        status: status || null,
+        // 2. Envia as URLs das mídias junto com o projeto.
+        media,
+      };
+
+      const response = await fetch(`${API_URL}/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          const backendErrors = {};
+          data.errors.forEach((issue) => {
+            const field = Array.isArray(issue.path) ? issue.path[0] : issue.path;
+            if (field === "description") backendErrors.description = issue.message;
+            else if (field === "major") backendErrors.course = issue.message;
+            else if (field === "semester") backendErrors.phase = issue.message;
+            else if (field === "technologies") backendErrors.tags = issue.message;
+            else if (field === "githubURL") backendErrors.github = issue.message;
+            else if (field === "liveURL") backendErrors.liveUrl = issue.message;
+            else if (field === "media") backendErrors.files = issue.message;
+            else if (field) backendErrors[field] = issue.message;
+          });
+          setErrors(backendErrors);
+          setFeedbackType("error");
+          setFeedbackMessage("Existem inconsistências nos dados informados.");
+          return;
+        }
+
+        setFeedbackType("error");
+        setFeedbackMessage(data.message || "Erro ao cadastrar projeto.");
+        return;
+      }
+
+      created = true;
+      setFeedbackType("success");
+      setFeedbackMessage("Projeto criado com sucesso!");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      setFeedbackType("error");
+      setFeedbackMessage("Não foi possível conectar ao servidor.");
+    } finally {
+      // Após o sucesso o botão continua bloqueado até o redirecionamento.
+      if (!created) setIsSubmitting(false);
+    }
   }
 
   return (
@@ -806,9 +832,7 @@ export default function NewProjectPage() {
             maxLength={100}
             value={title}
             onChange={handleTitleChange}
-            className={
-              errors.title ? "project-input is-invalid" : "project-input"
-            }
+            className={errors.title ? "project-input is-invalid" : "project-input"}
             placeholder="Digite o título do projeto"
             aria-invalid={Boolean(errors.title)}
             aria-describedby={errors.title ? "title-error" : "title-counter"}
@@ -853,7 +877,6 @@ export default function NewProjectPage() {
                   active={activeFormats.bold}
                   onClick={() => applyEditorCommand("bold")}
                 />
-
                 <EditorButton
                   label="Itálico"
                   icon="fa-italic"
@@ -933,7 +956,6 @@ export default function NewProjectPage() {
                   icon="fa-rotate-left"
                   onClick={() => applyEditorCommand("undo")}
                 />
-
                 <EditorButton
                   label="Refazer"
                   icon="fa-rotate-right"
@@ -1067,7 +1089,6 @@ export default function NewProjectPage() {
           >
             <div className="tags-search">
               <i className="fa-solid fa-tag toolbar-icon" aria-hidden="true" />
-
               <input
                 id="technology-input"
                 type="text"
@@ -1126,7 +1147,6 @@ export default function NewProjectPage() {
                 {tags.map((tag) => (
                   <span key={tag} className="tag">
                     {tag}
-
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
@@ -1160,11 +1180,7 @@ export default function NewProjectPage() {
 
           <div className="tags-container">
             <div className="tags-search">
-              <i
-                className="fa-solid fa-users toolbar-icon"
-                aria-hidden="true"
-              />
-
+              <i className="fa-solid fa-users toolbar-icon" aria-hidden="true" />
               <input
                 id="collaborator-input"
                 type="text"
@@ -1193,13 +1209,10 @@ export default function NewProjectPage() {
                       >
                         <span
                           className="collaborator-suggestion-avatar"
-                          style={{
-                            backgroundColor: person.color,
-                          }}
+                          style={{ backgroundColor: person.color }}
                         >
                           {person.name.charAt(0)}
                         </span>
-
                         {person.name}
                       </button>
                     </li>
@@ -1228,16 +1241,12 @@ export default function NewProjectPage() {
 
                     <div
                       className="collaborator-avatar"
-                      style={{
-                        backgroundColor: collaborator.color,
-                      }}
+                      style={{ backgroundColor: collaborator.color }}
                     >
                       {collaborator.name.charAt(0)}
                     </div>
 
-                    <span className="collaborator-name">
-                      {collaborator.name}
-                    </span>
+                    <span className="collaborator-name">{collaborator.name}</span>
                   </div>
                 ))}
               </div>
@@ -1259,7 +1268,6 @@ export default function NewProjectPage() {
 
             <div className="external-link-field">
               <GithubIcon />
-
               <input
                 id="github-url"
                 type="url"
@@ -1269,9 +1277,7 @@ export default function NewProjectPage() {
                   setGithub(event.target.value);
                   clearFieldError("github");
                 }}
-                className={
-                  errors.github ? "project-input is-invalid" : "project-input"
-                }
+                className={errors.github ? "project-input is-invalid" : "project-input"}
                 aria-invalid={Boolean(errors.github)}
               />
             </div>
@@ -1290,7 +1296,6 @@ export default function NewProjectPage() {
 
             <div className="external-link-field">
               <ExternalLinkIcon />
-
               <input
                 id="live-url"
                 type="url"
@@ -1300,9 +1305,7 @@ export default function NewProjectPage() {
                   setLiveUrl(event.target.value);
                   clearFieldError("liveUrl");
                 }}
-                className={
-                  errors.liveUrl ? "project-input is-invalid" : "project-input"
-                }
+                className={errors.liveUrl ? "project-input is-invalid" : "project-input"}
                 aria-invalid={Boolean(errors.liveUrl)}
               />
             </div>
@@ -1427,7 +1430,6 @@ export default function NewProjectPage() {
                   <span className="status-radio">
                     {active && <span className="status-radio-inner" />}
                   </span>
-
                   {option}
                 </button>
               );
@@ -1453,8 +1455,12 @@ export default function NewProjectPage() {
             Salvar rascunho
           </button>
 
-          <button type="submit" className="action-button submit-review">
-            Enviar para revisão
+          <button
+            type="submit"
+            className="action-button submit-review"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Enviando..." : "Enviar para a revisão"}
           </button>
         </div>
 

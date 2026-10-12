@@ -1,5 +1,5 @@
-﻿import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import LoggedHeader from "./LoggedHeader";
@@ -7,12 +7,36 @@ import "./Header.css";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
   const { isAuthenticated, loading } = useAuth();
 
   function closeMenu() {
     setMenuOpen(false);
   }
 
+  function handleProfileClick(event) {
+    event.preventDefault();
+    closeMenu();
+
+    const token =
+      localStorage.getItem("techub_token") ||
+      localStorage.getItem("token");
+
+    const rawUser = localStorage.getItem("techub_user");
+    let user = null;
+    try {
+      user = rawUser ? JSON.parse(rawUser) : null;
+    } catch {
+      user = null;
+    }
+
+    if (!token || !user?.id) {
+      alert("Entre na sua conta primeiro.");
+      navigate("/login");
+      return;
+    }
+
+    navigate(`/criadores/${user.id}`);
   if (loading) {
     return (
       <header className="site-header">
@@ -117,6 +141,16 @@ export default function Header() {
               onClick={closeMenu}
             >
               Criar conta
+            </NavLink>
+
+            <NavLink
+              to="/perfil"
+              className={({ isActive }) =>
+                `site-header__nav-item${isActive ? " is-active" : ""}`
+              }
+              onClick={handleProfileClick}
+            >
+              Perfil
             </NavLink>
           </div>
         </div>

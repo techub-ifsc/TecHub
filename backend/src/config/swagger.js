@@ -208,9 +208,135 @@ const definition = {
           },
         },
       },
+      MediaUploadSignature: {
+        type: 'object',
+        properties: {
+          mediaType: { type: 'string', enum: ['image', 'video'], example: 'image' },
+          uploadUrl: { type: 'string', format: 'uri', example: 'https://api.cloudinary.com/v1_1/demo/image/upload' },
+          fields: {
+            type: 'object',
+            description: 'Campos assinados a enviar junto com o arquivo, sem alterações.',
+            additionalProperties: true,
+          },
+        },
+      },
+      ProjectMediaInput: {
+        type: 'object',
+        required: ['url', 'mediaType'],
+        description: 'secure_url devolvida pelo Cloudinary (envio autorizado por POST /media/signature) ou link do YouTube (mediaType video).',
+        properties: {
+          url: { type: 'string', format: 'uri', maxLength: 500, example: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+          mediaType: { type: 'string', enum: ['image', 'video'], example: 'video' },
+          isCover: { type: 'boolean', default: false, description: 'Somente imagens. Sem capa definida, a primeira imagem é usada.' },
+        },
+      },
+      ProjectMedia: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          url: { type: 'string', format: 'uri' },
+          mediaType: { type: 'string', enum: ['image', 'video'] },
+          isCover: { type: 'boolean' },
+        },
+      },
+      Project: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', example: 'd3b07384-d113-49cd-a5e6-8149f0ef7771' },
+          title: { type: 'string', example: 'Sistema de Gestão Acadêmica' },
+          description: { type: 'string', example: 'Plataforma para gerenciamento de projetos e atividades acadêmicas.' },
+          major: { type: 'string', nullable: true, example: 'Ciência da Computação' },
+          semester: { type: 'integer', example: 4 },
+          technologies: {
+            type: 'array',
+            items: { type: 'string' },
+            example: ['React', 'Node.js', 'PostgreSQL'],
+          },
+          collaborators: {
+            type: 'array',
+            items: { type: 'string' },
+            example: ['Antônio Ferraz', 'Gabriela Rodrigues'],
+          },
+          githubURL: { type: 'string', format: 'uri', nullable: true, example: 'https://github.com/techub-ifsc/TecHub' },
+          liveURL: { type: 'string', format: 'uri', nullable: true, example: 'https://techub.vercel.app' },
+          status: { type: 'string', nullable: true, example: 'Em design' },
+          media: { type: 'array', items: { $ref: '#/components/schemas/ProjectMedia' } },
+          coverUrl: { type: 'string', format: 'uri', nullable: true, description: 'Somente na listagem: URL da imagem de capa.' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      CreateProjectInput: {
+        type: 'object',
+        required: ['title', 'description', 'media'],
+        properties: {
+          title: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 100,
+            example: 'Sistema de Gestão Acadêmica',
+          },
+          description: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 500,
+            example: 'Plataforma para gerenciamento de projetos e atividades acadêmicas.',
+          },
+          major: {
+            type: 'string',
+            nullable: true,
+            example: 'Ciência da Computação',
+          },
+          semester: {
+            type: 'integer',
+            minimum: 0,
+            default: 0,
+            example: 4,
+          },
+          technologies: {
+            type: 'array',
+            items: { type: 'string' },
+            default: [],
+            example: ['React', 'Node.js', 'PostgreSQL'],
+          },
+          collaborators: {
+            type: 'array',
+            items: { type: 'string' },
+            default: [],
+            example: ['Antônio Ferraz', 'Gabriela Rodrigues'],
+          },
+          githubURL: {
+            type: 'string',
+            format: 'uri',
+            maxLength: 100,
+            nullable: true,
+            example: 'https://github.com/techub-ifsc/TecHub',
+          },
+          liveURL: {
+            type: 'string',
+            format: 'uri',
+            maxLength: 100,
+            nullable: true,
+            example: 'https://techub.vercel.app',
+          },
+          status: {
+            type: 'string',
+            nullable: true,
+            example: 'Em design',
+          },
+          media: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 10,
+            items: { $ref: '#/components/schemas/ProjectMediaInput' },
+          },
+        },
+      },
     },
   },
 };
+
+
 
 const options = {
   definition,

@@ -723,6 +723,81 @@
   color: #ffffff !important;
 }
 
+.upload-file.is-cover {
+  border-color: var(--new-project-green);
+}
+
+.upload-file-thumb {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  object-fit: cover;
+  background-color: var(--new-project-border);
+  border-radius: 6px;
+  color: var(--new-project-text);
+  font-size: 1.1rem;
+}
+
+.upload-file-cover {
+  display: flex;
+  flex-direction: row; /* sobrescreve a regra global de label */
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--new-project-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-file-cover input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--new-project-green);
+}
+
+.youtube-link-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.youtube-link-field > i {
+  flex-shrink: 0;
+  color: var(--new-project-muted);
+  font-size: 1.25rem;
+}
+
+.youtube-link-field .project-input {
+  min-width: 0;
+  flex: 1;
+}
+
+.new-project-card button.youtube-link-add {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  background-color: var(--new-project-input);
+  border: 1px solid var(--new-project-border);
+  border-radius: 8px;
+  color: var(--new-project-text);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.new-project-card button.youtube-link-add:hover:not(:disabled) {
+  border-color: var(--new-project-green);
+}
+
+.new-project-card button.youtube-link-add:disabled,
+.new-project-card button.submit-review:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Status */
 
 .status-section {

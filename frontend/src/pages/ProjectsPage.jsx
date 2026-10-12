@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 
+import { API_URL } from "../api/apiUrl";
 import "./ProjectsPage.css";
 
 const COURSES = {
@@ -47,156 +48,24 @@ const TECHNOLOGIES = [
   "Web",
 ];
 
-const MOCK_PROJECTS = [
-  {
-    id: 1,
-    title: "SiteWebBlue.com",
-    author: "Matheus Oliveira",
-    course: "Ciência da Computação",
-    phase: "4ª Fase",
-    tags: ["Web", "Front-end", "React"],
-    color: "#c9e2f5",
-  },
-  {
-    id: 2,
-    title: "AppMobile.dev",
-    author: "Maria Silva",
-    course: "Ciência da Computação",
-    phase: "5ª Fase",
-    tags: ["Mobile", "React Native", "Firebase"],
-    color: "#d7cdf5",
-  },
-  {
-    id: 3,
-    title: "Dashboard Analytics",
-    author: "João Costa",
-    course: "Ciência da Computação",
-    phase: "6ª Fase",
-    tags: ["Front-end", "React", "Data Science"],
-    color: "#cce9dd",
-  },
-  {
-    id: 4,
-    title: "PortfólioTech.io",
-    author: "Ana Ferreira",
-    course: "Técnico em Informática para Internet",
-    phase: "3ª Fase",
-    tags: ["Web", "HTML", "CSS"],
-    color: "#f4d5c4",
-  },
-  {
-    id: 5,
-    title: "EcoTrack API",
-    author: "Lucas Andrade",
-    course: "Ciência da Computação",
-    phase: "7ª Fase",
-    tags: ["Back-end", "Node.js", "PostgreSQL"],
-    color: "#c8e7ca",
-  },
-  {
-    id: 6,
-    title: "Finanças Pessoais",
-    author: "Beatriz Lima",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "2ª Fase",
-    tags: ["Front-end", "React", "TypeScript"],
-    color: "#f2dfad",
-  },
-  {
-    id: 7,
-    title: "TaskFlow Manager",
-    author: "Gabriel Santos",
-    course: "Ciência da Computação",
-    phase: "5ª Fase",
-    tags: ["Full Stack", "Next.js", "Tailwind CSS"],
-    color: "#c9d8f2",
-  },
-  {
-    id: 8,
-    title: "Guia Universitário",
-    author: "Camila Rocha",
-    course: "Técnico em Informática para Internet",
-    phase: "3ª Fase",
-    tags: ["Web", "HTML", "JavaScript"],
-    color: "#e7c8d7",
-  },
-  {
-    id: 9,
-    title: "HealthPulse Mobile",
-    author: "Felipe Martins",
-    course: "Ciência da Computação",
-    phase: "6ª Fase",
-    tags: ["Mobile", "React Native", "Firebase"],
-    color: "#c4e6e8",
-  },
-  {
-    id: 10,
-    title: "CodeShare Platform",
-    author: "Larissa Dias",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "3ª Fase",
-    tags: ["Web", "Python", "FastAPI"],
-    color: "#e9d4ba",
-  },
-  {
-    id: 11,
-    title: "Nexus ERP Acadêmico",
-    author: "Rafael Souza",
-    course: "Ciência da Computação",
-    phase: "8ª Fase",
-    tags: ["Back-end", "Java", "Spring Boot"],
-    color: "#cfd2ef",
-  },
-  {
-    id: 12,
-    title: "PixelCraft Editor",
-    author: "Juliana Mendes",
-    course: "Técnico em Informática para Internet",
-    phase: "4ª Fase",
-    tags: ["Web", "Front-end", "TypeScript"],
-    color: "#ebc9c9",
-  },
-  {
-    id: 13,
-    title: "AgroSense IoT",
-    author: "Carolina Nogueira",
-    course: "Ciência da Computação",
-    phase: "7ª Fase",
-    tags: ["Full Stack", "Vue.js", "Python"],
-    color: "#d4e6bd",
-  },
-  {
-    id: 14,
-    title: "FastDelivery App",
-    author: "Fernanda Costa",
-    course: "Técnico em Desenvolvimento de Sistemas",
-    phase: "2ª Fase",
-    tags: ["Mobile", "Flutter", "REST API"],
-    color: "#f1d4b8",
-  },
-  {
-    id: 15,
-    title: "BiblioTech IFSC",
-    author: "Thiago Barbosa",
-    course: "Técnico em Informática para Internet",
-    phase: "4ª Fase",
-    tags: ["Web", "PHP", "Laravel"],
-    color: "#c6dfef",
-  },
-  {
-    id: 16,
-    title: "VisionAI Classifier",
-    author: "Pedro Almeida",
-    course: "Ciência da Computação",
-    phase: "8ª Fase",
-    tags: ["Machine Learning", "Python", "Data Science"],
-    color: "#ddd0ef",
-  },
+const CARD_COLORS = [
+  "#c9e2f5",
+  "#d7cdf5",
+  "#cce9dd",
+  "#f4d5c4",
+  "#c8e7ca",
+  "#f2dfad",
+  "#c9d8f2",
+  "#e7c8d7",
 ];
 
 const ITEMS_PER_PAGE = 8;
 
 export default function ProjectsPage() {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [search, setSearch] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedPhase, setSelectedPhase] = useState("");
@@ -207,10 +76,58 @@ export default function ProjectsPage() {
 
   const tagsContainerRef = useRef(null);
 
+  // Busca os projetos reais no Backend
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`${API_URL}/projects?limit=100`);
+
+        if (!response.ok) {
+          throw new Error("Erro ao carregar lista de projetos.");
+        }
+
+        const data = await response.json();
+        const rawProjects = Array.isArray(data.projects)
+          ? data.projects
+          : Array.isArray(data)
+          ? data
+          : [];
+
+        // Normaliza os dados do banco para o padrão visual esperado pela tela
+        const normalized = rawProjects.map((p, index) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          author: p.author?.name || "Estudante IFSC",
+          course: p.major || "Geral",
+          phase: p.semester ? `${p.semester}ª Fase` : "Fase livre",
+          tags: Array.isArray(p.technologies) ? p.technologies : [],
+          status: p.status,
+          githubURL: p.githubURL || p.github_url,
+          liveURL: p.liveURL || p.live_url,
+          coverUrl: p.coverUrl,
+          color: CARD_COLORS[index % CARD_COLORS.length],
+        }));
+
+        setProjects(normalized);
+      } catch (err) {
+        console.error("Erro na busca de projetos:", err);
+        setError("Não foi possível carregar os projetos. Verifique se o servidor está ativo.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProjects();
+  }, []);
+
   const phaseOptions = selectedCourse
     ? Array.from(
         { length: COURSES[selectedCourse] },
-        (_, index) => `${index + 1}ª Fase`,
+        (_, index) => `${index + 1}ª Fase`
       )
     : [];
 
@@ -228,13 +145,13 @@ export default function ProjectsPage() {
   const filteredProjects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return MOCK_PROJECTS.filter((project) => {
+    return projects.filter((project) => {
       const matchesSearch =
         !normalizedSearch ||
         project.title.toLowerCase().includes(normalizedSearch) ||
         project.author.toLowerCase().includes(normalizedSearch) ||
         project.tags.some((tag) =>
-          tag.toLowerCase().includes(normalizedSearch),
+          tag.toLowerCase().includes(normalizedSearch)
         );
 
       const matchesCourse =
@@ -248,16 +165,15 @@ export default function ProjectsPage() {
 
       return matchesSearch && matchesCourse && matchesPhase && matchesTags;
     });
-  }, [search, selectedCourse, selectedPhase, selectedTags]);
+  }, [search, selectedCourse, selectedPhase, selectedTags, projects]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredProjects.length / ITEMS_PER_PAGE),
+    Math.ceil(filteredProjects.length / ITEMS_PER_PAGE)
   );
 
   const visibleProjects = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-
     return filteredProjects.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProjects, currentPage]);
 
@@ -276,7 +192,6 @@ export default function ProjectsPage() {
     }
 
     document.addEventListener("mousedown", handleOutsideClick);
-
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
@@ -294,7 +209,7 @@ export default function ProjectsPage() {
 
   function removeTag(tagToRemove) {
     setSelectedTags((currentTags) =>
-      currentTags.filter((tag) => tag !== tagToRemove),
+      currentTags.filter((tag) => tag !== tagToRemove)
     );
   }
 
@@ -316,13 +231,11 @@ export default function ProjectsPage() {
       <section className="projects-page__content">
         <header className="projects-page__header">
           <h1>Projetos</h1>
-
           <p>Conheça os projetos desenvolvidos pelos estudantes do IFSC.</p>
         </header>
 
         <div className="projects-page__search">
           <SearchIcon />
-
           <input
             type="search"
             value={search}
@@ -394,7 +307,6 @@ export default function ProjectsPage() {
 
           <div className="projects-page__tag-filter" ref={tagsContainerRef}>
             <label htmlFor="tag-filter">Tecnologias</label>
-
             <button
               id="tag-filter"
               type="button"
@@ -410,7 +322,6 @@ export default function ProjectsPage() {
                   ? `${selectedTags.length} selecionada(s)`
                   : "Selecionar tecnologias"}
               </span>
-
               <ChevronIcon />
             </button>
 
@@ -418,7 +329,6 @@ export default function ProjectsPage() {
               <div className="projects-page__tag-dropdown">
                 <div className="projects-page__tag-search">
                   <SearchIcon />
-
                   <input
                     type="search"
                     value={tagSearch}
@@ -509,7 +419,16 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {visibleProjects.length > 0 ? (
+        {/* Exibição dos Estados: Carregando, Erro ou Cards */}
+        {loading ? (
+          <div className="projects-page__empty">
+            <p>Carregando projetos...</p>
+          </div>
+        ) : error ? (
+          <div className="projects-page__empty">
+            <p role="alert">{error}</p>
+          </div>
+        ) : visibleProjects.length > 0 ? (
           <div className="projects-page__grid">
             {visibleProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
@@ -518,18 +437,15 @@ export default function ProjectsPage() {
         ) : (
           <div className="projects-page__empty">
             <SearchIcon />
-
             <h2>Nenhum projeto encontrado</h2>
-
             <p>Tente alterar a busca ou remover alguns filtros.</p>
-
             <button type="button" onClick={clearFilters}>
               Limpar filtros
             </button>
           </div>
         )}
 
-        {filteredProjects.length > ITEMS_PER_PAGE && (
+        {!loading && !error && filteredProjects.length > ITEMS_PER_PAGE && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -547,7 +463,6 @@ function FilterTag({ label, type, onRemove }) {
   return (
     <span className={`projects-page__filter-tag ${type}`}>
       {label}
-
       <button
         type="button"
         onClick={onRemove}
@@ -568,10 +483,14 @@ function ProjectCard({ project }) {
       aria-label={`Ver detalhes do projeto ${project.title}`}
     >
       <div
-        className="project-card__image"
+        className={`project-card__image ${project.coverUrl ? "has-cover" : ""}`}
         style={{ backgroundColor: project.color }}
       >
-        <BrowserPreview title={project.title} />
+        {project.coverUrl ? (
+          <img src={project.coverUrl} alt="" loading="lazy" />
+        ) : (
+          <BrowserPreview title={project.title} />
+        )}
       </div>
 
       <div className="project-card__content">
@@ -584,7 +503,6 @@ function ProjectCard({ project }) {
 
           <div>
             <p>{project.author}</p>
-
             <span>
               {project.course} � {project.phase}
             </span>
@@ -637,7 +555,6 @@ function Pagination({
     ) {
       return;
     }
-
     onPageChange(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -691,7 +608,7 @@ function Pagination({
             >
               {page}
             </button>
-          ),
+          )
         )}
 
         <button
@@ -781,7 +698,6 @@ function SearchIcon() {
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-
       <path
         d="m16.5 16.5 4 4"
         stroke="currentColor"
@@ -822,7 +738,6 @@ function UserIcon() {
       aria-hidden="true"
     >
       <circle cx="12" cy="8" r="4" fill="currentColor" />
-
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="currentColor" />
     </svg>
   );

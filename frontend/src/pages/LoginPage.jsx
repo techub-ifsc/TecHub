@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
+
 import "./LoginPage.css";
 
 const INITIAL_FORM = {
@@ -78,18 +80,21 @@ export default function LoginPage() {
         password: form.password,
       });
 
-      setSuccessMessage("Login efetuado com sucesso! Redirecionando...");
+      localStorage.removeItem("techub_token");
+      localStorage.removeItem("techub_user");
+
+      setSuccessMessage(
+        "Login efetuado com sucesso! Redirecionando...",
+      );
 
       window.setTimeout(() => {
         navigate("/");
       }, 700);
-    } catch (err) {
+    } catch (error) {
       setErrors({
         general:
-          err.response?.data?.message ||
-          (err.response
-            ? "Não foi possível realizar o login."
-            : "Erro ao conectar ao servidor. Verifique se o back-end está ativo."),
+          error.response?.data?.message ||
+          "Não foi possível realizar o login.",
       });
     } finally {
       setLoading(false);
@@ -208,4 +213,39 @@ export default function LoginPage() {
             title="A recuperação de senha estará disponível em breve"
           >
             Esqueceu a senha?
-          </button
+          </button>
+        </div>
+
+        {accessMessage && (
+          <p
+            className="login-form__notice"
+            role="status"
+            aria-live="polite"
+          >
+            <i
+              className="fa-solid fa-circle-info"
+              aria-hidden="true"
+            />
+            {accessMessage}
+          </p>
+        )}
+        {successMessage && (
+          <p className="login-form__success" role="status">
+            {successMessage}
+          </p>
+        )}
+
+        <div className="login-form__actions">
+          <button type="submit" className="login-form__submit">
+            Entrar
+          </button>
+
+          <p className="login-form__signup">
+            Ainda não possui uma conta?{" "}
+            <Link to="/cadastro">Criar conta</Link>
+          </p>
+        </div>
+      </form>
+    </main>
+  );
+}

@@ -209,7 +209,8 @@ export default function EditProjectPage() {
   const [collaborators, setCollaborators] = useState([]);
   const [collaboratorOptions, setCollaboratorOptions] = useState([]);
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
-  const [isProjectOwner, setIsProjectOwner] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
 
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
@@ -245,13 +246,33 @@ export default function EditProjectPage() {
           throw new Error("Erro ao buscar projeto");
         }
 
-        const { project: currentProject } = await response.json();
-        try {
-          const currentUser = JSON.parse(localStorage.getItem("techub_user") || "{}");
-          setIsProjectOwner(currentProject.ownerId === currentUser.id);
-        } catch {
-          setIsProjectOwner(false);
+        const data = await response.json();
+        const currentProject = data.project;
+
+        if (!currentProject) {
+          setFeedbackType("error");
+          setFeedbackMessage("Projeto não encontrado.");
+          return;
         }
+
+        let storedUser = null;
+        try {
+          storedUser = JSON.parse(
+            localStorage.getItem("techub_user") || "null"
+          );
+        } catch {
+          storedUser = null;
+        }
+
+        const projectOwnerId =
+          currentProject.ownerId || currentProject.owner_id;
+        const owner = storedUser?.id === projectOwnerId;
+        const collaborator = currentProject.collaborators?.some(
+          (item) => item.userId === storedUser?.id || item.id === storedUser?.id
+        );
+
+        setIsOwner(Boolean(owner));
+        setCanEdit(Boolean(owner || collaborator));
 
         // Popula os campos do formulário
         setTitle(currentProject.title || "");
@@ -283,13 +304,19 @@ export default function EditProjectPage() {
             profilePhotoUrl: c.profilePhotoUrl || null,
             contribution: c.contribution || null,
           }));
-          initialCollaboratorsRef.current = mappedCollabs.map(({ id, contribution }) => ({ id, contribution }));
+          initialCollaboratorsRef.current = mappedCollabs.map(
+            ({ id: collabId, contribution }) => ({ id: collabId, contribution })
+          );
           setCollaborators(mappedCollabs);
         }
 
-        setGithub(currentProject.githubURL || currentProject.github_url || "");
+        setGithub(
+          currentProject.githubURL || currentProject.github_url || ""
+        );
         setLiveUrl(currentProject.liveURL || currentProject.live_url || "");
         setStatus(currentProject.status || "Em desenvolvimento");
+
+        // Carrega mídias já existentes no hook unificado de galeria
         gallery.loadSavedMedia(currentProject.media || []);
       } catch (err) {
         console.error("Falha ao carregar projeto para edição:", err);
@@ -331,16 +358,21 @@ export default function EditProjectPage() {
 
   useEffect(() => {
     const query = collaboratorInput.trim();
-    if (!isProjectOwner || query.length < 2) {
+    if (!isOwner || query.length < 2) {
       setCollaboratorOptions([]);
       return;
     }
+
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
+        const token =
+          localStorage.getItem("techub_token") ||
+          localStorage.getItem("token");
         const response = await fetch(
-          `${API_URL}/projects/collaborators/search?q=${encodeURIComponent(query)}`,
+          `${API_URL}/projects/collaborators/search?q=${encodeURIComponent(
+            query
+          )}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             signal: controller.signal,
@@ -353,11 +385,12 @@ export default function EditProjectPage() {
         if (error.name !== "AbortError") setCollaboratorOptions([]);
       }
     }, 250);
+
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [collaboratorInput, isProjectOwner]);
+  }, [collaboratorInput, isOwner]);
 
   const collaboratorSuggestions = useMemo(() => {
     return collaboratorOptions.filter((person) => {
@@ -570,7 +603,7 @@ export default function EditProjectPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || !canEdit) return;
 
     setErrors({});
     setFeedbackMessage("");
@@ -603,17 +636,17 @@ export default function EditProjectPage() {
 
     try {
       const token =
-        localStorage.getItem("techub_token") || localStorage.getItem("token");
+        localStorage.getItem("techub_token") ||
+        localStorage.getItem("token");
 
-      // Envia ao storage somente os arquivos novos; as mídias já cadastradas são mantidas.
       if (gallery.hasPendingUploads) {
         setFeedbackType("");
         setFeedbackMessage("Enviando fotos e vídeos...");
       }
 
-      let media;
+      let mediaPayload;
       try {
-        media = await gallery.buildMediaPayload(token);
+        mediaPayload = await gallery.buildMediaPayload(token);
       } catch (uploadError) {
         setErrors({ files: uploadError.message });
         setFeedbackType("error");
@@ -624,10 +657,20 @@ export default function EditProjectPage() {
       setFeedbackType("");
       setFeedbackMessage("Salvando alterações...");
 
-      const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
-      const collaboratorValues = collaborators.map(({ id, contribution }) => ({ id, contribution: contribution || null }));
-      const collaboratorsChanged = isProjectOwner &&
-        JSON.stringify(collaboratorValues) !== JSON.stringify(initialCollaboratorsRef.current);
+      const semesterNumber = phase
+        ? parseInt(phase.replace(/\D/g, ""), 10)
+        : 0;
+
+      const collaboratorValues = collaborators.map(
+        ({ id: collabId, contribution }) => ({
+          id: collabId,
+          contribution: contribution || null,
+        })
+      );
+      const collaboratorsChanged =
+        isOwner &&
+        JSON.stringify(collaboratorValues) !==
+          JSON.stringify(initialCollaboratorsRef.current);
 
       const payload = {
         title: title.trim(),
@@ -635,44 +678,51 @@ export default function EditProjectPage() {
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
-        ...(collaboratorsChanged ? {
-          collaborators: collaboratorValues.map(({ id: userId, contribution }) => ({
-            userId,
-            ...(contribution ? { contribution } : {}),
-          })),
-        } : {}),
+        ...(collaboratorsChanged
+          ? {
+              collaborators: collaboratorValues.map(
+                ({ id: userId, contribution }) => ({
+                  userId,
+                  ...(contribution ? { contribution } : {}),
+                })
+              ),
+            }
+          : {}),
         githubURL: github.trim() || null,
         liveURL: liveUrl.trim() || null,
         status: status || null,
-        media,
+        media: mediaPayload,
       };
 
-      const response = await fetch(
-        `${API_URL}/projects/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${API_URL}/projects/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         if (data.errors && Array.isArray(data.errors)) {
           const backendErrors = {};
           data.errors.forEach((issue) => {
-            const field = Array.isArray(issue.path) ? issue.path[0] : issue.path;
-            if (field === "description") backendErrors.description = issue.message;
+            const field = Array.isArray(issue.path)
+              ? issue.path[0]
+              : issue.path;
+            if (field === "description")
+              backendErrors.description = issue.message;
             else if (field === "major") backendErrors.course = issue.message;
             else if (field === "semester") backendErrors.phase = issue.message;
-            else if (field === "technologies") backendErrors.tags = issue.message;
-            else if (field === "githubURL") backendErrors.github = issue.message;
+            else if (field === "technologies")
+              backendErrors.tags = issue.message;
+            else if (field === "media" || field?.startsWith("media."))
+              backendErrors.files = issue.message;
+            else if (field === "githubURL")
+              backendErrors.github = issue.message;
             else if (field === "liveURL") backendErrors.liveUrl = issue.message;
-            else if (field === "media") backendErrors.files = issue.message;
             else if (field) backendErrors[field] = issue.message;
           });
           setErrors(backendErrors);
@@ -694,9 +744,10 @@ export default function EditProjectPage() {
     } catch (err) {
       console.error(err);
       setFeedbackType("error");
-      setFeedbackMessage("Não foi possível conectar ao servidor.");
+      setFeedbackMessage(
+        err.message || "Não foi possível conectar ao servidor."
+      );
     } finally {
-      // Após o sucesso o botão continua bloqueado até o redirecionamento.
       if (!saved) setIsSubmitting(false);
     }
   }
@@ -705,8 +756,25 @@ export default function EditProjectPage() {
     return (
       <main className="new-project-page">
         <h1 className="new-project-title">Editar projeto</h1>
-        <div className="new-project-card" style={{ padding: "3rem", textAlign: "center" }}>
+        <div
+          className="new-project-card"
+          style={{ padding: "3rem", textAlign: "center" }}
+        >
           <p>Carregando dados do projeto...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!canEdit) {
+    return (
+      <main className="new-project-page">
+        <h1 className="new-project-title">Editar projeto</h1>
+        <div className="new-project-card" style={{ padding: "3rem" }}>
+          <p role="alert">
+            {feedbackMessage ||
+              "Somente o dono e os colaboradores podem editar este projeto."}
+          </p>
         </div>
       </main>
     );
@@ -731,7 +799,9 @@ export default function EditProjectPage() {
             maxLength={100}
             value={title}
             onChange={handleTitleChange}
-            className={errors.title ? "project-input is-invalid" : "project-input"}
+            className={
+              errors.title ? "project-input is-invalid" : "project-input"
+            }
             placeholder="Digite o título do projeto"
             aria-invalid={Boolean(errors.title)}
             aria-describedby={errors.title ? "title-error" : "title-counter"}
@@ -895,7 +965,9 @@ export default function EditProjectPage() {
 
             <select
               id="project-course"
-              className={errors.course ? "project-select is-invalid" : "project-select"}
+              className={
+                errors.course ? "project-select is-invalid" : "project-select"
+              }
               value={course}
               onChange={handleCourseChange}
               aria-invalid={Boolean(errors.course)}
@@ -926,7 +998,9 @@ export default function EditProjectPage() {
 
             <select
               id="project-phase"
-              className={errors.phase ? "project-select is-invalid" : "project-select"}
+              className={
+                errors.phase ? "project-select is-invalid" : "project-select"
+              }
               value={phase}
               onChange={(event) => {
                 setPhase(event.target.value);
@@ -1053,89 +1127,97 @@ export default function EditProjectPage() {
           )}
         </div>
 
-        {isProjectOwner && <div className="form-field" ref={collaboratorContainerRef}>
-          <label className="form-label" htmlFor="collaborator-input">
-            Colaboradores
-          </label>
+        {isOwner && (
+          <div className="form-field" ref={collaboratorContainerRef}>
+            <label className="form-label" htmlFor="collaborator-input">
+              Colaboradores
+            </label>
 
-          <div className="tags-container">
-            <div className="tags-search">
-              <i className="fa-solid fa-users toolbar-icon" aria-hidden="true" />
-              <input
-                id="collaborator-input"
-                type="text"
-                placeholder="Pesquisar colaborador"
-                value={collaboratorInput}
-                onChange={(event) => {
-                  setCollaboratorInput(event.target.value);
-                  setCollaboratorsOpen(true);
-                }}
-                onFocus={() => setCollaboratorsOpen(true)}
-                className="tags-input"
-                autoComplete="off"
-              />
-            </div>
+            <div className="tags-container">
+              <div className="tags-search">
+                <i
+                  className="fa-solid fa-users toolbar-icon"
+                  aria-hidden="true"
+                />
+                <input
+                  id="collaborator-input"
+                  type="text"
+                  placeholder="Pesquisar colaborador"
+                  value={collaboratorInput}
+                  onChange={(event) => {
+                    setCollaboratorInput(event.target.value);
+                    setCollaboratorsOpen(true);
+                  }}
+                  onFocus={() => setCollaboratorsOpen(true)}
+                  className="tags-input"
+                  autoComplete="off"
+                />
+              </div>
 
-            {collaboratorsOpen && collaboratorInput.trim() && (
-              <ul className="collaborator-suggestions">
-                {collaboratorSuggestions.length > 0 ? (
-                  collaboratorSuggestions.map((person) => (
-                    <li key={person.id}>
+              {collaboratorsOpen &&
+                collaboratorInput.trim().length >= 2 && (
+                  <ul className="collaborator-suggestions">
+                    {collaboratorSuggestions.length > 0 ? (
+                      collaboratorSuggestions.map((person) => (
+                        <li key={person.id}>
+                          <button
+                            type="button"
+                            className="collaborator-suggestion"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => addCollaborator(person)}
+                          >
+                            <CollaboratorAvatar
+                              name={person.name}
+                              profilePhotoUrl={person.profilePhotoUrl}
+                              compact
+                            />
+                            {person.name}
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="collaborator-empty">
+                        Nenhum colaborador encontrado.
+                      </li>
+                    )}
+                  </ul>
+                )}
+
+              {collaborators.length > 0 && (
+                <div className="collaborators-grid">
+                  {collaborators.map((collaborator) => (
+                    <div key={collaborator.id} className="collaborator-card">
                       <button
                         type="button"
-                        className="collaborator-suggestion"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => addCollaborator(person)}
+                        onClick={() => removeCollaborator(collaborator.id)}
+                        className="collaborator-remove-button"
+                        aria-label={`Remover ${collaborator.name}`}
+                        title={`Remover ${collaborator.name}`}
                       >
-                        <CollaboratorAvatar
-                          name={person.name}
-                          profilePhotoUrl={person.profilePhotoUrl}
-                          compact
-                        />
-                        {person.name}
+                        ×
                       </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="collaborator-empty">
-                    Nenhum colaborador encontrado.
-                  </li>
-                )}
-              </ul>
-            )}
 
-            {collaborators.length > 0 && (
-              <div className="collaborators-grid">
-                {collaborators.map((collaborator) => (
-                  <div key={collaborator.id} className="collaborator-card">
-                    <button
-                      type="button"
-                      onClick={() => removeCollaborator(collaborator.id)}
-                      className="collaborator-remove-button"
-                      aria-label={`Remover ${collaborator.name}`}
-                      title={`Remover ${collaborator.name}`}
-                    >
-                      ×
-                    </button>
+                      <CollaboratorAvatar
+                        name={collaborator.name}
+                        profilePhotoUrl={collaborator.profilePhotoUrl}
+                      />
 
-                    <CollaboratorAvatar
-                      name={collaborator.name}
-                      profilePhotoUrl={collaborator.profilePhotoUrl}
-                    />
+                      <span className="collaborator-name">
+                        {collaborator.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                    <span className="collaborator-name">{collaborator.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ul className="collaborator-rules">
+              {COLLABORATOR_RULES.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
           </div>
-
-          <ul className="collaborator-rules">
-            {COLLABORATOR_RULES.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
-        </div>}
+        )}
 
         <div className="external-links">
           <div className="form-field">
@@ -1154,7 +1236,9 @@ export default function EditProjectPage() {
                   setGithub(event.target.value);
                   clearFieldError("github");
                 }}
-                className={errors.github ? "project-input is-invalid" : "project-input"}
+                className={
+                  errors.github ? "project-input is-invalid" : "project-input"
+                }
                 aria-invalid={Boolean(errors.github)}
               />
             </div>
@@ -1182,7 +1266,9 @@ export default function EditProjectPage() {
                   setLiveUrl(event.target.value);
                   clearFieldError("liveUrl");
                 }}
-                className={errors.liveUrl ? "project-input is-invalid" : "project-input"}
+                className={
+                  errors.liveUrl ? "project-input is-invalid" : "project-input"
+                }
                 aria-invalid={Boolean(errors.liveUrl)}
               />
             </div>

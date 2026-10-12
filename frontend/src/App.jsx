@@ -17,7 +17,6 @@ import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectValidationPage from "./pages/ProjectValidationPage";
 import SignUpPage from "./pages/SignUpPage";
-import ProfileEditPage from "./pages/ProfileEditPage";
 import EditProjectPage from "./pages/EditProjectPage";
 
 export default function App() {

@@ -18,12 +18,21 @@ Esta entrega parte da branch `feat/CRUD-de-projetos` após o PR #21. Ela preserv
 - `frontend/src/pages/CreatorProfilePage.jsx` pede confirmação explícita, bloqueia outro clique durante a requisição e remove o card apenas quando a API confirma sucesso. Colaboradores veem o botão de edição, mas não o de exclusão.
 - Esta primeira versão exclui definitivamente os registros do banco. Ela **não** apaga os arquivos do Cloudinary e ainda não oferece lixeira ou restauração.
 
-## Verificação
+## Verificação e Testes
 
 - `backend/test/projects.test.js` cobre edição de mídias, permissão do colaborador, gestão exclusiva do dono, exclusão e busca real de colaboradores. Os testes simulam persistência; não alteram o banco compartilhado.
 - `npm test` em `backend`: 68 testes passaram com variáveis fictícias de banco fornecidas apenas ao processo de teste.
 - `npm run build` em `frontend`: compilação concluída.
-- Falta um teste manual ponta a ponta com contas reais, banco migrado e Cloudinary configurado. A tabela `project_media` já foi vista com as colunas esperadas, mas não fizemos escrita no banco compartilhado nesta integração.
+- **Atenção ao esquema do banco**: Verificar se a migration `backend/src/migrations/20261004000001-recreate-project-media.js` foi executada no ambiente compartilhado para assegurar a presença das colunas `media_type` e `is_cover` na tabela `project_media`.
+
+## Roteiro de Teste Manual Recomendado
+
+1. Entrar como criador e cadastrar um projeto com imagem.
+2. Abrir o projeto pela página de perfil, editar somente o título e confirmar que a mídia permanece.
+3. Adicionar outra mídia, trocar a capa, salvar e conferir o detalhe e o card do perfil.
+4. Remover uma mídia, salvar e confirmar que ela desapareceu do detalhe.
+5. Entrar como colaborador e editar conteúdo; tentar alterar a lista de colaboradores ou excluir e confirmar o retorno de status `403`.
+6. Entrar como dono, confirmar a exclusão e verificar se o projeto saiu da listagem e não pode mais ser acessado pelo ID.
 
 ## Limites e próximas features
 

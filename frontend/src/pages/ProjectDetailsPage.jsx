@@ -90,6 +90,8 @@ export default function ProjectDetailsPage() {
   }
 
   useEffect(() => {
+    if (selectedImage === null) return undefined;
+
     function handleKeyDown(event) {
       if (selectedIndex === null) {
         return;
@@ -109,11 +111,10 @@ export default function ProjectDetailsPage() {
     }
 
     document.addEventListener("keydown", handleKeyDown);
-
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedIndex, images.length]);
+  }, [selectedIndex, images.length, selectedImage]);
 
   if (loading || error) {
     return (
@@ -146,15 +147,8 @@ export default function ProjectDetailsPage() {
   return (
     <main className="project-details-page">
       <div className="project-details-page__container">
-        <Link
-          to="/projetos"
-          className="project-details-page__back"
-        >
-          <i
-            className="fa-solid fa-arrow-left"
-            aria-hidden="true"
-          />
-
+        <Link to="/projetos" className="project-details-page__back">
+          <i className="fa-solid fa-arrow-left" aria-hidden="true" />
           Voltar para projetos
         </Link>
 
@@ -164,7 +158,6 @@ export default function ProjectDetailsPage() {
               {project.status && (
                 <span className="project-details-status">
                   <span aria-hidden="true" />
-
                   {project.status}
                 </span>
               )}
@@ -193,7 +186,6 @@ export default function ProjectDetailsPage() {
                     className="fa-solid fa-arrow-up-right-from-square"
                     aria-hidden="true"
                   />
-
                   Ver demonstração
                 </a>
               )}
@@ -209,7 +201,6 @@ export default function ProjectDetailsPage() {
                     className="fa-brands fa-github"
                     aria-hidden="true"
                   />
-
                   Repositório
                 </a>
               )}
@@ -312,7 +303,7 @@ export default function ProjectDetailsPage() {
                     return (
                       <div
                         className="project-collaborator"
-                        key={person.userId}
+                        key={person.userId || person.id}
                       >
                         <span aria-hidden="true">
                           {getInitials(name)}

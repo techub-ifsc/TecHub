@@ -118,10 +118,12 @@ router.get('/', projectController.list);
  *     responses:
  *       200:
  *         description: Até 10 usuários, apenas com ID e nome.
+ *       400:
+ *         description: Erro na busca de colaboradores.
  *       401:
  *         description: Não autenticado.
  */
-// Deve vir antes de /:id para não interpretar "collaborators" como um ID.
+// Precisa vir antes de /:id para não interpretar "collaborators" como UUID.
 router.get('/collaborators/search', authenticate, projectController.searchCollaborators);
 
 /**
@@ -230,7 +232,7 @@ router.get('/:id', projectController.getById);
  *                 example: Concluído
  *               media:
  *                 type: array
- *                 description: Lista final de mídias. Se omitida, a galeria atual é mantida.
+ *                 description: Lista final de mídias. Quando omitida, a galeria atual é mantida.
  *                 items:
  *                   $ref: '#/components/schemas/ProjectMediaInput'
  *     responses:
@@ -241,7 +243,7 @@ router.get('/:id', projectController.getById);
  *       401:
  *         description: Não autenticado.
  *       403:
- *         description: Somente dono ou colaborador edita; apenas o dono gerencia colaboradores.
+ *         description: Somente dono ou colaborador pode editar; apenas o dono gerencia colaboradores.
  *       404:
  *         description: Projeto não encontrado.
  *       500:

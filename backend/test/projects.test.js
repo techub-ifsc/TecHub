@@ -279,7 +279,7 @@ describe('rotas de projetos', () => {
     let options;
     t.mock.method(Project, 'findByPk', async (id, opts) => {
       options = opts;
-      return Project.build({ id, title: 'Projeto' });
+      return Project.build({ id, title: 'Projeto', approvalStatus: 'approved' });
     });
 
     const res = await request('GET', `/${randomUUID()}`);

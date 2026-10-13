@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const router = Router();
 const projectController = require('../controllers/projectController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, optionalAuthenticate, authorize } = require('../middlewares/auth');
 const { ROLES } = require('../constants/roles');
 
 /**
@@ -46,7 +46,7 @@ router.post('/', authenticate, authorize(ROLES.CREATOR), projectController.creat
  * @openapi
  * /projects:
  *   get:
- *     summary: Lista todos os projetos cadastrados
+ *     summary: Lista os projetos aprovados pela moderação
  *     tags:
  *       - Projects
  *     parameters:
@@ -105,6 +105,24 @@ router.get('/', projectController.list);
 
 /**
  * @openapi
+ * /projects/mine:
+ *   get:
+ *     summary: Lista os projetos do usuário autenticado em qualquer situação de moderação
+ *     description: Inclui os projetos em que ele é autor ou colaborador, com approvalStatus e, quando rejeitado, a justificativa em reviewNotes.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Projetos do usuário, do mais recente para o mais antigo.
+ *       401:
+ *         description: Não autenticado.
+ */
+// Precisa vir antes de /:id para não interpretar "mine" como UUID.
+router.get('/mine', authenticate, projectController.listMine);
+
+/**
+ * @openapi
  * /projects/collaborators/search:
  *   get:
  *     summary: Busca criadores reais para adicionar como colaboradores
@@ -131,6 +149,7 @@ router.get('/collaborators/search', authenticate, projectController.searchCollab
  * /projects/{id}:
  *   get:
  *     summary: Busca um projeto com tecnologias, colaboradores e mídias
+ *     description: Público para projetos aprovados. Um projeto pendente ou rejeitado só é retornado, com o token, ao dono, aos colaboradores e ao super_admin; para os demais a resposta é 404.
  *     tags:
  *       - Projects
  *     parameters:
@@ -156,7 +175,7 @@ router.get('/collaborators/search', authenticate, projectController.searchCollab
  *       500:
  *         description: Erro interno do servidor.
  */
-router.get('/:id', projectController.getById);
+router.get('/:id', optionalAuthenticate, projectController.getById);
 
 /**
  * @openapi

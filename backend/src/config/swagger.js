@@ -262,8 +262,40 @@ const definition = {
           status: { type: 'string', nullable: true, example: 'Em design' },
           media: { type: 'array', items: { $ref: '#/components/schemas/ProjectMedia' } },
           coverUrl: { type: 'string', format: 'uri', nullable: true, description: 'Somente na listagem: URL da imagem de capa.' },
+          approvalStatus: { type: 'string', enum: ['pending', 'approved', 'rejected'], description: 'Situação na moderação. Somente approved aparece publicamente.' },
+          submittedAt: { type: 'string', format: 'date-time', description: 'Envio (ou reenvio) para análise; início do prazo da moderação.' },
+          reviewNotes: { type: 'string', nullable: true, description: 'Parecer da moderação. Visível ao dono, aos colaboradores e ao super_admin.' },
+          reviewedAt: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      ModerationList: {
+        type: 'object',
+        properties: {
+          slaDays: { type: 'integer', example: 3, description: 'Prazo de análise em dias (MODERATION_SLA_DAYS).' },
+          totals: {
+            type: 'object',
+            properties: {
+              pending: { type: 'integer' },
+              approved: { type: 'integer' },
+              rejected: { type: 'integer' },
+            },
+          },
+          projects: {
+            type: 'array',
+            items: {
+              allOf: [
+                { $ref: '#/components/schemas/Project' },
+                {
+                  type: 'object',
+                  properties: {
+                    dueAt: { type: 'string', format: 'date-time', description: 'Fim do prazo de análise.' },
+                  },
+                },
+              ],
+            },
+          },
         },
       },
       CreateProjectInput: {

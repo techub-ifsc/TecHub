@@ -288,6 +288,10 @@ describe('rotas de projetos', () => {
     assert.deepEqual(author.attributes, ['id', 'name']);
   });
 
+  test('tecnologias usam a chave (projeto, nome), senão a leitura devolve só a primeira', () => {
+    assert.deepEqual(ProjectTechnology.primaryKeyAttributes, ['projectId', 'name']);
+  });
+
   test('listagem devolve a URL da capa (ou null) em coverUrl', async (t) => {
     const withCover = Project.build(
       { id: randomUUID(), title: 'Com capa', media: [{ url: imageUrl(1) }] },

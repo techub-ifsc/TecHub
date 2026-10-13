@@ -907,22 +907,22 @@
 
 .projects-page__tag-options {
   scrollbar-width: thin;
-  scrollbar-color: #62676f #18191a;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
 }
 
 .projects-page__tag-options::-webkit-scrollbar {
-  width: 10px;
+  width: var(--tc-scrollbar-width);
 }
 
 .projects-page__tag-options::-webkit-scrollbar-track {
-  background: #18191a;
-  border-left: 1px solid #303337;
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .projects-page__tag-options::-webkit-scrollbar-thumb {
-  background: #62676f;
-  border: 2px solid #18191a;
-  border-radius: 999px;
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .projects-page__tag-options::-webkit-scrollbar-thumb:hover {

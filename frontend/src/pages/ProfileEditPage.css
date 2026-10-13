@@ -1444,26 +1444,26 @@
 
 .profile-edit-suggestions {
   scrollbar-width: thin;
-  scrollbar-color: #69df4f #202326;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
 }
 
 .profile-edit-suggestions::-webkit-scrollbar {
-  width: 0.55rem;
+  width: var(--tc-scrollbar-width);
 }
 
 .profile-edit-suggestions::-webkit-scrollbar-track {
-  background: #202326;
-  border-radius: 999px;
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .profile-edit-suggestions::-webkit-scrollbar-thumb {
-  background: #69df4f;
-  border: 2px solid #202326;
-  border-radius: 999px;
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .profile-edit-suggestions::-webkit-scrollbar-thumb:hover {
-  background: #82ec6b;
+  background: var(--tc-scrollbar-thumb-hover);
 }
 
 .profile-edit-portfolio-control {

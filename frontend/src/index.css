@@ -1758,3 +1758,38 @@ body {
 .projects-page button[aria-label^="Remover"] {
   border-radius: 50% !important;
 }
+
+/* ============ Barra de rolagem do TecHub — padrão único ============ */
+/* Use a classe .tc-scrollbar em qualquer lista com rolagem. Para mudar a
+   aparência da barra no site inteiro, altere os valores abaixo e só eles. */
+:root {
+  --tc-scrollbar-width: 8px;
+  --tc-scrollbar-track: #18191a;
+  --tc-scrollbar-thumb: #62676f;
+  --tc-scrollbar-thumb-hover: var(--tc-green);
+  --tc-scrollbar-radius: 999px;
+}
+
+.tc-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
+}
+
+.tc-scrollbar::-webkit-scrollbar {
+  width: var(--tc-scrollbar-width);
+}
+
+.tc-scrollbar::-webkit-scrollbar-track {
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
+}
+
+.tc-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
+}
+
+.tc-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--tc-scrollbar-thumb-hover);
+}

@@ -84,6 +84,7 @@ test('cadastro grava perfil e hash bcrypt; login retorna usuario seguro com JWT'
   const input = { ...account(), name: ' Maria Silva ', email: ' MARIA@EXAMPLE.COM ' };
   const result = await request('/register', input);
   assert.equal(result.status, 201);
+  assert.equal(result.body.message, 'Cadastro realizado com sucesso. Você já pode fazer login.');
   assert.equal(result.body.user.name, 'Maria Silva');
   assert.equal(result.body.user.email, 'maria@example.com');
   assert.equal(result.body.user.role, 'visitor');

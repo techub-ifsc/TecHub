@@ -42,6 +42,7 @@ const definition = {
           name: { type: 'string' },
           email: { type: 'string', format: 'email' },
           role: { type: 'string', enum: ['visitor', 'creator', 'super_admin'] },
+          emailVerifiedAt: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },

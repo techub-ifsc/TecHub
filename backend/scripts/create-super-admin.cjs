@@ -28,7 +28,8 @@ async function main() {
       throw new Error('Já existe uma conta com o e-mail informado.');
     }
 
-    await User.create({ ...data, role: ROLES.SUPER_ADMIN });
+    // A conta é criada internamente após validação da equipe, sem convite público.
+    await User.create({ ...data, role: ROLES.SUPER_ADMIN, emailVerifiedAt: new Date() });
     console.log('Conta super_admin criada com sucesso.');
   } catch (error) {
     if (error instanceof z.ZodError) {

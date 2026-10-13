@@ -11,8 +11,8 @@ class User extends Model {
 
   // Retorna uma representação do usuário sem incluir sua senha.
   toSafeJSON() {
-    const { id, name, email, role, createdAt, updatedAt } = this;
-    return { id, name, email, role, createdAt, updatedAt };
+    const { id, name, email, role, emailVerifiedAt, createdAt, updatedAt } = this;
+    return { id, name, email, role, emailVerifiedAt, createdAt, updatedAt };
   }
 }
 
@@ -46,18 +46,9 @@ User.init(
       allowNull: false,
       defaultValue: ROLES.VISITOR,
     },
-    // isEmailVerified: {
-    //   type: DataTypes.BOOLEAN,
-    //   defaultValue: false,
-    // },
-    // emailVerificationToken: {
-    //   type: DataTypes.STRING,
-    //   allowNull: true,
-    // },
-    // emailVerificationExpires: {
-    //   type: DataTypes.DATE,
-    //   allowNull: true,
-    // },
+    emailVerifiedAt: { type: DataTypes.DATE, allowNull: true },
+    emailVerificationTokenHash: { type: DataTypes.STRING(64), allowNull: true },
+    emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true },
   },
   {
     sequelize,

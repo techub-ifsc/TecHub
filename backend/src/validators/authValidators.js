@@ -39,6 +39,11 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Senha é obrigatória').max(128),
 });
 
+const resendVerificationSchema = z.object({ email: emailSchema }).strict();
+const verifyEmailSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/i, 'Link de confirmação inválido.'),
+}).strict();
+
 const updateProfileSchema = z
   .object({
     name: z.string().trim().min(1, 'Nome é obrigatório').max(100).optional(),
@@ -56,5 +61,7 @@ module.exports = {
   emailSchema,
   registerSchema,
   loginSchema,
+  resendVerificationSchema,
+  verifyEmailSchema,
   updateProfileSchema,
 };

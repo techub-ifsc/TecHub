@@ -19,7 +19,7 @@ const authLimiter = rateLimit({
  *   post:
  *     tags: [Auth]
  *     summary: Cadastra um visitante ou criador no Tech Hub
- *     description: Exige nome por compatibilidade com a tabela herdada. accountType aceita visitor ou creator; creator exige e-mail institucional. super_admin nunca é criado por esta rota. A resposta atual contém message e user, sem JWT. O envio/validação de e-mail ainda não está ativo; o login continua disponível.
+ *     description: Exige nome por compatibilidade com a tabela herdada. accountType aceita visitor ou creator; creator exige e-mail institucional. super_admin nunca é criado por esta rota. A resposta contém message e user, sem JWT; o acesso depende da confirmação por e-mail em até 24 horas.
  *     requestBody:
  *       required: true
  *       content:
@@ -27,7 +27,7 @@ const authLimiter = rateLimit({
  *           schema: { $ref: '#/components/schemas/RegisterInput' }
  *     responses:
  *       201:
- *         description: Conta criada; retorna message e user. Obtenha o JWT pela rota de login.
+ *         description: Conta criada; link de confirmação enviado. Não retorna JWT.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/RegisterResponse' }
@@ -36,7 +36,7 @@ const authLimiter = rateLimit({
  *       429:
  *         description: Limite de requisições por IP excedido
  *       503:
- *         description: Banco ou tabela de usuários indisponível
+ *         description: Banco ou envio de e-mail indisponível
  *       409:
  *         description: E-mail já cadastrado
  *         content:
@@ -44,6 +44,59 @@ const authLimiter = rateLimit({
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.post('/register', authLimiter, authController.register);
+
+/**
+ * @openapi
+ * /auth/verify-email:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Confirma o e-mail com token de uso único válido por 24 horas
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token: { type: string, description: Token recebido no link de e-mail }
+ *     responses:
+ *       200:
+ *         description: E-mail confirmado; usuário pode fazer login
+ *       400:
+ *         description: Token inválido, expirado ou já usado
+ *       429:
+ *         description: Limite de requisições por IP excedido
+ */
+router.post('/verify-email', authLimiter, authController.verifyEmail);
+
+/**
+ * @openapi
+ * /auth/resend-verification:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Solicita outro link de confirmação
+ *     description: Resposta genérica para não revelar se o e-mail possui conta. O link anterior é invalidado.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: Solicitação recebida (resposta igual para e-mail ausente ou já confirmado)
+ *       400:
+ *         description: E-mail inválido
+ *       429:
+ *         description: Limite de requisições por IP excedido
+ *       503:
+ *         description: Serviço de contas ou e-mail indisponível
+ */
+router.post('/resend-verification', authLimiter, authController.resendVerification);
 
 /**
  * @openapi
@@ -73,6 +126,8 @@ router.post('/register', authLimiter, authController.register);
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: E-mail ainda não confirmado
  */
 router.post('/login', authLimiter, authController.login);
 
@@ -94,6 +149,8 @@ router.post('/login', authLimiter, authController.login);
  *                 user: { $ref: '#/components/schemas/User' }
  *       401:
  *         description: Não autenticado
+ *       403:
+ *         description: E-mail ainda não confirmado
  */
 router.get('/me', authenticate, authController.me);
 
@@ -122,6 +179,8 @@ router.get('/me', authenticate, authController.me);
  *         description: Senha atual incorreta
  *       409:
  *         description: E-mail já cadastrado
+ *       503:
+ *         description: Falha de envio ao alterar e-mail
  */
 router.patch('/me', authLimiter, authenticate, authController.updateProfile);
 

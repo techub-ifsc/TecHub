@@ -89,7 +89,7 @@ describe('moderação de projetos', () => {
   });
 
   function createUser(role, name = role) {
-    const user = User.build({ name, email: `${randomUUID()}@ifsc.edu.br`, password: 'x', role });
+    const user = User.build({ name, email: `${randomUUID()}@ifsc.edu.br`, password: 'x', role, emailVerifiedAt: new Date() });
     users.set(user.id, user);
     return user;
   }

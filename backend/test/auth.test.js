@@ -11,6 +11,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../src/models');
+const mailService = require('../src/services/mailService');
 const { errorHandler } = require('../src/middlewares/errorHandler');
 const { authorize } = require('../src/middlewares/auth');
 const { ROLES } = require('../src/constants/roles');
@@ -18,23 +19,41 @@ const { ROLES } = require('../src/constants/roles');
 let server;
 let baseUrl;
 let rows;
+let sentEmails;
 
 // Banco simulado somente nos testes. A aplicação continua usando Sequelize.
 // O model, o hook bcrypt, os controllers, os validadores e o middleware são reais.
 beforeEach(async (t) => {
   rows = new Map();
+  sentEmails = [];
+  t.mock.method(mailService, 'assertMailConfigured', () => {});
+  t.mock.method(mailService, 'sendVerificationEmail', async (email, token) => {
+    sentEmails.push({ email, token });
+  });
   t.mock.method(User, 'findOne', async ({ where }) =>
     [...rows.values()].find((user) => user.email === where.email) || null);
   t.mock.method(User, 'findByPk', async (id) => rows.get(id) || null);
+  t.mock.method(User, 'update', async (values, { where }) => {
+    const user = [...rows.values()].find((item) =>
+      item.emailVerificationTokenHash === where.emailVerificationTokenHash
+      && item.emailVerifiedAt === null
+      && item.emailVerificationExpiresAt > new Date());
+    if (!user) return [0];
+    Object.assign(user, values);
+    rows.set(user.id, user);
+    return [1];
+  });
   t.mock.method(User, 'create', async (data) => {
     const user = User.build(data);
     await user.validate();
     await User.runHooks('beforeSave', user, {});
+    user.changed('password', false);
     rows.set(user.id, user);
     return user;
   });
   t.mock.method(User.prototype, 'save', async function save() {
     await User.runHooks('beforeSave', this, {});
+    this.changed('password', false);
     rows.set(this.id, this);
     return this;
   });
@@ -80,11 +99,17 @@ async function request(path, body, token, method) {
   return { status: response.status, body: await response.json(), headers: response.headers };
 }
 
+async function confirmLatestEmail() {
+  const email = sentEmails.at(-1);
+  assert.ok(email, 'E-mail de confirmação não enviado');
+  return request('/verify-email', { token: email.token });
+}
+
 test('cadastro grava perfil e hash bcrypt; login retorna usuario seguro com JWT', async () => {
   const input = { ...account(), name: ' Maria Silva ', email: ' MARIA@EXAMPLE.COM ' };
   const result = await request('/register', input);
   assert.equal(result.status, 201);
-  assert.equal(result.body.message, 'Cadastro realizado com sucesso. Você já pode fazer login.');
+  assert.equal(result.body.message, 'Cadastro realizado. Confira seu e-mail para ativar a conta em até 24 horas.');
   assert.equal(result.body.user.name, 'Maria Silva');
   assert.equal(result.body.user.email, 'maria@example.com');
   assert.equal(result.body.user.role, 'visitor');
@@ -93,8 +118,17 @@ test('cadastro grava perfil e hash bcrypt; login retorna usuario seguro com JWT'
   assert.notEqual(stored.password, input.password);
   assert.equal(bcrypt.getRounds(stored.password), 12);
   assert.equal(await bcrypt.compare(input.password, stored.password), true);
+  assert.equal(stored.emailVerifiedAt, null);
+  assert.equal(stored.emailVerificationTokenHash.length, 64);
+  assert.notEqual(stored.emailVerificationTokenHash, sentEmails[0].token);
+  assert.equal(sentEmails[0].email, 'maria@example.com');
   // A main responde o cadastro com mensagem; a sessão é obtida pelo login.
   assert.equal(Object.hasOwn(result.body, 'token'), false);
+  assert.equal((await request('/login', { email: input.email, password: input.password })).status, 403);
+  const forged = jwt.sign({ sub: stored.id }, process.env.JWT_SECRET);
+  assert.equal((await request('/me', undefined, forged)).status, 403);
+  assert.equal((await confirmLatestEmail()).status, 200);
+  assert.equal((await confirmLatestEmail()).status, 400);
   const login = await request('/login', { email: input.email, password: input.password });
   const payload = jwt.verify(login.body.token, process.env.JWT_SECRET);
   assert.equal(payload.sub, stored.id);
@@ -199,6 +233,7 @@ test('creator nao pode trocar o perfil para email fora do dominio institucional'
     email: 'maria@ifsc.edu.br',
     accountType: 'creator',
   });
+  await confirmLatestEmail();
   const login = await request('/login', {
     email: 'maria@ifsc.edu.br',
     password: account().password,
@@ -232,6 +267,7 @@ test('super_admin passa pelas autorizacoes de perfil, mas visitor nao', () => {
 
 test('login autentica, aceita email normalizado e permite consultar /me', async () => {
   const registered = await request('/register', account());
+  await confirmLatestEmail();
   const result = await request('/login', { email: ' MARIA@EXAMPLE.COM ', password: account().password });
   assert.equal(result.status, 200);
   assert.equal(result.body.user.id, registered.body.user.id);
@@ -253,6 +289,7 @@ test('login responde o mesmo 401 para usuario inexistente e senha errada', async
 
 test('senha nao e aparada: espacos fazem parte da credencial', async () => {
   await request('/register', { ...account(), password: ' SenhaTeste123 ' });
+  await confirmLatestEmail();
   assert.equal((await request('/login', { email: account().email, password: 'SenhaTeste123' })).status, 401);
   assert.equal((await request('/login', { email: account().email, password: ' SenhaTeste123 ' })).status, 200);
 });
@@ -264,12 +301,68 @@ test('login rejeita email malformado e senha ausente', async () => {
 
 test('/me rejeita token ausente, invalido, expirado e usuario inexistente', async () => {
   const registered = await request('/register', account());
+  await confirmLatestEmail();
   assert.equal((await request('/me')).status, 401);
   assert.equal((await request('/me', undefined, 'token-invalido')).status, 401);
   const expired = jwt.sign({ sub: registered.body.user.id }, process.env.JWT_SECRET, { expiresIn: -1 });
   assert.equal((await request('/me', undefined, expired)).status, 401);
+  const login = await request('/login', { email: account().email, password: account().password });
   rows.clear();
-  assert.equal((await request('/me', undefined, registered.body.token)).status, 401);
+  assert.equal((await request('/me', undefined, login.body.token)).status, 401);
+});
+
+test('link expirado falha; reenvio invalida o anterior e aceita o novo', async () => {
+  const registered = await request('/register', account());
+  const oldToken = sentEmails[0].token;
+  const stored = rows.get(registered.body.user.id);
+  stored.emailVerificationExpiresAt = new Date(Date.now() - 1000);
+  assert.equal((await request('/verify-email', { token: oldToken })).status, 400);
+  const resend = await request('/resend-verification', { email: account().email });
+  assert.equal(resend.status, 200);
+  assert.equal(sentEmails.length, 2);
+  assert.equal((await request('/verify-email', { token: oldToken })).status, 400);
+  assert.equal((await confirmLatestEmail()).status, 200);
+  assert.equal((await request('/resend-verification', { email: account().email })).body.message, resend.body.message);
+  assert.equal((await request('/resend-verification', { email: 'absent@example.com' })).body.message, resend.body.message);
+});
+
+test('token malformado e ausência de configuração de e-mail são tratados sem criar conta', async (t) => {
+  assert.equal((await request('/verify-email', { token: 'x' })).status, 400);
+  t.mock.method(mailService, 'assertMailConfigured', () => { throw new Error('sem SMTP'); });
+  const result = await request('/register', account());
+  assert.equal(result.status, 503);
+  assert.equal(rows.size, 0);
+});
+
+test('falha SMTP após gravar a conta permite reenvio sem criar duplicata', async (t) => {
+  t.mock.method(mailService, 'sendVerificationEmail', async () => {
+    const error = new Error('falha de teste');
+    error.code = 'SMTP_TEST_ERROR';
+    throw error;
+  });
+  const registration = await request('/register', account());
+  assert.equal(registration.status, 503);
+  assert.equal(rows.size, 1);
+  assert.equal((await request('/register', account())).status, 409);
+  t.mock.method(mailService, 'sendVerificationEmail', async (email, token) => {
+    sentEmails.push({ email, token });
+  });
+  assert.equal((await request('/resend-verification', { email: account().email })).status, 200);
+  assert.equal((await confirmLatestEmail()).status, 200);
+});
+
+test('troca de e-mail requer nova confirmação e invalida o JWT anterior', async () => {
+  await request('/register', account());
+  await confirmLatestEmail();
+  const login = await request('/login', { email: account().email, password: account().password });
+  const change = await request('/me', {
+    email: 'nova@example.com', currentPassword: account().password,
+  }, login.body.token, 'PATCH');
+  assert.equal(change.status, 200);
+  assert.equal(change.body.user.emailVerifiedAt, null);
+  assert.equal((await request('/me', undefined, login.body.token)).status, 403);
+  assert.equal((await confirmLatestEmail()).status, 200);
+  assert.equal((await request('/login', { email: 'nova@example.com', password: account().password })).status, 200);
 });
 
 test('banco indisponivel ou tabela ausente retorna 503 sem detalhes internos', async (t) => {

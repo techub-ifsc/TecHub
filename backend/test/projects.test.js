@@ -83,7 +83,7 @@ describe('rotas de projetos', () => {
   });
 
   function createUser(role) {
-    const user = User.build({ name: role, email: `${role}@ifsc.edu.br`, password: 'x', role });
+    const user = User.build({ name: role, email: `${role}@ifsc.edu.br`, password: 'x', role, emailVerifiedAt: new Date() });
     users.set(user.id, user);
     return user;
   }

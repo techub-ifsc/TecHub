@@ -154,7 +154,7 @@ describe('assinatura de upload direto', () => {
 describe('POST /api/media/signature', () => {
   let server;
   let baseUrl;
-  const user = User.build({ name: 'Criador', email: 'criador@ifsc.edu.br', password: 'x', role: 'creator' });
+  const user = User.build({ name: 'Criador', email: 'criador@ifsc.edu.br', password: 'x', role: 'creator', emailVerifiedAt: new Date() });
 
   beforeEach(async (t) => {
     t.mock.method(User, 'findByPk', async (id) => (id === user.id ? user : null));

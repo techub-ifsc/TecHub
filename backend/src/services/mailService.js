@@ -1,48 +1,53 @@
-//const nodemailer = require('nodemailer'); precisa descomentar para funiconar
+const nodemailer = require('nodemailer');
 
-// Cria o transportador de e-mails
-async function createTransporter() {
-  const testAccount = await nodemailer.createTestAccount();
+// O PRD não escolhe um provedor. As credenciais ficam somente no .env local.
+function mailConfig() {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const from = process.env.SMTP_FROM;
+  const verificationPage = process.env.EMAIL_VERIFICATION_URL;
+  if (!host || !from || !verificationPage || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Configure SMTP_HOST, SMTP_PORT, SMTP_FROM e EMAIL_VERIFICATION_URL.');
+  }
+  const url = new URL(verificationPage);
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('EMAIL_VERIFICATION_URL deve ser uma URL HTTP(S).');
+  }
+  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+    throw new Error('EMAIL_VERIFICATION_URL deve usar HTTPS em produção.');
+  }
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+  if (Boolean(user) !== Boolean(pass)) {
+    throw new Error('Configure SMTP_USER e SMTP_PASSWORD juntos.');
+  }
+  return { host, port, from, url, auth: user ? { user, pass } : undefined };
+}
 
-  return nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
+function assertMailConfigured() {
+  mailConfig();
 }
 
 async function sendVerificationEmail(toEmail, token) {
-  const transporter = await createTransporter();
-
-  // Link que o usuário vai clicar (aponta pro seu front-end ou rota de confirmação)
-  const verificationUrl = `http://localhost:5173/verify-email?token=${token}`;
-
-  const info = await transporter.sendMail({
-    from: '"Techub" <no-reply@techub.edu>',
-    to: toEmail,
-    subject: 'Techub - Confirmação de Cadastro',
-    html: `
-      <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 8px;">
-        <h2 style="color: #38bdf8;">Confirme sua conta no Techub</h2>
-        <p>Olá! Seu cadastro está quase pronto.</p>
-        <p>Clique no botão abaixo para validar seu endereço de e-mail. Este link é válido por <strong>24 horas</strong>:</p>
-        <p style="margin: 24px 0;">
-          <a href="${verificationUrl}" style="background-color: #38bdf8; color: #0f172a; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            Confirmar E-mail
-          </a>
-        </p>
-        <p style="font-size: 12px; color: #94a3b8;">Se você não solicitou este cadastro, desconsidere esta mensagem.</p>
-      </div>
-    `,
+  const config = mailConfig();
+  const link = new URL(config.url);
+  link.searchParams.set('token', token);
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.port === 465,
+    auth: config.auth,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
-
-  // Mostra no terminal o link para abrir a caixa postal virtual e ver o e-mail que acabou de chegar
-  console.log('✉️ E-mail de confirmação enviado!');
-  console.log('🔗 Visualize o e-mail aqui:', nodemailer.getTestMessageUrl(info));
+  await transporter.sendMail({
+    from: config.from,
+    to: toEmail,
+    subject: 'Tech Hub - confirme seu e-mail',
+    text: `Confirme seu e-mail no Tech Hub: ${link.toString()}\nO link expira em 24 horas.`,
+    html: `<p>Confirme seu e-mail no Tech Hub.</p><p><a href="${link.toString()}">Confirmar e-mail</a></p><p>O link expira em 24 horas.</p>`,
+  });
 }
 
-module.exports = { sendVerificationEmail };
+module.exports = { assertMailConfigured, sendVerificationEmail };

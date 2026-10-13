@@ -14,8 +14,8 @@ Decisões temporárias registradas:
 
 - os domínios de criador vêm de `CREATOR_ALLOWED_DOMAINS` e, nesta etapa, são `@ifsc.edu.br` e `@aluno.ifsc.edu.br`;
 - cada domínio é conferido como sufixo exato; outros subdomínios não são aceitos automaticamente;
-- a `main` atual grava o usuário e responde sem token; o login ainda está liberado porque a confirmação de e-mail não foi implementada;
-- a resposta de cadastro informa que o login já está disponível; o envio e a validação do e-mail ainda não estão ativos;
+- o cadastro grava o usuário e responde sem token; o login só é liberado após confirmar o e-mail;
+- a confirmação por e-mail e o reenvio foram implementados no backend; a migração, o SMTP real e a página do frontend ainda precisam ser integrados;
 - o frontend envia `accountType` com `visitor` ou `creator`; a API não aceita o campo `role`;
 - `super_admin` é criado apenas pela equipe usando um script interno e variáveis de ambiente;
 - o super-admin já ignora restrições de perfil. Fluxos administrativos específicos, como aprovação de projetos, ainda não foram criados.
@@ -27,7 +27,7 @@ Decisões temporárias registradas:
 3. Se `accountType` for `creator`, o e-mail precisa terminar exatamente com o domínio configurado.
 4. O controller procura o e-mail normalizado para evitar duplicidade.
 5. O model `User` gera o hash bcrypt com custo 12 antes de salvar.
-6. A API devolve `message` e o usuário sem senha, sem JWT. O cliente deve chamar login para obter o token.
+6. A API envia um link de 24 horas e devolve `message` e o usuário sem senha, sem JWT. O frontend confirma o token antes do login.
 
 O campo `role` nunca é copiado diretamente da requisição. O valor persistido vem do `accountType` já validado, impedindo a criação pública de `super_admin`.
 
@@ -53,23 +53,24 @@ Exemplo de criador durante a regra temporária:
 }
 ```
 
-Resposta de sucesso: HTTP `201`. A mensagem informa que o login já está disponível; nenhum e-mail é enviado neste fluxo.
+Resposta de sucesso: HTTP `201`. A mensagem pede confirmação do e-mail.
 
 ```json
 {
-  "message": "Cadastro realizado com sucesso. Você já pode fazer login.",
+  "message": "Cadastro realizado. Confira seu e-mail para ativar a conta em até 24 horas.",
   "user": {
     "id": "<uuid>",
     "name": "Maria Silva",
     "email": "maria@example.com",
     "role": "visitor",
+    "emailVerifiedAt": null,
     "createdAt": "<data ISO>",
     "updatedAt": "<data ISO>"
   }
 }
 ```
 
-O backend ainda não envia e-mail de confirmação, e o login não verifica confirmação. O token de sessão é obtido em `POST /api/auth/login`.
+O backend envia o link pelo SMTP configurado. A página do frontend lê o token e chama `POST /api/auth/verify-email`. Se o link expirar, `POST /api/auth/resend-verification` gera outro. O token de sessão só é obtido em `POST /api/auth/login` depois da confirmação. Consulte `Features de Cadastro e Login.md` para a configuração e a implantação desta feature.
 
 Erros principais:
 
@@ -80,11 +81,11 @@ Erros principais:
 
 ## Login e perfil
 
-`POST /api/auth/login` continua recebendo `email` e `password`. O bcrypt compara a senha enviada com o hash; a senha original não é descriptografada. Credenciais incorretas sempre retornam o mesmo `401`, sem revelar se o e-mail existe.
+`POST /api/auth/login` continua recebendo `email` e `password`. O bcrypt compara a senha enviada com o hash; a senha original não é descriptografada. Credenciais incorretas sempre retornam o mesmo `401`, sem revelar se o e-mail existe. Senha correta com conta não confirmada retorna `403`.
 
 `GET /api/auth/me` exige `Authorization: Bearer <JWT>` e devolve os dados seguros do usuário.
 
-`PATCH /api/auth/me` exige a senha atual. Um usuário `creator` não pode trocar seu e-mail por um endereço fora do domínio institucional, pois isso permitiria contornar a regra do cadastro. Trocar o e-mail não muda automaticamente o perfil de uma conta.
+`PATCH /api/auth/me` exige a senha atual. Um usuário `creator` não pode trocar seu e-mail por um endereço fora do domínio institucional, pois isso permitiria contornar a regra do cadastro. Trocar o e-mail não muda automaticamente o perfil, mas exige nova confirmação e bloqueia o JWT antigo até ela acontecer.
 
 ## Migração do banco
 
@@ -198,9 +199,9 @@ A interface não deve enviar `role`, nem oferecer `super_admin`. Deve tratar `er
 ## Decisões futuras
 
 - confirmar se a lista temporária de domínios continuará fixa ou será administrável no sistema;
-- decidir confirmação de e-mail e/ou aprovação antes de ativar um criador;
+- integrar SMTP, frontend e migração da confirmação de e-mail; definir fila durável e monitoramento;
 - definir ações administrativas específicas do super-admin e auditoria dessas ações;
 - confirmar se outras rotas herdadas do e-commerce permanecerão no Tech Hub;
-- implementar confirmação de e-mail, recuperação de senha, bloqueio por tentativas, logout com revogação e demais histórias futuras do PRD.
+- implementar recuperação de senha, bloqueio por tentativas, logout com revogação e demais histórias futuras do PRD.
 
 Esta etapa altera somente o backend de autenticação/perfis e a consistência das autorizações herdadas. Ela não cria os fluxos administrativos completos.

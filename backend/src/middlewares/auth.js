@@ -29,6 +29,9 @@ async function authenticate(req, res, next) {
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
+    if (!user.emailVerifiedAt) {
+      return res.status(403).json({ message: 'Confirme seu e-mail antes de acessar a plataforma.' });
+    }
 
     // Injeta o model do usuário e o id direto para compatibilidade com todos os controllers
     req.user = user;
@@ -56,7 +59,7 @@ async function optionalAuthenticate(req, res, next) {
 
     const userId = payload.sub || payload.id;
     const user = userId ? await User.findByPk(userId) : null;
-    if (user) {
+    if (user && user.emailVerifiedAt) {
       req.user = user;
       req.userId = user.id;
     }

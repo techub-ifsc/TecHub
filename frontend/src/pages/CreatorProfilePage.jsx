@@ -86,23 +86,7 @@ export default function CreatorProfilePage() {
     async function loadUserProjects() {
       try {
         setLoadingProjects(true);
-
-        // No próprio perfil o criador vê todos os seus projetos, inclusive os que
-        // estão em análise ou foram rejeitados. Os demais visitantes recebem
-        // somente os aprovados pela moderação.
-        const token =
-          localStorage.getItem("techub_token") || localStorage.getItem("token");
-
-        let response =
-          isOwner && token
-            ? await fetch(`${API_URL}/projects/mine`, {
-                headers: { Authorization: `Bearer ${token}` },
-              })
-            : null;
-
-        if (!response?.ok) {
-          response = await fetch(`${API_URL}/projects?limit=100`);
-        }
+        const response = await fetch(`${API_URL}/projects?limit=100`);
 
         if (!response.ok) {
           throw new Error("Erro ao buscar projetos");
@@ -136,8 +120,6 @@ export default function CreatorProfilePage() {
               title: p.title,
               description: p.description,
               tags: Array.isArray(p.technologies) ? p.technologies : [],
-              approvalStatus: p.approvalStatus,
-              reviewNotes: p.reviewNotes,
               role: "autor",
               image:
                 p.coverUrl ||
@@ -149,8 +131,6 @@ export default function CreatorProfilePage() {
               title: p.title,
               description: p.description,
               tags: Array.isArray(p.technologies) ? p.technologies : [],
-              approvalStatus: p.approvalStatus,
-              reviewNotes: p.reviewNotes,
               role: "colaborador",
               image:
                 p.coverUrl ||
@@ -170,7 +150,7 @@ export default function CreatorProfilePage() {
     if (id) {
       loadUserProjects();
     }
-  }, [id, isOwner]);
+  }, [id]);
 
   const filteredProjects = projects.filter((project) => {
     if (activeTab === "todos") return true;
@@ -384,26 +364,6 @@ export default function CreatorProfilePage() {
                               ? "Autor"
                               : "Colaborador"}
                           </span>
-
-                          {project.approvalStatus === "pending" && (
-                            <span className="creator-profile-project__approval">
-                              <i
-                                className="fa-solid fa-hourglass-half"
-                                aria-hidden="true"
-                              />
-                              Em análise
-                            </span>
-                          )}
-
-                          {project.approvalStatus === "rejected" && (
-                            <span className="creator-profile-project__approval is-rejected">
-                              <i
-                                className="fa-solid fa-circle-xmark"
-                                aria-hidden="true"
-                              />
-                              Rejeitado
-                            </span>
-                          )}
                         </div>
 
                         <div className="creator-profile-project__content">
@@ -420,18 +380,6 @@ export default function CreatorProfilePage() {
                           </div>
                         </div>
                       </Link>
-
-                      {project.approvalStatus === "rejected" &&
-                        project.reviewNotes && (
-                          <div className="creator-profile-project__review">
-                            <strong>Justificativa da moderação</strong>
-                            <p>{project.reviewNotes}</p>
-                            <small>
-                              Edite o projeto para corrigir e reenviar para
-                              análise.
-                            </small>
-                          </div>
-                        )}
 
                       {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
                       {isOwner && (

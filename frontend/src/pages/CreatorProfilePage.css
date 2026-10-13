@@ -737,3 +737,57 @@
     white-space: nowrap;
   }
 }
+
+/* Situação na moderação: aparece somente para o dono do perfil */
+.creator-profile-project__approval {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  z-index: 2;
+  padding: 0.3rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: rgb(17 18 19 / 88%);
+  border: 1px solid rgb(245 183 66 / 55%);
+  border-radius: 999px;
+  color: #f5b742;
+  font-size: 0.65rem;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+
+.creator-profile-project__approval.is-rejected {
+  border-color: rgb(255 113 104 / 60%);
+  color: #ff8e87;
+}
+
+.creator-profile-project__review {
+  margin: 0 1rem 0.75rem;
+  padding: 0.7rem 0.8rem;
+  background: rgb(255 113 104 / 8%);
+  border: 1px solid rgb(255 113 104 / 30%);
+  border-radius: 8px;
+}
+
+.creator-profile-project__review strong {
+  display: block;
+  color: #ff8e87;
+  font-size: 0.72rem;
+}
+
+.creator-profile-project__review p {
+  margin: 0.3rem 0 0;
+  color: #d2d5d9;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.creator-profile-project__review small {
+  margin-top: 0.4rem;
+  display: block;
+  color: #92979f;
+  font-size: 0.7rem;
+}

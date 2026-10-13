@@ -84,6 +84,12 @@
   transform: translateY(-1px);
 }
 
+.confirmation-modal .confirmation-modal__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
 .confirmation-modal button.confirmation-modal__cancel {
   background: transparent !important;
   border: 1px solid #62676f !important;

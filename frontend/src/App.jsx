@@ -43,7 +43,7 @@ export default function App() {
             />
             <Route
               path="/projetos/:id/editar"
-              element={<NewProjectPage />}
+              element={<EditProjectPage />}
             />
           </Route>
 
@@ -85,9 +85,6 @@ export default function App() {
               />
             }
           />
-
-          <Route path="/projetos/:id/editar" element={<EditProjectPage />} />
-
         </Routes>
       </main>
 

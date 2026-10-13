@@ -10,6 +10,7 @@ process.env.CREATOR_ALLOWED_DOMAINS = '@ifsc.edu.br,@aluno.ifsc.edu.br';
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const sequelize = require('../src/config/database');
 const { User } = require('../src/models');
 const mailService = require('../src/services/mailService');
 const { errorHandler } = require('../src/middlewares/errorHandler');
@@ -26,6 +27,9 @@ let sentEmails;
 beforeEach(async (t) => {
   rows = new Map();
   sentEmails = [];
+  // A transação real usa SELECT ... FOR UPDATE no PostgreSQL. Aqui simulamos
+  // apenas seu contrato; a migration e a concorrência real dependem do banco.
+  t.mock.method(sequelize, 'transaction', async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }));
   t.mock.method(mailService, 'assertMailConfigured', () => {});
   t.mock.method(mailService, 'sendVerificationEmail', async (email, token) => {
     sentEmails.push({ email, token });
@@ -114,7 +118,11 @@ test('cadastro grava perfil e hash bcrypt; login retorna usuario seguro com JWT'
   assert.equal(result.body.user.email, 'maria@example.com');
   assert.equal(result.body.user.role, 'visitor');
   assert.equal(Object.hasOwn(result.body.user, 'password'), false);
+  assert.equal(Object.hasOwn(result.body.user, 'failedLoginAttempts'), false);
+  assert.equal(Object.hasOwn(result.body.user, 'lockedUntil'), false);
   const stored = rows.get(result.body.user.id);
+  assert.equal(stored.failedLoginAttempts, 0);
+  assert.equal(stored.lockedUntil, null);
   assert.notEqual(stored.password, input.password);
   assert.equal(bcrypt.getRounds(stored.password), 12);
   assert.equal(await bcrypt.compare(input.password, stored.password), true);
@@ -285,6 +293,84 @@ test('login responde o mesmo 401 para usuario inexistente e senha errada', async
   assert.equal(absent.status, 401);
   assert.deepEqual(wrong.body, absent.body);
   assert.equal(wrong.body.message, 'E-mail ou senha inválidos.');
+});
+
+test('apos 5 senhas erradas a conta bloqueia por 15 minutos, inclusive para senha correta', async () => {
+  const registered = await request('/register', account());
+  await confirmLatestEmail();
+  const activeSession = await request('/login', {
+    email: account().email, password: account().password,
+  });
+  assert.equal(activeSession.status, 200);
+  const stored = rows.get(registered.body.user.id);
+  const loginBody = { email: account().email, password: 'SenhaErrada123' };
+
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const result = await request('/login', loginBody);
+    assert.equal(result.status, 401);
+    assert.deepEqual(result.body, { message: 'E-mail ou senha inválidos.' });
+    assert.equal(stored.failedLoginAttempts, attempt);
+    if (attempt < 5) assert.equal(stored.lockedUntil, null);
+  }
+  assert.ok(stored.lockedUntil instanceof Date);
+  const lockDuration = stored.lockedUntil.getTime() - Date.now();
+  assert.ok(lockDuration > 14 * 60 * 1000 && lockDuration <= 15 * 60 * 1000);
+
+  const blocked = await request('/login', { email: account().email, password: account().password });
+  assert.equal(blocked.status, 429);
+  assert.match(blocked.body.message, /15 minutos/);
+  assert.ok(blocked.body.retryAfterSeconds > 0);
+  assert.equal(Number(blocked.headers.get('retry-after')), blocked.body.retryAfterSeconds);
+  assert.equal(Object.hasOwn(blocked.body, 'token'), false);
+  assert.equal(stored.failedLoginAttempts, 5);
+  assert.equal((await request('/me', undefined, activeSession.body.token)).status, 200);
+
+  const otherAccount = { ...account(), email: 'outra@example.com' };
+  assert.equal((await request('/register', otherAccount)).status, 201);
+  assert.equal((await confirmLatestEmail()).status, 200);
+  assert.equal((await request('/login', {
+    email: otherAccount.email, password: otherAccount.password,
+  })).status, 200);
+});
+
+test('login correto zera as falhas; depois do prazo uma senha errada inicia contagem em 1', async () => {
+  const registered = await request('/register', account());
+  await confirmLatestEmail();
+  const stored = rows.get(registered.body.user.id);
+  const badLogin = { email: account().email, password: 'SenhaErrada123' };
+  const goodLogin = { email: account().email, password: account().password };
+
+  assert.equal((await request('/login', badLogin)).status, 401);
+  assert.equal((await request('/login', badLogin)).status, 401);
+  assert.equal((await request('/login', goodLogin)).status, 200);
+  assert.equal(stored.failedLoginAttempts, 0);
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    assert.equal((await request('/login', badLogin)).status, 401);
+  }
+  assert.ok(stored.lockedUntil);
+
+  stored.lockedUntil = new Date(Date.now() - 1000);
+  assert.equal((await request('/login', badLogin)).status, 401);
+  assert.equal(stored.failedLoginAttempts, 1);
+  assert.equal(stored.lockedUntil, null);
+  assert.equal((await request('/login', goodLogin)).status, 200);
+  assert.equal(stored.failedLoginAttempts, 0);
+});
+
+test('a mesma regra de bloqueio protege creator e super_admin', async () => {
+  for (const role of [ROLES.CREATOR, ROLES.SUPER_ADMIN]) {
+    const user = await User.create({
+      name: 'Usuário Tech Hub',
+      email: `${role}@ifsc.edu.br`,
+      password: account().password,
+      role,
+      emailVerifiedAt: new Date(),
+    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      assert.equal((await request('/login', { email: user.email, password: 'SenhaErrada123' })).status, 401);
+    }
+    assert.equal((await request('/login', { email: user.email, password: account().password })).status, 429);
+  }
 });
 
 test('senha nao e aparada: espacos fazem parte da credencial', async () => {

@@ -76,12 +76,12 @@ Erros principais:
 
 - `400`: dados inválidos, `accountType` desconhecido, domínio de criador inválido, `role` ou outro campo extra;
 - `409`: e-mail já cadastrado;
-- `429`: limite de requisições excedido;
+- `429`: limite de requisições por IP excedido;
 - `503`: banco/tabela indisponível.
 
 ## Login e perfil
 
-`POST /api/auth/login` continua recebendo `email` e `password`. O bcrypt compara a senha enviada com o hash; a senha original não é descriptografada. Credenciais incorretas sempre retornam o mesmo `401`, sem revelar se o e-mail existe. Senha correta com conta não confirmada retorna `403`.
+`POST /api/auth/login` continua recebendo `email` e `password`. O bcrypt compara a senha enviada com o hash; a senha original não é descriptografada. As primeiras cinco credenciais incorretas retornam o mesmo `401`, sem revelar se o e-mail existe. Depois da quinta senha errada, a conta fica bloqueada por 15 minutos; tentativas nesse prazo retornam `429` com o tempo restante, mesmo com a senha correta. O contador zera após login bem-sucedido ou fim do bloqueio. Senha correta com conta não confirmada retorna `403` quando não houver bloqueio. O detalhamento está em `Features de Cadastro e Login.md`.
 
 `GET /api/auth/me` exige `Authorization: Bearer <JWT>` e devolve os dados seguros do usuário.
 

@@ -118,7 +118,18 @@ router.post('/resend-verification', authLimiter, authController.resendVerificati
  *       400:
  *         description: E-mail malformado ou senha ausente
  *       429:
- *         description: Limite de requisições por IP excedido
+ *         description: Conta bloqueada por 15 minutos após 5 falhas consecutivas ou limite por IP excedido. O bloqueio por conta informa o tempo restante.
+ *         headers:
+ *           Retry-After:
+ *             description: Segundos até uma nova tentativa ser permitida
+ *             schema: { type: integer }
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 retryAfterSeconds: { type: integer, description: Presente apenas no bloqueio por conta }
  *       503:
  *         description: Banco ou tabela de usuários indisponível
  *       401:

@@ -49,6 +49,8 @@ User.init(
     emailVerifiedAt: { type: DataTypes.DATE, allowNull: true },
     emailVerificationTokenHash: { type: DataTypes.STRING(64), allowNull: true },
     emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true },
+    failedLoginAttempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    lockedUntil: { type: DataTypes.DATE, allowNull: true, defaultValue: null },
   },
   {
     sequelize,

@@ -1,5 +1,6 @@
 const { User } = require('../models');
 const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 const { signToken } = require('../utils/jwt');
 const { registerSchema, loginSchema, updateProfileSchema, resendVerificationSchema, verifyEmailSchema } = require('../validators/authValidators');
 const { ApiError } = require('../middlewares/errorHandler');
@@ -7,6 +8,9 @@ const crypto = require('crypto');
 const mailService = require('../services/mailService');
 const { ROLES } = require('../constants/roles');
 const { isCreatorEmailAllowed, getCreatorAllowedDomains } = require('../config/creatorDomain');
+
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
 
 // Mantém o formato de erro existente sem registrar SQL ou valores de credenciais.
 function handleAuthError(err, res, next) {
@@ -90,25 +94,69 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const data = loginSchema.parse(req.body);
-
-    const user = await User.findOne({ where: { email: data.email.toLowerCase() } });
     const genericError = { message: 'E-mail ou senha inválidos.' };
 
-    if (!user) {
-      return res.status(401).json(genericError);
-    }
+    // A linha da conta fica bloqueada enquanto lemos e atualizamos o contador.
+    // Assim, tentativas simultâneas não perdem incrementos umas das outras.
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { email: data.email.toLowerCase() },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user) return { status: 401, body: genericError };
 
-    const valid = await user.validatePassword(data.password);
-    if (!valid) {
-      return res.status(401).json(genericError);
-    }
+      const now = new Date();
+      const lockedUntil = user.lockedUntil && new Date(user.lockedUntil);
+      if (lockedUntil && lockedUntil > now) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((lockedUntil - now) / 1000));
+        const minutes = Math.ceil(retryAfterSeconds / 60);
+        return {
+          status: 429,
+          retryAfterSeconds,
+          body: {
+            message: `Conta temporariamente bloqueada. Tente novamente em ${minutes} minuto${minutes === 1 ? '' : 's'}.`,
+            retryAfterSeconds,
+          },
+        };
+      }
 
-    if (!user.emailVerifiedAt) {
-      return res.status(403).json({ message: 'Confirme seu e-mail antes de acessar a plataforma.' });
-    }
+      // Quando os 15 minutos terminam, a próxima tentativa inicia uma nova contagem.
+      const lockExpired = Boolean(lockedUntil);
+      if (lockExpired) {
+        user.failedLoginAttempts = 0;
+        user.lockedUntil = null;
+      }
 
-    const token = signToken({ sub: user.id, role: user.role });
-    res.json({ user: user.toSafeJSON(), token });
+      const validPassword = await user.validatePassword(data.password);
+      if (!validPassword) {
+        user.failedLoginAttempts = Number(user.failedLoginAttempts || 0) + 1;
+        if (user.failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+          user.lockedUntil = new Date(now.getTime() + LOGIN_LOCK_DURATION_MS);
+        }
+        await user.save({ transaction, silent: true });
+        return { status: 401, body: genericError };
+      }
+
+      if (!user.emailVerifiedAt) {
+        if (lockExpired) await user.save({ transaction, silent: true });
+        return { status: 403, body: { message: 'Confirme seu e-mail antes de acessar a plataforma.' } };
+      }
+
+      // Uma autenticação concluída zera as falhas anteriores da conta.
+      if (user.failedLoginAttempts || lockExpired) {
+        user.failedLoginAttempts = 0;
+        user.lockedUntil = null;
+        await user.save({ transaction, silent: true });
+      }
+      const token = signToken({ sub: user.id, role: user.role });
+      return { status: 200, body: { user: user.toSafeJSON(), token } };
+    });
+
+    if (result.retryAfterSeconds) {
+      res.set('Retry-After', String(result.retryAfterSeconds));
+    }
+    return res.status(result.status).json(result.body);
   } catch (err) {
     handleAuthError(err, res, next);
   }

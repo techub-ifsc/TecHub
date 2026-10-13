@@ -2,9 +2,13 @@
 
 ## Resultado desta etapa
 
-O frontend passa a ter documentação própria, equivalente à que já existe em `backend/docs`. Este documento descreve a estrutura atual da aplicação React, o controle de acesso por perfil, como o cliente guarda a sessão, as duas formas de chamar a API que convivem hoje e as convenções de estilo.
+O frontend passa a ter documentação própria, equivalente à que já existe em `backend/docs`. Este documento descreve a estrutura atual da aplicação React, o controle de acesso por perfil, como o cliente guarda a sessão, as formas de chamar a API que convivem hoje e as convenções de estilo.
 
-Também nesta etapa a barra de rolagem das listas suspensas passou a usar um padrão único, declarado em `src/index.css`.
+Também nesta etapa:
+
+- a barra de rolagem das listas suspensas passou a usar um padrão único, declarado em `src/index.css`;
+- o CSS herdado do e-commerce Órbita foi removido de `src/index.css`, que passou de 1760 para 733 linhas;
+- a declaração duplicada e desprotegida de `/criadores/:id/editar` foi removida, mantendo apenas a que fica dentro de `CreatorProfileRoute`.
 
 Decisões e limitações registradas:
 
@@ -19,13 +23,12 @@ Decisões e limitações registradas:
 ```
 frontend/
 ├── docs/              documentação desta pasta
-├── public/
 └── src/
     ├── api/           camada de acesso HTTP
     ├── assets/        imagens, ícones e fontes
     ├── components/    componentes reutilizáveis e guardas de rota
     ├── context/       estado global (sessão do usuário)
-    ├── pages/         uma pasta de tela por rota, com CSS ao lado
+    ├── pages/         uma tela por arquivo, com o CSS ao lado
     ├── App.jsx        tabela de rotas
     ├── main.jsx       ponto de entrada; monta os providers
     └── index.css      estilos globais e variáveis compartilhadas
@@ -49,22 +52,27 @@ Rotas públicas:
 
 Rotas protegidas e seus guardas:
 
-- `/projeto/novo` e `/projetos/:id/editar` ficam dentro de `CreatorRoute`, que exige `creator` ou `super_admin`;
+- `/projeto/novo` fica dentro de `CreatorRoute`, que exige `creator` ou `super_admin`;
 - `/criadores/:id/editar` fica dentro de `CreatorProfileRoute`, que exige `creator` e que o `id` da URL seja o do próprio usuário;
 - `/admin/projetos/pendentes` fica dentro de `AdminRoute`, que exige `super_admin`.
 
-Os quatro guardas seguem o mesmo formato: mostram `Spinner` enquanto `loading` for verdadeiro, redirecionam para `/login` guardando a origem em `state.from` quando não há sessão, e só então renderizam o `Outlet`.
+Os três guardas mostram `Spinner` enquanto `loading` for verdadeiro e redirecionam para `/login`, guardando a origem em `state.from`, quando não há sessão. Quando há sessão mas falta permissão, `AdminRoute` e `CreatorProfileRoute` redirecionam para a página inicial, e `CreatorRoute` redireciona para `/login`.
 
-Existe um quinto guarda, `PrivateRoute.jsx`, que verifica apenas se há sessão, sem olhar o perfil. Ele não está sendo usado por nenhuma rota nesta etapa.
+Existe um quarto guarda, `PrivateRoute.jsx`, que verifica apenas se há sessão, sem olhar o perfil. Ele não está sendo usado por nenhuma rota nesta etapa.
 
-### Rotas declaradas em duplicidade
+### Rota declarada em duplicidade
 
-Dois caminhos aparecem duas vezes na tabela e precisam de decisão da equipe:
+`/projetos/:id/editar` aparece duas vezes na tabela e precisa de decisão da equipe:
 
-- `/criadores/:id/editar` é declarado dentro de `CreatorProfileRoute` e novamente fora de qualquer guarda, nas duas vezes apontando para `ProfileEditPage`;
-- `/projetos/:id/editar` é declarado dentro de `CreatorRoute` apontando para `NewProjectPage` e novamente no fim do arquivo, fora de qualquer guarda, apontando para `EditProjectPage`.
+- dentro de `CreatorRoute`, apontando para `NewProjectPage`;
+- no fim do arquivo, fora de qualquer guarda, apontando para `EditProjectPage`.
 
-A segunda duplicidade é a mais relevante, porque os dois registros apontam para componentes diferentes. Enquanto as declarações duplicadas existirem, não é seguro afirmar qual componente responde pela rota nem se a proteção de perfil está sendo aplicada.
+As duas telas leem o `:id` da URL, mas não fazem a mesma coisa:
+
+- `EditProjectPage` busca o projeto existente, preenche o formulário e salva com `PUT`;
+- `NewProjectPage` usa o `:id` apenas para trocar o título para "Editar projeto" e o destino do botão de cancelar. Ela não busca o projeto e salva sempre com `POST /projects`, criando um registro novo.
+
+Enquanto a duplicidade existir, não é seguro afirmar qual componente responde pela rota nem se a proteção de perfil está sendo aplicada. Se for `NewProjectPage`, a edição abre com o formulário vazio e, ao salvar, cria um projeto duplicado em vez de atualizar o existente. Se for `EditProjectPage`, a edição funciona, mas a rota fica acessível sem sessão.
 
 ## Autenticação no cliente
 
@@ -87,29 +95,24 @@ A sessão é gravada em três chaves simultaneamente:
 - `techub_token` — cópia do mesmo token;
 - `techub_user` — o usuário serializado.
 
-O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferentes foram escritas em momentos diferentes. Unificar em uma única chave é um ajuste pendente; enquanto houver duas, qualquer código novo precisa gravar as duas para não quebrar as telas que leem a outra.
+O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferentes foram escritas em momentos diferentes. As telas que leem o token usam as duas chaves como alternativa uma da outra (`techub_token || token`), por isso o comportamento atual é consistente. Unificar em uma única chave é um ajuste pendente; enquanto houver mais de uma, qualquer código novo precisa gravar todas.
 
 ## Comunicação com a API
 
-O endereço base vem de `VITE_API_URL` e, quando a variável não está definida, cai em `http://localhost:3001/api`. O valor é lido em dois lugares: `src/api/apiUrl.js` e `src/api/axiosClient.js`.
+O endereço base vem de `VITE_API_URL` e, quando a variável não está definida, cai em `http://localhost:3001/api`. O valor é declarado em três lugares: `src/api/apiUrl.js`, `src/api/axiosClient.js` e uma constante própria em `SignUpPage.jsx`. Os três usam o mesmo valor padrão.
 
 Convivem hoje duas formas de chamar a API:
 
-- `src/api/axiosClient.js` — instância do axios que injeta `Authorization: Bearer <token>` em toda requisição e, ao receber `401`, limpa o token local. É usada apenas por `src/api/auth.js`, que por sua vez é usado apenas pelo `AuthContext`;
-- `fetch` direto, montando a URL a partir de `API_URL`. É o que fazem `SignUpPage`, `ProjectsPage`, `ProjectDetailsPage`, `NewProjectPage`, `EditProjectPage` e `CreatorProfilePage`.
+- `src/api/axiosClient.js` — instância do axios que injeta `Authorization: Bearer <token>` em toda requisição e, ao receber `401`, limpa as chaves `token` e `user`. É usada apenas por `src/api/auth.js`, que por sua vez é usado apenas pelo `AuthContext`;
+- `fetch` direto, montando a URL a partir do endereço base. É o que fazem `SignUpPage`, `ProjectsPage`, `ProjectDetailsPage`, `NewProjectPage`, `EditProjectPage` e `CreatorProfilePage`.
 
 As chamadas feitas com `fetch` não passam pelo interceptador, portanto não ganham o cabeçalho de autorização automaticamente nem o tratamento de `401`. Padronizar em uma única forma é um ajuste pendente.
 
+`CreatorsPage` e `ProjectValidationPage` ainda não chamam a API: exibem listas fixas declaradas no próprio arquivo (`CREATORS` e `INITIAL_PROJECTS`).
+
 ### Cadastro
 
-`SignUpPage` mantém o tipo de conta escolhido em estado próprio, com os valores `criador` e `visitante` usados pela interface. No envio, a constante `ACCOUNT_TYPE_API` traduz para os valores aceitos pela API:
-
-```js
-const ACCOUNT_TYPE_API = {
-  criador: "creator",
-  visitante: "visitor",
-};
-```
+`SignUpPage` guarda o tipo de conta escolhido em estado próprio, já com os valores aceitos pela API, `creator` e `visitor`. Os rótulos em português aparecem apenas no texto dos botões; o valor do estado é enviado sem conversão.
 
 O corpo enviado a `POST /auth/register` contém exatamente `name`, `email`, `password` e `accountType`. O schema do backend é estrito e rejeita campos extras, portanto nenhum outro campo pode ser acrescentado sem alteração correspondente na API.
 
@@ -149,11 +152,13 @@ A classe utilitária `.tc-scrollbar` aplica esse conjunto e deve ser usada em qu
 
 ### CSS herdado do Órbita
 
-O projeto nasceu a partir do código de um e-commerce chamado Órbita. Boa parte desse CSS continua em `index.css`: carrinho, produtos, pedidos, detalhes de produto e controle de quantidade, entre outros blocos.
+O projeto nasceu a partir do código de um e-commerce chamado Órbita. Nesta etapa, as seções de carrinho, checkout, pedidos, grade e detalhes de produto, controle de quantidade, barra de navegação, rodapé e telas de autenticação desse e-commerce foram removidas de `index.css`. Antes da remoção, foi conferido que nenhuma das classes dessas seções aparecia em arquivos `.jsx`.
 
-Uma dessas regras define o estilo de todo elemento `button` da aplicação com uma cadeia de cinco `:not()`. A especificidade dela é maior que a de uma classe simples, de modo que o estilo próprio de cada página só prevalece quando declarado com `!important`. É essa a origem das 534 ocorrências de `!important` nas folhas do frontend.
+Também foram removidas as regras que impunham aparência a todo elemento `button` por meio de uma cadeia de cinco `:not()`. A especificidade dessas regras era maior que a de uma classe simples, de modo que o estilo próprio de cada página só prevalecia quando declarado com `!important`. A regra base de botão, que define apenas fonte, cursor e alinhamento, foi mantida.
 
-Remover o CSS herdado é o que permitiria eliminar esses `!important`. Como `index.css` é usado por todas as telas, essa limpeza deve ser feita em uma etapa própria, com verificação visual de cada página.
+As 534 ocorrências de `!important` nas folhas do frontend existiam para vencer aquelas regras. Com elas removidas, deixaram de ser necessárias, mas continuam no código. Retirá-las muda a ordem de resolução dentro de cada arquivo e precisa ser feito folha por folha, com verificação visual. Cinco telas só são alcançáveis com sessão iniciada e perfil adequado, então essa limpeza depende de alguém que consiga entrar no sistema.
+
+Verificação feita na remoção: aparência de 136 elementos em cinco telas públicas, comparada antes e depois. A remoção das seções do e-commerce não alterou nenhum elemento. A remoção das regras de `button` alterou 16, todos passando a usar o espaçamento e o arredondamento declarados na folha da própria página em vez dos valores impostos pelo Órbita.
 
 ## Execução local
 
@@ -185,7 +190,7 @@ Para gerar a versão de produção e conferir que o projeto compila:
 npm.cmd run build
 ```
 
-As telas renderizam sem o backend, mas cadastro, login, listagens e qualquer tela que dependa de dados precisam da API no ar.
+As telas renderizam sem o backend, mas cadastro, login, listagem e detalhes de projetos, perfil de criador e as telas de criação e edição precisam da API no ar.
 
 ## Dependências
 
@@ -196,12 +201,27 @@ As telas renderizam sem o backend, mas cadastro, login, listagens e qualquer tel
 
 Não há biblioteca de componentes, de formulários ou de estado. Validação de formulário e controle de estado são feitos com `useState` e funções próprias de cada página.
 
+## Arquivos criados
+
+- `docs/frontend-overview.md`: este documento.
+
+## Arquivos modificados
+
+- `src/index.css`: remove as seções do e-commerce Órbita e as regras globais de `button`; acrescenta as variáveis `--tc-scrollbar-*` e a classe `.tc-scrollbar`.
+- `src/App.jsx`: remove a declaração duplicada e desprotegida de `/criadores/:id/editar`.
+- `src/components/CustomSelect.css`: a barra de rolagem passa a usar as variáveis compartilhadas e ganha `scrollbar-width` e `scrollbar-color`, que faltavam para o Firefox.
+- `src/pages/NewProjectPage.css`, `ProfileEditPage.css`, `ProjectsPage.css` e `ProjectValidationPage.css`: a barra de rolagem passa a usar as variáveis compartilhadas.
+
+Nenhum arquivo do backend foi alterado.
+
 ## Pontos em aberto
 
-- resolver as duas rotas declaradas em duplicidade, decidindo qual componente responde por `/projetos/:id/editar`;
+- decidir qual componente responde por `/projetos/:id/editar` e remover a outra declaração;
+- verificar se a edição de projeto deve ser restrita ao dono do projeto; `CreatorRoute` libera qualquer `creator`;
 - decidir se `PrivateRoute` será usado ou removido;
 - unificar as chaves de sessão do `localStorage` em uma só;
-- padronizar as chamadas à API em uma única forma, para que todas passem pelo interceptador;
-- remover o CSS herdado do Órbita de `index.css` e, em seguida, os `!important` que existem apenas por causa dele;
+- padronizar as chamadas à API em uma única forma, para que todas passem pelo interceptador, e ler o endereço base apenas de `apiUrl.js`;
+- ligar `CreatorsPage` e `ProjectValidationPage` à API;
+- remover os `!important` que existiam apenas por causa das regras herdadas, folha por folha;
 - criar a folha de estilo própria de `EditProjectPage` ou unificá-la com `NewProjectPage`;
 - definir se haverá testes automatizados no frontend.

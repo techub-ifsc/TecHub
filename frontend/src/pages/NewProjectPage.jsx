@@ -636,7 +636,9 @@ export default function NewProjectPage() {
 
       created = true;
       setFeedbackType("success");
-      setFeedbackMessage("Projeto criado com sucesso!");
+      setFeedbackMessage(
+        "Projeto enviado para análise! Ele ficará público após a aprovação.",
+      );
 
       setTimeout(() => {
         navigate("/");

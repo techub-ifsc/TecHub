@@ -2,21 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import { safeExternalUrl } from "../utils/externalUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
 import "./ProjectDetailsPage.css";
 
 const LONG_DESCRIPTION_LENGTH = 400;
-
-// Links informados pelo usuário só são exibidos se forem http(s),
-// evitando URLs como "javascript:" no href.
-function safeExternalUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
-  } catch {
-    return null;
-  }
-}
 
 function formatUpdatedAt(value) {
   const date = new Date(value);
@@ -53,7 +43,14 @@ export default function ProjectDetailsPage() {
         setError("");
         setSelectedIndex(null);
 
-        const response = await fetch(`${API_URL}/projects/${id}`);
+        // Com o token, o dono, os colaboradores e a moderação conseguem abrir
+        // um projeto que ainda não foi aprovado.
+        const token =
+          localStorage.getItem("techub_token") || localStorage.getItem("token");
+
+        const response = await fetch(`${API_URL}/projects/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
 
         if (response.status === 404) {
           setError("Projeto não encontrado.");
@@ -143,6 +140,8 @@ export default function ProjectDetailsPage() {
   const isLongDescription = description.length > LONG_DESCRIPTION_LENGTH;
   const technologies = project.technologies || [];
   const collaborators = project.collaborators || [];
+  const isRejected = project.approvalStatus === "rejected";
+  const isUnderReview = project.approvalStatus === "pending";
 
   return (
     <main className="project-details-page">
@@ -151,6 +150,45 @@ export default function ProjectDetailsPage() {
           <i className="fa-solid fa-arrow-left" aria-hidden="true" />
           Voltar para projetos
         </Link>
+
+        {/* Só chega aqui quem pode ver o projeto antes da aprovação. */}
+        {(isRejected || isUnderReview) && (
+          <section
+            className={`project-details-moderation${
+              isRejected ? " is-rejected" : ""
+            }`}
+            role="status"
+          >
+            <i
+              className={`fa-solid ${
+                isRejected ? "fa-circle-xmark" : "fa-hourglass-half"
+              }`}
+              aria-hidden="true"
+            />
+
+            <div>
+              <strong>
+                {isRejected
+                  ? "Projeto rejeitado pela moderação"
+                  : "Projeto em análise"}
+              </strong>
+
+              {isRejected ? (
+                <>
+                  <p>{project.reviewNotes}</p>
+                  <small>
+                    Edite o projeto para corrigir e reenviar para análise.
+                  </small>
+                </>
+              ) : (
+                <p>
+                  Ele ainda não está público. Somente o autor, os
+                  colaboradores e a moderação conseguem ver esta página.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
         <header className="project-details-hero">
           <div className="project-details-hero__content">

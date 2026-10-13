@@ -138,7 +138,31 @@ const createProjectSchema = z.object({
 
 const updateProjectSchema = createProjectSchema.partial();
 
+const MAX_REVIEW_NOTES_LENGTH = 1000;
+const REVIEW_NOTES_REQUIRED = 'Informe a justificativa da rejeição';
+
+// Parecer da moderação: opcional ao aprovar, obrigatório ao rejeitar,
+// pois é a justificativa exibida ao criador.
+const approveProjectSchema = z.object({
+  reviewNotes: z
+    .string()
+    .trim()
+    .max(MAX_REVIEW_NOTES_LENGTH, `O comentário deve ter no máximo ${MAX_REVIEW_NOTES_LENGTH} caracteres`)
+    .optional()
+    .nullable(),
+});
+
+const rejectProjectSchema = z.object({
+  reviewNotes: z
+    .string({ required_error: REVIEW_NOTES_REQUIRED, invalid_type_error: REVIEW_NOTES_REQUIRED })
+    .trim()
+    .min(1, REVIEW_NOTES_REQUIRED)
+    .max(MAX_REVIEW_NOTES_LENGTH, `A justificativa deve ter no máximo ${MAX_REVIEW_NOTES_LENGTH} caracteres`),
+});
+
 module.exports = {
   createProjectSchema,
   updateProjectSchema,
+  approveProjectSchema,
+  rejectProjectSchema,
 };

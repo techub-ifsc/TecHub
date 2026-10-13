@@ -234,7 +234,13 @@ export default function EditProjectPage() {
     async function loadProjectDetails() {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_URL}/projects/${id}`);
+        // O token permite carregar o projeto mesmo antes da aprovação.
+        const token =
+          localStorage.getItem("techub_token") || localStorage.getItem("token");
+
+        const response = await fetch(`${API_URL}/projects/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
 
         if (response.status === 404) {
           setFeedbackType("error");

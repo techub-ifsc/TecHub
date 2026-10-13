@@ -2,6 +2,7 @@ const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 const { MAJORS } = require('../constants/majors');
 const { STATUS } = require('../constants/status');
+const { APPROVAL_STATUS } = require('../constants/approvalStatus');
 const ProjectTechnology = require('./ProjectTechnology');
 const ProjectCollaborator = require('./ProjectCollaborator');
 const ProjectMedia = require('./ProjectMedia');
@@ -54,6 +55,31 @@ Project.init(
       type: DataTypes.UUID,
       allowNull: false,
       field: 'owner_id',
+    },
+    // Moderação institucional: somente projetos aprovados aparecem publicamente.
+    approvalStatus: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: APPROVAL_STATUS.PENDING,
+      field: 'approval_status',
+      validate: { isIn: [Object.values(APPROVAL_STATUS)] },
+    },
+    // Início do prazo de análise; reinicia quando um projeto rejeitado é reenviado.
+    submittedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'submitted_at',
+    },
+    reviewNotes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'review_notes',
+    },
+    reviewedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'reviewed_at',
     },
   },
   {

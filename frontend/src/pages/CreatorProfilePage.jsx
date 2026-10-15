@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { safeExternalUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
 import "./CreatorProfilePage.css";
 
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
+
+// A página de edição ainda não salva no backend: grava os dados no navegador
+// nesta chave. Enquanto a API não tiver os campos de perfil, o perfil do dono
+// lê daqui para mostrar o que ele acabou de editar.
+function readSavedProfile(userId) {
+  try {
+    const raw = localStorage.getItem(`techub:creator-profile:${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 const DEFAULT_PROFILE = {
   name: "Estudante IFSC",
@@ -84,12 +97,34 @@ export default function CreatorProfilePage() {
           ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
           : names[0].slice(0, 2).toUpperCase();
 
+      const saved = readSavedProfile(loggedUser.id);
+      const form = saved?.form || {};
+
+      const links = [
+        { id: "github", label: "GitHub", url: safeExternalUrl(form.github), icon: "fa-brands fa-github" },
+        { id: "linkedin", label: "LinkedIn", url: safeExternalUrl(form.linkedin), icon: "fa-brands fa-linkedin" },
+      ].filter((link) => link.url);
+
+      const bio = (form.bio || "")
+        .split(/\n+/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean);
+
+      const interests = (saved?.interests || [])
+        .map((item) => (typeof item === "string" ? item : item?.name || item?.label))
+        .filter(Boolean);
+
       return {
         ...DEFAULT_PROFILE,
-        name: loggedUser.name,
+        name: form.name?.trim() || loggedUser.name,
         initials,
         email: loggedUser.email,
-        profileSlug: `/criadores/${loggedUser.id.slice(0, 8)}`,
+        campus: form.campus || DEFAULT_PROFILE.campus,
+        course: form.course || DEFAULT_PROFILE.course,
+        bio: bio.length ? bio : DEFAULT_PROFILE.bio,
+        interests: interests.length ? interests : DEFAULT_PROFILE.interests,
+        links: links.length ? links : DEFAULT_PROFILE.links,
+        profileSlug: `/criadores/${form.slug || loggedUser.id.slice(0, 8)}`,
       };
     }
 

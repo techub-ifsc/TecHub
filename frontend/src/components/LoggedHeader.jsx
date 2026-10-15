@@ -223,6 +223,19 @@ export default function LoggedHeader() {
                   {isCreator && (
                     <>
                       <Link
+                        to={`/criadores/${user?.id}`}
+                        className="logged-header__profile-edit"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          closeMenu();
+                        }}
+                        role="menuitem"
+                      >
+                        <i className="fa-solid fa-user" aria-hidden="true" />
+                        Ver perfil
+                      </Link>
+
+                      <Link
                         to={`/criadores/${user?.id}/editar`}
                         className="logged-header__profile-edit"
                         onClick={() => {

@@ -791,3 +791,43 @@
   color: #92979f;
   font-size: 0.7rem;
 }
+
+/* Contador e botão "Novo projeto" no cabeçalho da seção de projetos */
+.creator-profile-section-heading__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Mesmo padrão do botão equivalente da página de edição de perfil */
+button.creator-profile-projects__create {
+  min-height: 42px;
+  padding: 0.65rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  color: #111111;
+  background: var(--tc-green);
+  border: 1px solid var(--tc-green);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button.creator-profile-projects__create:hover {
+  background: var(--tc-green-hover);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .creator-profile-section-heading__actions,
+  button.creator-profile-projects__create {
+    width: 100%;
+  }
+}

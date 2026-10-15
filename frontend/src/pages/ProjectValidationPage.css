@@ -1384,26 +1384,26 @@
 /* Barra de rolagem da lista de projetos */
 .validation-list__items {
   scrollbar-width: thin;
-  scrollbar-color: #555b62 #1d1f21;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
 }
 
 .validation-list__items::-webkit-scrollbar {
-  width: 8px;
+  width: var(--tc-scrollbar-width);
 }
 
 .validation-list__items::-webkit-scrollbar-track {
-  background: #1d1f21;
-  border-left: 1px solid #2d3034;
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .validation-list__items::-webkit-scrollbar-thumb {
-  background: #555b62;
-  border: 2px solid #1d1f21;
-  border-radius: 8px;
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .validation-list__items::-webkit-scrollbar-thumb:hover {
-  background: #79e651;
+  background: var(--tc-scrollbar-thumb-hover);
 }
 
 .validation-list__items::-webkit-scrollbar-button {
@@ -1666,4 +1666,15 @@ a.validation-details__media:hover {
 
 .validation-review__help span:first-child {
   color: #ff8e87;
+}
+
+/* Etiqueta que identifica o criador na lista de colaboradores */
+.validation-details__collaborator small {
+  padding: 0.15rem 0.5rem;
+  color: var(--tc-green);
+  background: rgb(120 220 80 / 10%);
+  border: 1px solid rgb(120 220 80 / 30%);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
 }

@@ -199,7 +199,15 @@ export default function ProjectValidationPage() {
   const githubUrl = safeExternalUrl(selectedProject?.githubURL);
   const liveUrl = safeExternalUrl(selectedProject?.liveURL);
   const technologies = selectedProject?.technologies || [];
-  const collaborators = selectedProject?.collaborators || [];
+  // O criador aparece primeiro na lista de colaboradores, sem repetir caso
+  // ele também esteja cadastrado como colaborador.
+  const author = selectedProject?.author;
+  const collaborators = [
+    ...(author ? [{ userId: author.id, name: author.name, isAuthor: true }] : []),
+    ...(selectedProject?.collaborators || []).filter(
+      (collaborator) => collaborator.userId !== author?.id,
+    ),
+  ];
   const media = selectedProject?.media || [];
   const isRejecting = decision === "rejected";
 
@@ -516,6 +524,7 @@ export default function ProjectValidationPage() {
                           </span>
 
                           <strong>{collaborator.name}</strong>
+                            {collaborator.isAuthor && <small>Criador</small>}
                         </div>
                       ))}
                     </div>

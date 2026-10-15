@@ -1348,7 +1348,7 @@
 .technology-suggestions,
 .collaborator-suggestions {
   scrollbar-width: thin;
-  scrollbar-color: #62676f #181a1c;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
 }
 
 .technology-suggestions::-webkit-scrollbar,
@@ -1358,20 +1358,20 @@
 
 .technology-suggestions::-webkit-scrollbar-track,
 .collaborator-suggestions::-webkit-scrollbar-track {
-  background: #181a1c;
-  border-radius: 8px;
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .technology-suggestions::-webkit-scrollbar-thumb,
 .collaborator-suggestions::-webkit-scrollbar-thumb {
-  background: #555a61;
-  border: 2px solid #181a1c;
-  border-radius: 8px;
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .technology-suggestions::-webkit-scrollbar-thumb:hover,
 .collaborator-suggestions::-webkit-scrollbar-thumb:hover {
-  background: var(--new-project-green);
+  background: var(--tc-scrollbar-thumb-hover);
 }
 /* Prévia das mídias no formulário de edição */
 .upload-file-preview {

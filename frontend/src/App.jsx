@@ -55,11 +55,6 @@ export default function App() {
           </Route>
 
           <Route
-            path="/criadores/:id/editar"
-            element={<ProfileEditPage />}
-          />
-
-          <Route
             path="/criadores/:id"
             element={<CreatorProfilePage />}
           />

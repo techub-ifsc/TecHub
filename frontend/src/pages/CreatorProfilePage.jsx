@@ -12,7 +12,6 @@ const DEFAULT_PROFILE = {
   initials: "IF",
   campus: "IFSC Câmpus Lages",
   course: "Ciência da Computação",
-  phase: "Fase acadêmica",
   conclusion: "2026/2",
   status: "Em formação",
   bio: [
@@ -286,10 +285,6 @@ export default function CreatorProfilePage() {
                   {profileInfo.course}
                 </p>
 
-                <p className="creator-profile-hero__phase">
-                  {profileInfo.phase}
-                </p>
-
                 <button
                   type="button"
                   className="creator-profile-address"
@@ -329,11 +324,23 @@ export default function CreatorProfilePage() {
                     colaboração.
                   </p>
                 </div>
+                <div className="creator-profile-section-heading__actions">
+                  <span>
+                    {filteredProjects.length}{" "}
+                    {filteredProjects.length === 1 ? "projeto" : "projetos"}
+                  </span>
 
-                <span>
-                  {filteredProjects.length}{" "}
-                  {filteredProjects.length === 1 ? "projeto" : "projetos"}
-                </span>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="creator-profile-projects__create"
+                      onClick={() => navigate("/projeto/novo")}
+                    >
+                      <i className="fa-solid fa-plus" aria-hidden="true" />
+                      Novo projeto
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Barra de abas de filtro */}

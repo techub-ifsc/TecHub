@@ -92,11 +92,6 @@ const COURSE_OPTIONS = [
   "Técnico em Desenvolvimento de Sistemas",
 ];
 
-const COURSE_PHASES = {
-  "Ciência da Computação": 8,
-  "Técnico em Informática para Internet": 4,
-  "Técnico em Desenvolvimento de Sistemas": 3,
-};
 
 const INITIAL_FORM = {
   name: "",
@@ -106,7 +101,6 @@ const INITIAL_FORM = {
   linkedin: "",
   campus: "IFSC Câmpus Lages",
   course: "",
-  phase: "",
 };
 
 const INITIAL_PROFILE_PROJECTS = [
@@ -244,15 +238,6 @@ export default function ProfileEditPage() {
       .join("")
       .toUpperCase() || "U";
 
-  const phaseOptions = form.course
-    ? [
-        ...Array.from(
-          { length: COURSE_PHASES[form.course] || 0 },
-          (_, index) => `${index + 1}ª fase`,
-        ),
-        "Curso concluído",
-      ]
-    : [];
 
   const filteredTechnologies = useMemo(() => {
     const search = interestInput.trim().toLowerCase();
@@ -280,7 +265,6 @@ export default function ProfileEditPage() {
     setForm((currentForm) => ({
       ...currentForm,
       [name]: name === "slug" ? normalizeSlug(value) : value,
-      ...(name === "course" ? { phase: "" } : {}),
     }));
 
     setErrors((currentErrors) => ({
@@ -416,11 +400,6 @@ export default function ProfileEditPage() {
       validationErrors.course = "Selecione o curso.";
     }
 
-    if (!form.phase) {
-      validationErrors.phase =
-        "Selecione a fase ou informe que o curso foi concluído.";
-    }
-
     return validationErrors;
   }
 
@@ -546,7 +525,6 @@ export default function ProfileEditPage() {
           linkedin: profileData.linkedin,
           campus: profileData.campus,
           course: profileData.course,
-          phase: profileData.phase,
         },
         interests,
         savedAt: new Date().toISOString(),
@@ -1016,45 +994,6 @@ export default function ProfileEditPage() {
                     {errors.course && (
                       <span className="profile-edit-error" role="alert">
                         {errors.course}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="profile-edit-field">
-                    <label htmlFor="profile-phase">
-                      Fase
-                      <span aria-hidden="true">*</span>
-                    </label>
-
-                    <CustomSelect
-                      id="profile-phase"
-                      name="phase"
-                      value={form.phase}
-                      onChange={handleChange}
-                      disabled={!form.course}
-                      invalid={Boolean(errors.phase)}
-                      placeholder={
-                        form.course
-                          ? "Selecione a fase"
-                          : "Selecione primeiro o curso"
-                      }
-                      options={[
-                        {
-                          value: "",
-                          label: form.course
-                            ? "Selecione a fase"
-                            : "Selecione primeiro o curso",
-                        },
-                        ...phaseOptions.map((phase) => ({
-                          value: phase,
-                          label: phase,
-                        })),
-                      ]}
-                    />
-
-                    {errors.phase && (
-                      <span className="profile-edit-error" role="alert">
-                        {errors.phase}
                       </span>
                     )}
                   </div>

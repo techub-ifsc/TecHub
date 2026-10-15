@@ -1667,3 +1667,14 @@ a.validation-details__media:hover {
 .validation-review__help span:first-child {
   color: #ff8e87;
 }
+
+/* Etiqueta que identifica o criador na lista de colaboradores */
+.validation-details__collaborator small {
+  padding: 0.15rem 0.5rem;
+  color: var(--tc-green);
+  background: rgb(120 220 80 / 10%);
+  border: 1px solid rgb(120 220 80 / 30%);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}

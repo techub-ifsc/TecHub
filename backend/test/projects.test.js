@@ -279,13 +279,17 @@ describe('rotas de projetos', () => {
     let options;
     t.mock.method(Project, 'findByPk', async (id, opts) => {
       options = opts;
-      return Project.build({ id, title: 'Projeto' });
+      return Project.build({ id, title: 'Projeto', approvalStatus: 'approved' });
     });
 
     const res = await request('GET', `/${randomUUID()}`);
     assert.equal(res.status, 200);
     const author = options.include.find((i) => i.as === 'author');
     assert.deepEqual(author.attributes, ['id', 'name']);
+  });
+
+  test('tecnologias usam a chave (projeto, nome), senão a leitura devolve só a primeira', () => {
+    assert.deepEqual(ProjectTechnology.primaryKeyAttributes, ['projectId', 'name']);
   });
 
   test('listagem devolve a URL da capa (ou null) em coverUrl', async (t) => {

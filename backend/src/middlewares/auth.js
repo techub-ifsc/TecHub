@@ -40,6 +40,33 @@ async function authenticate(req, res, next) {
   }
 }
 
+// Para rotas públicas que mostram mais a quem está logado: com token válido preenche
+// req.user; sem token, ou com token inválido, a requisição segue como visitante.
+async function optionalAuthenticate(req, res, next) {
+  try {
+    const [scheme, token] = (req.headers.authorization || '').split(' ');
+    if (scheme !== 'Bearer' || !token) return next();
+
+    let payload;
+    try {
+      payload = verifyToken(token);
+    } catch (err) {
+      return next();
+    }
+
+    const userId = payload.sub || payload.id;
+    const user = userId ? await User.findByPk(userId) : null;
+    if (user) {
+      req.user = user;
+      req.userId = user.id;
+    }
+
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
 // Cria um middleware que permite acesso somente aos perfis informados.
 function authorize(...roles) {
   return (req, res, next) => {
@@ -59,4 +86,4 @@ function authorize(...roles) {
   };
 }
 
-module.exports = { authenticate, authorize };
+module.exports = { authenticate, optionalAuthenticate, authorize };

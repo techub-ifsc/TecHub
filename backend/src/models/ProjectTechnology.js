@@ -11,9 +11,12 @@ ProjectTechnology.init(
       primaryKey: true, // <-- Marca como parte da chave primária
       field: 'project_id',
     },
+    // A chave da tabela é (project_id, name). Sem o nome na chave, o Sequelize trata
+    // as tecnologias de um projeto como uma única linha e devolve só a primeira.
     name: {
       type: DataTypes.STRING(100),
       allowNull: false,
+      primaryKey: true,
     },
   },
   {

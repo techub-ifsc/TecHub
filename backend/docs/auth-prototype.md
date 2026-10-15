@@ -15,7 +15,7 @@ Decisões temporárias registradas:
 - os domínios de criador vêm de `CREATOR_ALLOWED_DOMAINS` e, nesta etapa, são `@ifsc.edu.br` e `@aluno.ifsc.edu.br`;
 - cada domínio é conferido como sufixo exato; outros subdomínios não são aceitos automaticamente;
 - a `main` atual grava o usuário e responde sem token; o login ainda está liberado porque a confirmação de e-mail não foi implementada;
-- a resposta de cadastro ainda menciona confirmação em 24 horas, mas o envio e a validação do e-mail estão comentados e não acontecem;
+- a resposta de cadastro informa que o login já está disponível; o envio e a validação do e-mail ainda não estão ativos;
 - o frontend envia `accountType` com `visitor` ou `creator`; a API não aceita o campo `role`;
 - `super_admin` é criado apenas pela equipe usando um script interno e variáveis de ambiente;
 - o super-admin já ignora restrições de perfil. Fluxos administrativos específicos, como aprovação de projetos, ainda não foram criados.
@@ -53,11 +53,11 @@ Exemplo de criador durante a regra temporária:
 }
 ```
 
-Resposta de sucesso: HTTP `201`. Esta é a resposta atual da `main`; ela ainda mostra uma mensagem de confirmação, mas nenhum e-mail é enviado neste fluxo.
+Resposta de sucesso: HTTP `201`. A mensagem informa que o login já está disponível; nenhum e-mail é enviado neste fluxo.
 
 ```json
 {
-  "message": "Cadastro realizado! Verifique seu e-mail em até 24 horas para ativar sua conta.",
+  "message": "Cadastro realizado com sucesso. Você já pode fazer login.",
   "user": {
     "id": "<uuid>",
     "name": "Maria Silva",
@@ -69,7 +69,7 @@ Resposta de sucesso: HTTP `201`. Esta é a resposta atual da `main`; ela ainda m
 }
 ```
 
-Apesar do texto da mensagem, o backend ainda não envia o e-mail e o login não verifica confirmação. O token de sessão é obtido em `POST /api/auth/login`.
+O backend ainda não envia e-mail de confirmação, e o login não verifica confirmação. O token de sessão é obtido em `POST /api/auth/login`.
 
 Erros principais:
 

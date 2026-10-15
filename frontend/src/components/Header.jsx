@@ -135,16 +135,6 @@ export default function Header() {
                 </NavLink>
               </>
             )}
-
-            <NavLink
-              to="/perfil"
-              className={({ isActive }) =>
-                `site-header__nav-item${isActive ? " is-active" : ""}`
-              }
-              onClick={handleProfileClick}
-            >
-              Perfil
-            </NavLink>
           </div>
         </div>
       </div>

@@ -49,9 +49,9 @@ async function register(req, res, next) {
     // Envia o e-mail ANTES de responder a requisição
     //await sendVerificationEmail(user.email, verificationToken);
 
-    // Responde sem token de sessão (exige confirmação antes do login)
+    // O cadastro não cria sessão; a confirmação de e-mail ainda não está ativa.
     res.status(201).json({
-      message: 'Cadastro realizado! Verifique seu e-mail em até 24 horas para ativar sua conta.',
+      message: 'Cadastro realizado com sucesso. Você já pode fazer login.',
       user: user.toSafeJSON(),
     });
   } catch (err) {

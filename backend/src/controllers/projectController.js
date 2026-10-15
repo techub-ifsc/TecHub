@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { Op } = require('sequelize');
 const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidators');
 const ProjectTechnology = require('../models/ProjectTechnology');
 const ProjectCollaborator = require('../models/ProjectCollaborator');
@@ -7,9 +8,53 @@ const User = require('../models/User');
 const { ApiError } = require('../middlewares/errorHandler');
 const { likeOperator } = require('../utils/db');
 const { ROLES } = require('../constants/roles');
+const { APPROVAL_STATUS } = require('../constants/approvalStatus');
 const Project = require('../models/Project');
 const sequelize = require('../config/database');
 
+// Relações carregadas nos cards das listagens (pública e "meus projetos").
+const LIST_INCLUDE = [
+  {
+    model: User,
+    as: 'author',
+    attributes: ['id', 'name', 'email'], // busca só os dados públicos do autor
+  },
+  {
+    model: ProjectTechnology,
+    as: 'technologies',
+    attributes: ['name'],
+  },
+  {
+    model: ProjectCollaborator,
+    as: 'collaborators',
+    attributes: ['userId', 'contribution'],
+  },
+  {
+    model: ProjectMedia,
+    as: 'media',
+    attributes: ['url'],
+    where: { isCover: true },
+    required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
+  },
+];
+
+// Formata o retorno: tecnologias como array de strings e a capa como coverUrl
+function formatListItem(project) {
+  const { media, ...json } = project.toJSON();
+  return {
+    ...json,
+    technologies: (json.technologies || []).map((t) => t.name),
+    coverUrl: media?.[0]?.url ?? null,
+  };
+}
+
+// Dono, colaborador ou moderação: quem pode ver um projeto ainda não aprovado
+// e ler o parecer da análise.
+function isProjectInsider(project, user) {
+  if (!user) return false;
+  if (user.role === ROLES.SUPER_ADMIN || project.ownerId === user.id) return true;
+  return (project.collaborators || []).some((item) => item.userId === user.id);
+}
 
 // Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
@@ -17,55 +62,25 @@ async function list(req, res, next) {
     const { page = 1, limit = 10, search, major, status } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    const where = {};
+    // Somente projetos aprovados pela moderação aparecem publicamente.
+    const where = { approvalStatus: APPROVAL_STATUS.APPROVED };
     if (major) where.major = major;
     if (status) where.status = status;
     if (search) {
-      const { Op } = require('sequelize');
       where.title = { [Op.iLike]: `%${search}%` };
     }
 
     const { count, rows: projects } = await Project.findAndCountAll({
       where,
-      include: [
-        {
-          model: User,
-          as: 'author',
-          attributes: ['id', 'name', 'email'], // busca só os dados públicos do autor
-        },
-        {
-          model: ProjectTechnology,
-          as: 'technologies',
-          attributes: ['name'],
-        },
-        {
-          model: ProjectCollaborator,
-          as: 'collaborators',
-          attributes: ['userId', 'contribution'],
-        },
-        {
-          model: ProjectMedia,
-          as: 'media',
-          attributes: ['url'],
-          where: { isCover: true },
-          required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
-        },
-      ],
+      attributes: { exclude: ['reviewNotes'] }, // parecer da moderação não é público
+      include: LIST_INCLUDE,
       limit: Number(limit),
       offset: Number(offset),
       order: [['created_at', 'DESC']],
       distinct: true, // Garante que a contagem seja correta mesmo com includes
     });
 
-    // Formata o retorno: tecnologias como array de strings e a capa como coverUrl
-    const formattedProjects = projects.map((p) => {
-      const { media, ...json } = p.toJSON();
-      return {
-        ...json,
-        technologies: (json.technologies || []).map((t) => t.name),
-        coverUrl: media?.[0]?.url ?? null,
-      };
-    });
+    const formattedProjects = projects.map(formatListItem);
 
     return res.status(200).json({
       total: count,
@@ -75,6 +90,33 @@ async function list(req, res, next) {
     });
   } catch (err) {
     console.error('>>> ERRO AO LISTAR PROJETOS:', err);
+    next(err);
+  }
+}
+
+// Projetos do usuário autenticado (como autor ou colaborador) em qualquer situação,
+// para acompanhar a análise e ler a justificativa de uma rejeição.
+async function listMine(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const collaborations = await ProjectCollaborator.findAll({
+      where: { userId },
+      attributes: ['projectId'],
+    });
+
+    const projects = await Project.findAll({
+      where: {
+        [Op.or]: [
+          { ownerId: userId },
+          { id: collaborations.map((item) => item.projectId) },
+        ],
+      },
+      include: LIST_INCLUDE,
+      order: [['created_at', 'DESC']],
+    });
+
+    return res.status(200).json({ projects: projects.map(formatListItem) });
+  } catch (err) {
     next(err);
   }
 }
@@ -103,6 +145,12 @@ async function getById(req, res, next) {
       throw new ApiError(404, 'Projeto não encontrado.');
     }
     const json = project.toJSON();
+    const insider = isProjectInsider(json, req.user);
+    // Enquanto não for aprovado, o projeto não existe para o público.
+    if (json.approvalStatus !== APPROVAL_STATUS.APPROVED && !insider) {
+      throw new ApiError(404, 'Projeto não encontrado.');
+    }
+    if (!insider) delete json.reviewNotes;
     const collaboratorIds = (json.collaborators || []).map((item) => item.userId);
     const users = collaboratorIds.length
       ? await User.findAll({ where: { id: collaboratorIds }, attributes: ['id', 'name'] })
@@ -142,6 +190,8 @@ async function create(req, res, next) {
       {
         ...projectData,
         ownerId,
+        // Todo projeto novo entra na fila da moderação antes de ficar público.
+        approvalStatus: APPROVAL_STATUS.PENDING,
       },
       { transaction }
     );
@@ -232,6 +282,12 @@ async function update(req, res, next) {
       const { technologies, collaborators, media, ...projectData } = data;
       if (!isOwner && collaborators !== undefined) {
         throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
+      }
+
+      // Editar um projeto rejeitado o reenvia à moderação e reinicia o prazo de análise.
+      if (project.approvalStatus === APPROVAL_STATUS.REJECTED) {
+        projectData.approvalStatus = APPROVAL_STATUS.PENDING;
+        projectData.submittedAt = new Date();
       }
 
       await project.update(projectData, { transaction });
@@ -335,4 +391,4 @@ async function destroy(req, res, next) {
   }
 }
 
-module.exports = { list, getById, searchCollaborators, create, update, destroy };
+module.exports = { list, listMine, getById, searchCollaborators, create, update, destroy };

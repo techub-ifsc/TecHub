@@ -8,6 +8,8 @@ export default function ConfirmationModal({
   description,
   confirmLabel,
   tone = "primary",
+  confirmDisabled = false,
+  children,
   onCancel,
   onConfirm,
 }) {
@@ -68,6 +70,9 @@ export default function ConfirmationModal({
 
         <p id="confirmation-modal-description">{description}</p>
 
+        {/* Conteúdo extra, como o campo de parecer da moderação. */}
+        {children}
+
         <div className="confirmation-modal__actions">
           <button
             type="button"
@@ -81,7 +86,8 @@ export default function ConfirmationModal({
             type="button"
             className={`confirmation-modal__confirm is-${tone}`}
             onClick={onConfirm}
-            autoFocus
+            disabled={confirmDisabled}
+            autoFocus={!children}
           >
             {confirmLabel}
           </button>

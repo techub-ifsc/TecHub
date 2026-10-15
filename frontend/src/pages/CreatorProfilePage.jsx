@@ -7,12 +7,6 @@ import "./CreatorProfilePage.css";
 const PROFILE_PHOTO =
   "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
 
-const FILTER_TABS = [
-  { id: "todos", label: "Todos" },
-  { id: "autor", label: "Como autor" },
-  { id: "colaborador", label: "Como colaborador" },
-];
-
 const DEFAULT_PROFILE = {
   name: "Estudante IFSC",
   initials: "IF",
@@ -45,6 +39,9 @@ export default function CreatorProfilePage() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
+  // Estado para controlar a visibilidade da bolinha de notificação de reprovados
+  const [hasSeenRejected, setHasSeenRejected] = useState(false);
+
   // Recupera o usuário autenticado do localStorage
   const loggedUser = useMemo(() => {
     try {
@@ -56,6 +53,28 @@ export default function CreatorProfilePage() {
   }, []);
 
   const isOwner = loggedUser?.id === id;
+
+  // Monta as abas de filtro dinamicamente (adicionando a aba de reprovados se for o dono)
+  const filterTabs = useMemo(() => {
+    const tabs = [
+      { id: "todos", label: "Todos" },
+      { id: "autor", label: "Como autor" },
+      { id: "colaborador", label: "Como colaborador" },
+    ];
+
+    if (isOwner) {
+      tabs.push({ id: "reprovados", label: "Reprovados" });
+    }
+
+    return tabs;
+  }, [isOwner]);
+
+  // Contagem de projetos com status rejected
+  const rejectedCount = useMemo(() => {
+    return projects.filter(
+      (p) => p.approvalStatus === "rejected" || p.status === "rejected"
+    ).length;
+  }, [projects]);
 
   // Monta as informações visuais mesclando o que temos do usuário logado
   const profileInfo = useMemo(() => {
@@ -86,7 +105,20 @@ export default function CreatorProfilePage() {
     async function loadUserProjects() {
       try {
         setLoadingProjects(true);
-        const response = await fetch(`${API_URL}/projects?limit=100`);
+        const token =
+          localStorage.getItem("techub_token") || localStorage.getItem("token");
+
+        // Se o usuário logado estiver vendo o próprio perfil, busca também por /projects/mine
+        // para obter rascunhos e projetos reprovados com suas justificativas (reviewNotes)
+        let endpoint = `${API_URL}/projects?limit=100`;
+        const headers = {};
+
+        if (isOwner && token) {
+          endpoint = `${API_URL}/projects/mine`;
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, { headers });
 
         if (!response.ok) {
           throw new Error("Erro ao buscar projetos");
@@ -96,45 +128,43 @@ export default function CreatorProfilePage() {
         const allProjects = Array.isArray(data.projects)
           ? data.projects
           : Array.isArray(data)
-          ? data
-          : [];
+            ? data
+            : [];
 
-        // Filtra projetos onde o usuário atual é autor ou colaborador
+        // Filtra e normaliza projetos onde o usuário atual é autor ou colaborador
         const userProjects = [];
 
         allProjects.forEach((p) => {
           const isAuthor =
             p.ownerId === id ||
             p.owner_id === id ||
-            p.author?.id === id;
+            p.author?.id === id ||
+            p.userId === id;
 
           const isCollaborator = Array.isArray(p.collaborators)
             ? p.collaborators.some(
-                (c) => c.userId === id || c.user_id === id || c.id === id
-              )
+              (c) => c.userId === id || c.user_id === id || c.id === id
+            )
             : false;
 
-          if (isAuthor) {
+          // Se a requisição veio de /projects/mine, o usuário já é dono ou colaborador
+          const role = isAuthor ? "autor" : isCollaborator ? "colaborador" : "autor";
+
+          if (isAuthor || isCollaborator || isOwner) {
             userProjects.push({
               id: p.id,
               title: p.title,
               description: p.description,
               tags: Array.isArray(p.technologies) ? p.technologies : [],
-              role: "autor",
+              role,
+              approvalStatus: p.approvalStatus || p.approval_status || "approved",
+              reviewNotes: p.reviewNotes || p.review_notes || "",
               image:
                 p.coverUrl ||
-                "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480",
-            });
-          } else if (isCollaborator) {
-            userProjects.push({
-              id: p.id,
-              title: p.title,
-              description: p.description,
-              tags: Array.isArray(p.technologies) ? p.technologies : [],
-              role: "colaborador",
-              image:
-                p.coverUrl ||
-                "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480",
+                p.cover_url ||
+                (role === "autor"
+                  ? "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480"
+                  : "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480"),
             });
           }
         });
@@ -150,12 +180,22 @@ export default function CreatorProfilePage() {
     if (id) {
       loadUserProjects();
     }
-  }, [id]);
+  }, [id, isOwner]);
 
+  // Filtragem considerando abas normais e aba de reprovados
   const filteredProjects = projects.filter((project) => {
     if (activeTab === "todos") return true;
+    if (activeTab === "reprovados") return project.approvalStatus === "rejected";
     return project.role === activeTab;
   });
+
+  function handleTabClick(tabId) {
+    setActiveTab(tabId);
+    // Remove a notificação assim que a aba de reprovados for aberta
+    if (tabId === "reprovados") {
+      setHasSeenRejected(true);
+    }
+  }
 
   async function handleDeleteProject(event, projectId) {
     event.preventDefault();
@@ -296,13 +336,17 @@ export default function CreatorProfilePage() {
                 </span>
               </div>
 
+              {/* Barra de abas de filtro */}
               <div
                 className="creator-profile-tabs"
                 role="tablist"
                 aria-label="Filtrar projetos pela participação"
               >
-                {FILTER_TABS.map((tab) => {
+                {filterTabs.map((tab) => {
                   const isActive = activeTab === tab.id;
+                  const isRejectedTab = tab.id === "reprovados";
+                  const showBadge =
+                    isRejectedTab && rejectedCount > 0 && !hasSeenRejected;
 
                   return (
                     <button
@@ -311,9 +355,36 @@ export default function CreatorProfilePage() {
                       role="tab"
                       aria-selected={isActive}
                       className={isActive ? "is-active" : ""}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => handleTabClick(tab.id)}
+                      style={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                      }}
                     >
                       {tab.label}
+                      {/* Badge / Bolinha de notificação de reprovados */}
+                      {showBadge && (
+                        <span
+                          title={`${rejectedCount} projeto(s) precisam de correção`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "#ef4444",
+                            color: "#fff",
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {rejectedCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -335,101 +406,129 @@ export default function CreatorProfilePage() {
                 </p>
               ) : (
                 <div className="creator-profile-project-grid">
-                  {filteredProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      className="creator-profile-project"
-                      style={{ position: "relative" }}
-                    >
-                      <Link
-                        to={`/projetos/${project.id}`}
-                        style={{
-                          textDecoration: "none",
-                          color: "inherit",
-                          display: "block",
-                        }}
+                  {filteredProjects.map((project) => {
+                    const isRejected = project.approvalStatus === "rejected";
+
+                    return (
+                      <div
+                        key={project.id}
+                        className="creator-profile-project"
+                        style={{ position: "relative" }}
                       >
-                        <div className="creator-profile-project__image">
-                          <img
-                            src={project.image}
-                            alt=""
-                            loading="lazy"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-
-                          <span className="creator-profile-project__role">
-                            {project.role === "autor"
-                              ? "Autor"
-                              : "Colaborador"}
-                          </span>
-                        </div>
-
-                        <div className="creator-profile-project__content">
-                          <h3>{project.title}</h3>
-                          <p>{project.description}</p>
-
-                          <div
-                            className="creator-profile-project__tags"
-                            aria-label="Tecnologias utilizadas"
-                          >
-                            {project.tags.map((tag) => (
-                              <span key={tag}>{tag}</span>
-                            ))}
-                          </div>
-                        </div>
-                      </Link>
-
-                      {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
-                      {isOwner && (
-                        <div
+                        <Link
+                          to={`/projetos/${project.id}`}
                           style={{
-                            display: "flex",
-                            gap: "0.5rem",
-                            padding: "0.5rem 1rem 1rem",
+                            textDecoration: "none",
+                            color: "inherit",
+                            display: "block",
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/projetos/${project.id}/editar`)}
+                          <div className="creator-profile-project__image">
+                            <img
+                              src={project.image}
+                              alt=""
+                              loading="lazy"
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+
+                            <span className="creator-profile-project__role">
+                              {project.role === "autor"
+                                ? "Autor"
+                                : "Colaborador"}
+                            </span>
+
+                            {/* Tag visual de Reprovado */}
+                            {isRejected && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: "0.5rem",
+                                  right: "0.5rem",
+                                  background: "#ef4444",
+                                  color: "#ffffff",
+                                  padding: "0.2rem 0.5rem",
+                                  borderRadius: "4px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Reprovado
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="creator-profile-project__content">
+                            <h3>{project.title}</h3>
+                            <p>{project.description}</p>
+
+                            {/* Caixa com o motivo da reprovação deixado pelo moderador */}
+                            {isRejected && project.reviewNotes && (
+                              <div
+                                style={{
+                                  marginTop: "0.6rem",
+                                  padding: "0.5rem 0.65rem",
+                                  borderRadius: "6px",
+                                  background: "rgba(239, 68, 68, 0.1)",
+                                  borderLeft: "3px solid #ef4444",
+                                  fontSize: "0.8rem",
+                                  color: "#fca5a5",
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    display: "block",
+                                    marginBottom: "0.2rem",
+                                    color: "#f87171",
+                                  }}
+                                >
+                                  <i
+                                    className="fa-solid fa-triangle-exclamation"
+                                    style={{ marginRight: "0.3rem" }}
+                                  />
+                                  Ajuste necessário:
+                                </strong>
+                                <span
+                                  style={{
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {project.reviewNotes}
+                                </span>
+                              </div>
+                            )}
+
+                            <div
+                              className="creator-profile-project__tags"
+                              aria-label="Tecnologias utilizadas"
+                            >
+                              {project.tags.map((tag) => (
+                                <span key={tag}>{tag}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </Link>
+
+                        {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
+                        {isOwner && (
+                          <div
                             style={{
-                              flex: "1 1 0",
-                              width: 0,
-                              boxSizing: "border-box",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "0.4rem",
-                              padding: "0.45rem 0.5rem",
-                              borderRadius: "6px",
-                              background: "#f8fafc",
-                              color: "#334155",
-                              cursor: "pointer",
-                              fontSize: "0.85rem",
-                              fontWeight: 600,
-                              transition: "all 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "#e2e8f0";
-                              e.currentTarget.style.borderColor = "#94a3b8";
-                              e.currentTarget.style.color = "#0f172a";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "#f8fafc";
-                              e.currentTarget.style.borderColor = "#cbd5e1";
-                              e.currentTarget.style.color = "#334155";
+                              display: "flex",
+                              gap: "0.5rem",
+                              padding: "0.5rem 1rem 1rem",
                             }}
                           >
-                            <i className="fa-solid fa-pen" aria-hidden="true" />
-                            Editar
-                          </button>
-
-                          {project.role === "autor" && (
                             <button
                               type="button"
-                              onClick={(e) => handleDeleteProject(e, project.id)}
-                              disabled={deletingProjectId === project.id}
+                              onClick={() =>
+                                navigate(`/projetos/${project.id}/editar`)
+                              }
                               style={{
                                 flex: "1 1 0",
                                 width: 0,
@@ -440,31 +539,82 @@ export default function CreatorProfilePage() {
                                 gap: "0.4rem",
                                 padding: "0.45rem 0.5rem",
                                 borderRadius: "6px",
-                                border: "1px solid #dc3545",
-                                background: "#dc3545",
-                                color: "#fff",
+                                background: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                color: "#334155",
                                 cursor: "pointer",
                                 fontSize: "0.85rem",
                                 fontWeight: 600,
                                 transition: "all 0.15s ease",
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "#b02a37";
-                                e.currentTarget.style.borderColor = "#b02a37";
+                                e.currentTarget.style.background = "#f1f5f9";
+                                e.currentTarget.style.borderColor = "#94a3b8";
+                                e.currentTarget.style.color = "#0f172a";
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "#dc3545";
-                                e.currentTarget.style.borderColor = "#dc3545";
+                                e.currentTarget.style.background = "#ffffff";
+                                e.currentTarget.style.borderColor = "#cbd5e1";
+                                e.currentTarget.style.color = "#334155";
                               }}
                             >
-                              <i className="fa-solid fa-trash" aria-hidden="true" />
-                              Excluir
+                              <i
+                                className={
+                                  isRejected
+                                    ? "fa-solid fa-wrench"
+                                    : "fa-solid fa-pen"
+                                }
+                                aria-hidden="true"
+                              />
+                              {isRejected ? "Corrigir" : "Editar"}
                             </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+
+                            {project.role === "autor" && (
+                              <button
+                                type="button"
+                                onClick={(e) =>
+                                  handleDeleteProject(e, project.id)
+                                }
+                                disabled={deletingProjectId === project.id}
+                                style={{
+                                  flex: "1 1 0",
+                                  width: 0,
+                                  boxSizing: "border-box",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "0.4rem",
+                                  padding: "0.45rem 0.5rem",
+                                  borderRadius: "6px",
+                                  border: "1px solid #dc3545",
+                                  background: "#dc3545",
+                                  color: "#fff",
+                                  cursor: "pointer",
+                                  fontSize: "0.85rem",
+                                  fontWeight: 600,
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#b02a37";
+                                  e.currentTarget.style.borderColor = "#b02a37";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "#dc3545";
+                                  e.currentTarget.style.borderColor = "#dc3545";
+                                }}
+                              >
+                                <i
+                                  className="fa-solid fa-trash"
+                                  aria-hidden="true"
+                                />
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>

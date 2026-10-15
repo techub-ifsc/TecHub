@@ -212,6 +212,11 @@ export default function EditProjectPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
 
+  // Estados de moderação e feedback da avaliação
+  const [approvalStatus, setApprovalStatus] = useState("approved");
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewedAt, setReviewedAt] = useState(null);
+
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
   const [status, setStatus] = useState("Em desenvolvimento");
@@ -279,6 +284,19 @@ export default function EditProjectPage() {
 
         setIsOwner(Boolean(owner));
         setCanEdit(Boolean(owner || collaborator));
+
+        // Guarda dados da moderação
+        setApprovalStatus(
+          currentProject.approvalStatus ||
+            currentProject.approval_status ||
+            "approved"
+        );
+        setReviewNotes(
+          currentProject.reviewNotes || currentProject.review_notes || ""
+        );
+        setReviewedAt(
+          currentProject.reviewedAt || currentProject.reviewed_at || null
+        );
 
         // Popula os campos do formulário
         setTitle(currentProject.title || "");
@@ -744,7 +762,11 @@ export default function EditProjectPage() {
 
       saved = true;
       setFeedbackType("success");
-      setFeedbackMessage("Projeto atualizado com sucesso!");
+      setFeedbackMessage(
+        approvalStatus === "rejected"
+          ? "Projeto corrigido e reenviado para moderação com sucesso!"
+          : "Projeto atualizado com sucesso!"
+      );
 
       setTimeout(() => navigate(`/projetos/${id}`), 1200);
     } catch (err) {
@@ -757,6 +779,8 @@ export default function EditProjectPage() {
       if (!saved) setIsSubmitting(false);
     }
   }
+
+  const isRejected = approvalStatus === "rejected";
 
   if (isLoading) {
     return (
@@ -791,6 +815,76 @@ export default function EditProjectPage() {
       <h1 className="new-project-title">Editar projeto</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
+        {/* Banner com parecer da moderação quando o projeto for reprovado */}
+        {isRejected && (
+          <div
+            style={{
+              marginBottom: "2rem",
+              padding: "1.25rem 1.5rem",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderLeft: "4px solid #e11d48",
+            }}
+            role="alert"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                color: "#f8fafc",
+                fontWeight: 600,
+                fontSize: "1rem",
+                marginBottom: "0.35rem",
+              }}
+            >
+              <i className="fa-solid fa-triangle-exclamation" style={{ color: "#e11d48" }} aria-hidden="true" />
+              <span>Este projeto precisa de correções</span>
+            </div>
+
+            {reviewedAt && (
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "0.8rem",
+                  color: "#94a3b8",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Avaliado em:{" "}
+                {new Date(reviewedAt).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+
+            {reviewNotes && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  borderRadius: "6px",
+                  background: "rgba(0, 0, 0, 0.25)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  color: "#cbd5e1",
+                  fontSize: "0.95rem",
+                  lineHeight: "1.5",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <strong style={{ color: "#e2e8f0", display: "block", marginBottom: "0.25rem" }}>
+                  Motivo apontado pelo avaliador:
+                </strong>
+                {reviewNotes}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="form-field">
           <label className="form-label" htmlFor="project-title">
             Título
@@ -1333,7 +1427,7 @@ export default function EditProjectPage() {
             className="action-button submit-review"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Salvando..." : "Salvar alterações"}
+            Salvar alterações
           </button>
         </div>
 

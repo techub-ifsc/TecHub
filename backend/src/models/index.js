@@ -1,55 +1,68 @@
 const sequelize = require('../config/database');
 const User = require('./User');
-const Category = require('./Category');
-const Product = require('./Product');
-const Cart = require('./Cart');
-const CartItem = require('./CartItem');
-const Order = require('./Order');
-const OrderItem = require('./OrderItem');
-const Favorite = require('./Favorite');
+const Project = require('./Project');
+const ProjectTechnology = require('./ProjectTechnology');
+const ProjectCollaborator = require('./ProjectCollaborator');
+const ProjectMedia = require('./ProjectMedia');
 
-// Usuário <-> Carrinho (1:1)
-User.hasOne(Cart, { foreignKey: 'userId', onDelete: 'CASCADE' });
-Cart.belongsTo(User, { foreignKey: 'userId' });
+// ==========================================
+// ASSOCIAÇÕES / RELACIONAMENTOS DO TECHUB
+// ==========================================
 
-// Carrinho <-> Item do carrinho (1:N)
-Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'items', onDelete: 'CASCADE' });
-CartItem.belongsTo(Cart, { foreignKey: 'cartId' });
+// 1. Autor do Projeto (Project <-> User)
+Project.belongsTo(User, {
+    foreignKey: 'owner_id',
+    as: 'author',
+});
+User.hasMany(Project, {
+    foreignKey: 'owner_id',
+    as: 'projects',
+});
 
-// Produto <-> Item do carrinho (1:N)
-Product.hasMany(CartItem, { foreignKey: 'productId' });
-CartItem.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+// 2. Tecnologias do Projeto (Project <-> ProjectTechnology)
+Project.hasMany(ProjectTechnology, {
+    foreignKey: 'project_id',
+    as: 'technologies',
+});
+ProjectTechnology.belongsTo(Project, {
+    foreignKey: 'project_id',
+});
 
-// Categoria <-> Produto (1:N)
-Category.hasMany(Product, { foreignKey: 'categoryId', as: 'products' });
-Product.belongsTo(Category, { foreignKey: 'categoryId', as: 'category' });
+// 3. Colaboradores do Projeto (Project <-> ProjectCollaborator <-> User)
+Project.hasMany(ProjectCollaborator, {
+    foreignKey: 'project_id',
+    as: 'collaborators',
+});
+ProjectCollaborator.belongsTo(Project, {
+    foreignKey: 'project_id',
+});
 
-// Usuário <-> Pedido (1:N)
-User.hasMany(Order, { foreignKey: 'userId' });
-Order.belongsTo(User, { foreignKey: 'userId', as: 'buyer' });
+ProjectCollaborator.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'user',
+});
+User.hasMany(ProjectCollaborator, {
+    foreignKey: 'user_id',
+    as: 'collaborations',
+});
 
-// Pedido <-> Item do pedido (1:N)
-Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items', onDelete: 'CASCADE' });
-OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
+// 4. Galeria e Mídias do Projeto (Project <-> ProjectMedia)
+Project.hasMany(ProjectMedia, {
+    foreignKey: 'project_id',
+    as: 'media',
+});
+ProjectMedia.belongsTo(Project, {
+    foreignKey: 'project_id',
+});
 
-// Produto <-> Item do pedido (1:N)
-Product.hasMany(OrderItem, { foreignKey: 'productId' });
-OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
-
-User.belongsToMany(Product, { through: Favorite, foreignKey: 'userId', otherKey: 'productId', as: 'favoriteProducts' });
-Product.belongsToMany(User, { through: Favorite, foreignKey: 'productId', otherKey: 'userId', as: 'favoritedBy' });
-User.hasMany(Favorite, { foreignKey: 'userId', as: 'favorites', onDelete: 'CASCADE' });
-Product.hasMany(Favorite, { foreignKey: 'productId', as: 'favorites', onDelete: 'CASCADE' });
-Favorite.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
-
+// ==========================================
+// EXPORTAÇÃO CENTRALIZADA
+// ==========================================
 module.exports = {
-  sequelize,
-  User,
-  Category,
-  Product,
-  Cart,
-  CartItem,
-  Order,
-  OrderItem,
-  Favorite,
+    sequelize,
+    User,
+    Project,
+    ProjectTechnology,
+    ProjectCollaborator,
+    ProjectMedia,
 };

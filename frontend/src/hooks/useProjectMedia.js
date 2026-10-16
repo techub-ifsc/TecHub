@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_URL } from "../api/apiUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
@@ -86,6 +86,28 @@ export function useProjectMedia({ onError }) {
   function createId() {
     nextId.current += 1;
     return nextId.current;
+  }
+
+  const loadDraftMedia = useCallback((savedMedia = []) => {
+    mediaRef.current.forEach((item) => {
+      if (item.kind === "file") URL.revokeObjectURL(item.previewUrl);
+    });
+    const items = savedMedia.map((saved) => ({
+      ...saved,
+      id: ++nextId.current,
+      previewUrl: saved.kind === "file" && saved.mediaType === "image"
+        ? URL.createObjectURL(saved.file)
+        : saved.kind === "stored" && saved.mediaType === "image" ? saved.uploadedUrl : null,
+    }));
+    setMedia(items);
+    setCoverId(items.find((item) => item.isCover)?.id ?? null);
+  }, []);
+
+  function exportDraftMedia() {
+    return media.map(({ previewUrl, id, ...item }) => ({
+      ...item,
+      isCover: id === coverItemId,
+    }));
   }
 
   // Carrega as mídias que o projeto já possui (resposta do GET /projects/:id).
@@ -221,6 +243,8 @@ export function useProjectMedia({ onError }) {
     coverItemId,
     setCoverId,
     loadSavedMedia,
+    loadDraftMedia,
+    exportDraftMedia,
     addFiles,
     addYoutubeLink,
     removeMedia,

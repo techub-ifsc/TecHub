@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import CustomSelect from "../components/CustomSelect";
 import { API_URL } from "../api/apiUrl";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
+import { useAuth } from "../context/AuthContext";
+import { deleteProjectDraft, draftStorageError, getProjectDraft, saveProjectDraft } from "../api/projectDrafts";
+import Spinner from "../components/Spinner";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -106,8 +109,8 @@ const STATUS_OPTIONS = [
 ];
 
 const COLLABORATOR_RULES = [
-  "O rascunho salvo fica visível para você e os colaboradores.",
-  "Os colaboradores também podem editar o projeto.",
+  "Enquanto for rascunho, o projeto fica disponível somente para você neste navegador.",
+  "Os colaboradores terão acesso ao projeto depois do envio.",
   "Somente o proprietário pode excluir o projeto.",
 ];
 
@@ -172,9 +175,19 @@ function validateForm({
 }
 
 export default function NewProjectPage() {
+  const { draftId } = useParams();
+  const { user } = useAuth();
+  return <ProjectForm key={`${user.id}:${draftId || "new"}`} draftId={draftId} user={user} />;
+}
+
+function ProjectForm({ draftId, user }) {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const isEditing = Boolean(id);
+  const [currentDraftId, setCurrentDraftId] = useState(draftId || null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(draftId));
+  const [loadError, setLoadError] = useState("");
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const isEditing = Boolean(currentDraftId);
 
   const editorRef = useRef(null);
   const tagsContainerRef = useRef(null);
@@ -226,6 +239,42 @@ export default function NewProjectPage() {
         ? setErrors((curr) => ({ ...curr, files: message }))
         : clearFieldError("files"),
   });
+
+  const { loadDraftMedia } = gallery;
+  useEffect(() => {
+    if (!draftId) return;
+    let cancelled = false;
+    getProjectDraft(user.id, draftId).then((draft) => {
+      if (cancelled) return;
+      if (!draft) {
+        setLoadError("Este rascunho não foi encontrado na sua conta neste navegador.");
+        return;
+      }
+      setTitle(draft.title || "");
+      setDescriptionHtml(sanitizeDraftDescription(draft.description || ""));
+      setDescriptionText(draft.descriptionText || "");
+      setCourse(draft.course || "");
+      setPhase(draft.phase || "");
+      setTags(draft.tags || []);
+      setCollaborators(draft.collaborators || []);
+      setGithub(draft.github || "");
+      setLiveUrl(draft.liveUrl || "");
+      setStatus(draft.status || "Em design");
+      setSavedAt(draft.updatedAt);
+      loadDraftMedia(draft.media);
+    }).catch((error) => {
+      if (!cancelled) setLoadError(draftStorageError(error));
+    }).finally(() => { if (!cancelled) setIsLoadingDraft(false); });
+    return () => { cancelled = true; };
+  }, [draftId, user.id, loadDraftMedia]);
+
+  useEffect(() => {
+    if (!isLoadingDraft && draftId && editorRef.current) {
+      editorRef.current.innerHTML = sanitizeDraftDescription(descriptionHtml);
+    }
+    // Hidrata o contentEditable somente ao abrir o rascunho, preservando o cursor na edição.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoadingDraft, draftId]);
 
   const phaseOptions = course
     ? Array.from(
@@ -507,29 +556,45 @@ export default function NewProjectPage() {
     setCollaborators((curr) => curr.filter((c) => c.id !== id));
   }
 
-  function handleSaveDraft() {
-    const draft = {
-      title: title.trim(),
+  function draftFields() {
+    return {
+      title,
       description: descriptionHtml,
-      descriptionText: descriptionText.trim(),
+      descriptionText,
       course,
       phase,
       tags,
       collaborators,
-      github: github.trim(),
-      liveUrl: liveUrl.trim(),
+      github,
+      liveUrl,
       status,
-      savedAt: new Date().toISOString(),
+      media: gallery.exportDraftMedia(),
     };
+  }
 
-    localStorage.setItem("techub:new-project-draft", JSON.stringify(draft));
-    setFeedbackType("success");
-    setFeedbackMessage("Rascunho salvo localmente neste navegador.");
+  async function handleSaveDraft() {
+    if (isSavingDraft || isSubmitting) return;
+    setIsSavingDraft(true);
+    setFeedbackMessage("");
+    try {
+      const draft = await saveProjectDraft(user.id, currentDraftId, draftFields());
+      setCurrentDraftId(draft.id);
+      setSavedAt(draft.updatedAt);
+      setErrors({});
+      setFeedbackType("success");
+      setFeedbackMessage("Rascunho salvo! Ele não foi publicado nem enviado para aprovação.");
+      if (!draftId) navigate(`/meus-rascunhos/${draft.id}/editar`, { replace: true });
+    } catch (error) {
+      setFeedbackType("error");
+      setFeedbackMessage(draftStorageError(error));
+    } finally {
+      setIsSavingDraft(false);
+    }
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isSavingDraft) return;
 
     setErrors({});
     setFeedbackMessage("");
@@ -561,6 +626,8 @@ export default function NewProjectPage() {
     let created = false;
 
     try {
+      // Preserva as últimas alterações se a API ou o upload falharem.
+      if (currentDraftId) await saveProjectDraft(user.id, currentDraftId, draftFields());
       const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
 
       if (gallery.hasPendingUploads) {
@@ -635,13 +702,20 @@ export default function NewProjectPage() {
       }
 
       created = true;
+      let cleanupFailed = false;
+      if (currentDraftId) {
+        try { await deleteProjectDraft(user.id, currentDraftId); }
+        catch { cleanupFailed = true; }
+      }
       setFeedbackType("success");
       setFeedbackMessage(
-        "Projeto enviado para análise! Ele ficará público após a aprovação.",
+        cleanupFailed
+          ? "Projeto enviado para análise! Não envie novamente. Remova o rascunho pela listagem."
+          : "Projeto enviado para análise! Ele ficará público após a aprovação.",
       );
 
-      setTimeout(() => {
-        navigate("/");
+      if (!cleanupFailed) setTimeout(() => {
+        navigate("/meus-rascunhos", { state: { submitted: true } });
       }, 1500);
     } catch (err) {
       console.error(err);
@@ -652,13 +726,31 @@ export default function NewProjectPage() {
     }
   }
 
+  if (isLoadingDraft) return <Spinner size="lg" label="Abrindo rascunho..." />;
+  if (loadError) return (
+    <section className="new-project-page">
+      <div className="new-project-card">
+        <h1 className="new-project-title">Rascunho indisponível</h1>
+        <p role="alert">{loadError}</p>
+        <Link className="draft-form-back" to="/meus-rascunhos">Voltar para meus rascunhos</Link>
+      </div>
+    </section>
+  );
+
   return (
     <main className="new-project-page">
+      <div className="draft-form-nav"><Link to="/meus-rascunhos">← Meus rascunhos</Link></div>
       <h1 className="new-project-title">
-        {isEditing ? "Editar projeto" : "Novo projeto"}
+        {isEditing ? "Editar rascunho" : "Novo projeto"}
       </h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
+        <div className="draft-form-notice">
+          <span className="draft-form-badge">Rascunho privado</span>
+          <p>Salve no seu ritmo, mesmo com campos incompletos. Seu projeto só vai para aprovação quando você clicar em “Enviar para a revisão”.</p>
+          {savedAt && <small>Último salvamento: {new Date(savedAt).toLocaleString("pt-BR")}. Novas alterações precisam ser salvas.</small>}
+        </div>
+        <fieldset className="draft-form-fields" disabled={isSavingDraft || isSubmitting}>
         <div className="form-field">
           <label className="form-label" htmlFor="project-title">
             Título
@@ -802,7 +894,7 @@ export default function NewProjectPage() {
             <div
               ref={editorRef}
               className="description-editor"
-              contentEditable
+              contentEditable={!isSubmitting && !isSavingDraft}
               role="textbox"
               aria-multiline="true"
               aria-labelledby="description-label"
@@ -1195,19 +1287,22 @@ export default function NewProjectPage() {
           </p>
         )}
 
+        </fieldset>
+
         <div className="actions">
           <button
             type="button"
             onClick={handleSaveDraft}
             className="action-button save-draft"
+            disabled={isSavingDraft || isSubmitting}
           >
-            Salvar rascunho
+            {isSavingDraft ? "Salvando..." : "Salvar rascunho"}
           </button>
 
           <button
             type="submit"
             className="action-button submit-review"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isSavingDraft}
           >
             {isSubmitting ? "Enviando..." : "Enviar para a revisão"}
           </button>
@@ -1216,15 +1311,30 @@ export default function NewProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => (isEditing ? navigate(-1) : navigate("/"))}
+          disabled={isSavingDraft || isSubmitting}
+          onClick={() => navigate("/meus-rascunhos")}
         >
-          {isEditing
-            ? "Cancelar e voltar"
-            : "Cancelar e voltar para a página inicial"}
+          Voltar para meus rascunhos
         </button>
       </form>
     </main>
   );
+}
+
+function sanitizeDraftDescription(html) {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const allowed = new Set(["B", "STRONG", "I", "EM", "U", "S", "STRIKE", "P", "DIV", "BR", "UL", "OL", "LI", "SPAN"]);
+  for (const element of [...container.querySelectorAll("*")].reverse()) {
+    if (!allowed.has(element.tagName)) {
+      element.replaceWith(document.createTextNode(element.textContent));
+      continue;
+    }
+    const alignment = element.style.textAlign;
+    for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
+    if (["left", "center", "right"].includes(alignment)) element.style.textAlign = alignment;
+  }
+  return container.innerHTML;
 }
 
 function EditorButton({ label, icon, onClick, active }) {

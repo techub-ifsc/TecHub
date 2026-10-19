@@ -47,6 +47,12 @@ function addUser(role, extra = {}) {
   return user;
 }
 
+// Como no banco real: depois de salvar, nenhum campo fica marcado como alterado.
+function markSaved(user) {
+  user._previousDataValues = { ...user.dataValues };
+  user._changed = new Set();
+}
+
 function tokenOf(user) {
   return signToken({ sub: user.id, role: user.role });
 }
@@ -79,6 +85,7 @@ before(async () => {
   mock.method(User, 'findAll', async (options) => { captured.userFindAll = options; return []; });
   mock.method(User.prototype, 'save', async function save() {
     await User.runHooks('beforeSave', this, {});
+    markSaved(this);
     users.set(this.id, this);
     return this;
   });
@@ -325,5 +332,59 @@ describe('conexão com o banco', () => {
   test('em produção o certificado do banco é validado', () => {
     const config = require('../src/config/config');
     assert.equal(config.production.dialectOptions.ssl.rejectUnauthorized, true);
+  });
+});
+
+describe('sessão e troca de senha', () => {
+  async function userWithPassword(password) {
+    const user = addUser('creator', { password });
+    await User.runHooks('beforeSave', user, {});
+    markSaved(user);
+    return user;
+  }
+
+  async function login(user, password) {
+    const res = await call('POST', '/auth/login', { body: { email: user.email, password } });
+    assert.equal(res.status, 200);
+    return (await res.json()).token;
+  }
+
+  test('o token emitido antes da troca de senha deixa de valer e a sessão atual recebe um novo', async () => {
+    const user = await userWithPassword('SenhaAntiga123');
+    const oldToken = await login(user, 'SenhaAntiga123');
+    assert.equal((await call('GET', '/auth/me', { token: oldToken })).status, 200);
+
+    const change = await call('PATCH', '/auth/me', {
+      token: oldToken,
+      body: { currentPassword: 'SenhaAntiga123', password: 'SenhaNova456' },
+    });
+    assert.equal(change.status, 200);
+    const { token: newToken } = await change.json();
+
+    assert.equal((await call('GET', '/auth/me', { token: oldToken })).status, 401);
+    assert.equal((await call('GET', '/auth/me', { token: newToken })).status, 200);
+  });
+
+  test('alterar só o nome não derruba a sessão nem devolve token novo', async () => {
+    const user = await userWithPassword('SenhaAntiga123');
+    const token = await login(user, 'SenhaAntiga123');
+    const res = await call('PATCH', '/auth/me', { token, body: { currentPassword: 'SenhaAntiga123', name: 'Outro nome' } });
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).token, undefined);
+    assert.equal((await call('GET', '/auth/me', { token })).status, 200);
+  });
+
+  test('token com impressão de senha errada é recusado', async () => {
+    const user = await userWithPassword('SenhaAntiga123');
+    const forged = signToken({ sub: user.id, role: user.role, pwv: 'qualquer-coisa' });
+    assert.equal((await call('GET', '/auth/me', { token: forged })).status, 401);
+  });
+
+  test('o token não carrega a senha nem o hash', async () => {
+    const user = await userWithPassword('SenhaAntiga123');
+    const token = await login(user, 'SenhaAntiga123');
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    assert.deepEqual(Object.keys(payload).sort(), ['exp', 'iat', 'pwv', 'role', 'sub']);
+    assert.ok(!JSON.stringify(payload).includes(user.password));
   });
 });

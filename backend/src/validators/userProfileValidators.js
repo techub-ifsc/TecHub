@@ -1,0 +1,36 @@
+const { z } = require('zod');
+
+// IMPORTANTE: confirme esta relação e a duração de cada curso com a coordenação do IFSC.
+// A sprint exige cursos homologados; estes são os três cursos presentes na UI existente.
+const COURSE_PHASES = Object.freeze({
+  'Ciência da Computação': 8,
+  'Técnico em Informática para Internet': 4,
+  'Técnico em Desenvolvimento de Sistemas': 4,
+});
+
+const professionalUrl = z.string().trim().max(255).refine(value => {
+  if (value === '') return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
+  } catch { return false; }
+}, 'Informe uma URL HTTPS válida.').optional().transform(value => value || null);
+
+const profileSchema = z.object({
+  name: z.string().trim().min(3, 'Nome deve ter pelo menos 3 caracteres.').max(100, 'Nome deve ter até 100 caracteres.'),
+  github_url: professionalUrl,
+  linkedin_url: professionalUrl,
+  bio: z.string().max(500, 'Bio deve ter até 500 caracteres.').optional().transform(value => value || null),
+  major: z.string().refine(value => !value || Object.prototype.hasOwnProperty.call(COURSE_PHASES, value), 'Selecione um curso válido.').optional().transform(value => value || null),
+  semester: z.coerce.number().int('Semestre deve ser inteiro.').min(0, 'Semestre não pode ser negativo.').optional().default(0),
+  remove_resume: z.enum(['true', 'false']).optional().default('false'),
+}).strict().superRefine((value, ctx) => {
+  const maximum = COURSE_PHASES[value.major] || 0;
+  if (value.semester > maximum) ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: ['semester'],
+    message: 'Semestre excede o limite do curso selecionado.',
+  });
+});
+
+module.exports = { profileSchema, COURSE_PHASES };

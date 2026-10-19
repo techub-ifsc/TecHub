@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 import ConfirmationModal from "../components/ConfirmationModal";
+import { fetchEditableProfile, saveEditableProfile } from "../api/userProfile";
 import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
@@ -101,6 +102,7 @@ const INITIAL_FORM = {
   linkedin: "",
   campus: "IFSC Câmpus Lages",
   course: "",
+  semester: 0,
 };
 
 const INITIAL_PROFILE_PROJECTS = [
@@ -166,7 +168,7 @@ function isValidUrl(value) {
   try {
     const url = new URL(value);
 
-    return url.protocol === "http:" || url.protocol === "https:";
+    return url.protocol === "https:" && !url.username && !url.password;
   } catch {
     return false;
   }
@@ -211,6 +213,10 @@ export default function ProfileEditPage() {
   const [bannerPreview, setBannerPreview] = useState("");
 
   const [portfolioFile, setPortfolioFile] = useState(null);
+  const [savedResumeUrl, setSavedResumeUrl] = useState(null);
+  const [removeResume, setRemoveResume] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const portfolioInputRef = useRef(null);
 
   const [profileProjects, setProfileProjects] = useState(
@@ -227,6 +233,28 @@ export default function ProfileEditPage() {
   const [errors, setErrors] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return () => { active = false; };
+    fetchEditableProfile().then(data => {
+      if (!active) return;
+      setForm(current => ({ ...current,
+        name: data.name || '',
+        bio: data.bio || '',
+        github: data.github_url || '',
+        linkedin: data.linkedin_url || '',
+        course: data.major || '',
+        semester: data.semester ?? 0,
+      }));
+      setSavedResumeUrl(data.resume_url || null);
+    }).catch(error => {
+      if (!active) return;
+      setFeedbackType('error');
+      setFeedbackMessage(error.response?.data?.message || 'Não foi possível carregar o perfil do servidor.');
+    });
+    return () => { active = false; };
+  }, [user?.id]);
 
   const profileInitials =
     form.name
@@ -376,7 +404,7 @@ export default function ProfileEditPage() {
 
     if (!form.name.trim()) {
       validationErrors.name = "Informe o nome do criador.";
-    } else if (form.name.trim().length < 3) {
+    } else if (form.name.trim().length < 3 || form.name.trim().length > 100) {
       validationErrors.name =
         "O nome deve possuir pelo menos 3 caracteres.";
     }
@@ -396,9 +424,12 @@ export default function ProfileEditPage() {
         "Informe uma URL válida para o LinkedIn.";
     }
 
-    if (!form.course) {
-      validationErrors.course = "Selecione o curso.";
-    }
+    if (form.bio.length > 500) validationErrors.bio = 'A bio deve ter até 500 caracteres.';
+    const limits = { 'Ciência da Computação': 8, 'Técnico em Informática para Internet': 4, 'Técnico em Desenvolvimento de Sistemas': 4 };
+    if (form.course && !Object.prototype.hasOwnProperty.call(limits, form.course)) validationErrors.course = 'Selecione um curso válido.';
+    const semester = Number(form.semester);
+    if (!Number.isInteger(semester) || semester < 0 || semester > (limits[form.course] || 0)) validationErrors.semester = 'Semestre incompatível com o curso.';
+    if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > 5 * 1024 * 1024 || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 5 MB.';
 
     return validationErrors;
   }
@@ -479,64 +510,41 @@ export default function ProfileEditPage() {
     setFeedbackType("success");
     setFeedbackMessage("Projeto excluído com sucesso.");
   }
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-
+    if (saving) return;
     const validationErrors = validateForm();
-
     setErrors(validationErrors);
-
-    if (Object.keys(validationErrors).length > 0) {
-      setFeedbackType("error");
-      setFeedbackMessage("Revise os campos destacados antes de salvar.");
-
-      window.setTimeout(() => {
-        document.querySelector(".profile-edit-error")?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 0);
-
+    if (Object.keys(validationErrors).length) {
+      setFeedbackType('error');
+      setFeedbackMessage('Revise os campos destacados antes de salvar.');
       return;
     }
-
-    const profileData = {
-      ...form,
-      name: form.name.trim(),
-      slug: form.slug.trim(),
-      bio: form.bio.trim(),
-      github: form.github.trim(),
-      linkedin: form.linkedin.trim(),
-      campus: form.campus.trim(),
-      interests,
-      profilePhoto,
-      bannerImage,
-      portfolioFile,
-    };
-
-    localStorage.setItem(
-      profileStorageKey,
-      JSON.stringify({
-        form: {
-          name: profileData.name,
-          slug: profileData.slug,
-          bio: profileData.bio,
-          github: profileData.github,
-          linkedin: profileData.linkedin,
-          campus: profileData.campus,
-          course: profileData.course,
-        },
-        interests,
-        savedAt: new Date().toISOString(),
-      }),
-    );
-
-    console.log("Perfil pronto para atualização:", profileData);
-
-    setFeedbackType("success");
-    setFeedbackMessage(
-      "Perfil validado com sucesso! A integração com o backend será realizada em uma próxima etapa.",
-    );
+    setSaving(true);
+    setUploadProgress(0);
+    clearFeedback();
+    try {
+      const saved = await saveEditableProfile({
+        name: form.name.trim(), github_url: form.github.trim(),
+        linkedin_url: form.linkedin.trim(), bio: form.bio.trim(),
+        major: form.course, semester: form.semester,
+      }, portfolioFile, removeResume, setUploadProgress);
+      setForm(current => ({ ...current, name: saved.name, github: saved.github_url || '',
+        linkedin: saved.linkedin_url || '', bio: saved.bio || '',
+        course: saved.major || '', semester: saved.semester ?? 0 }));
+      setSavedResumeUrl(saved.resume_url || null);
+      setPortfolioFile(null);
+      setRemoveResume(false);
+      if (portfolioInputRef.current) portfolioInputRef.current.value = '';
+      setFeedbackType('success');
+      setFeedbackMessage('Perfil atualizado com sucesso!');
+    } catch (error) {
+      setFeedbackType('error');
+      setFeedbackMessage(error.response?.data?.errors?.[0]?.message || error.response?.data?.message || 'Falha ao salvar o perfil. Verifique a conexão com a API.');
+    } finally {
+      setSaving(false);
+      setUploadProgress(null);
+    }
   }
 
   function handleCancel() {
@@ -633,7 +641,7 @@ export default function ProfileEditPage() {
                         onChange={handleChange}
                         className={errors.name ? "is-invalid" : ""}
                         aria-invalid={Boolean(errors.name)}
-                        maxLength={80}
+                        maxLength={100}
                       />
 
                       {errors.name && (
@@ -888,12 +896,16 @@ export default function ProfileEditPage() {
                         <input
                           ref={portfolioInputRef}
                           type="file"
-                          accept=".pdf,.doc,.docx,.zip"
-                          onChange={(event) =>
-                            setPortfolioFile(
-                              event.target.files?.[0] || null,
-                            )
-                          }
+                          accept=".pdf,application/pdf"
+                          onChange={(event) => {
+                            const f = event.target.files?.[0] || null;
+                            if (f && (f.type !== 'application/pdf' || !f.size || f.size > 5 * 1024 * 1024)) {
+                              setFeedbackType('error'); setFeedbackMessage('Selecione um arquivo PDF de até 5 MB.');
+                              event.target.value = ''; return;
+                            }
+                            setPortfolioFile(f);
+                            if (f) setRemoveResume(false);
+                          }}
                         />
 
                         <i
@@ -941,6 +953,15 @@ export default function ProfileEditPage() {
                           </button>
                         </div>
                       )}
+                      {savedResumeUrl && !removeResume && (
+                        <div className="profile-edit-portfolio-file">
+                          <a href={savedResumeUrl} target="_blank" rel="noopener noreferrer" download>Baixar currículo atual</a>
+                          <button type="button" onClick={() => setRemoveResume(true)}>Remover currículo</button>
+                        </div>
+                      )}
+                      {removeResume && <button type="button" onClick={() => setRemoveResume(false)}>Desfazer remoção</button>}
+                      {errors.resume && <span role="alert" className="profile-edit-error">{errors.resume}</span>}
+                      {saving && portfolioFile && <p role="status">Enviando: {uploadProgress ?? 0}%</p>}
                     </div>
                   </div>
                 </div>
@@ -996,6 +1017,12 @@ export default function ProfileEditPage() {
                         {errors.course}
                       </span>
                     )}
+                  </div>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-semester">Fase / Semestre</label>
+                    <input id="profile-semester" name="semester" type="number" min="0" max={form.course === 'Ciência da Computação' ? 8 : 4}
+                      value={form.semester} onChange={handleChange} aria-invalid={Boolean(errors.semester)} />
+                    {errors.semester && <span className="profile-edit-error" role="alert">{errors.semester}</span>}
                   </div>
                 </div>
               </section>
@@ -1211,8 +1238,8 @@ export default function ProfileEditPage() {
               Cancelar
             </button>
 
-            <button type="submit" className="profile-edit-actions__save">
-              Salvar alterações
+            <button type="submit" className="profile-edit-actions__save" disabled={saving}>
+              {saving ? "Salvando..." : "Salvar alterações"}
             </button>
           </div>
         </form>

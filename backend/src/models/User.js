@@ -11,8 +11,8 @@ class User extends Model {
 
   // Retorna uma representação do usuário sem incluir sua senha.
   toSafeJSON() {
-    const { id, name, email, role, createdAt, updatedAt } = this;
-    return { id, name, email, role, createdAt, updatedAt };
+    const { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, semester, createdAt, updatedAt } = this;
+    return { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, semester, createdAt, updatedAt };
   }
 }
 
@@ -46,6 +46,13 @@ User.init(
       allowNull: false,
       defaultValue: ROLES.VISITOR,
     },
+    github_url: { type: DataTypes.STRING(255), allowNull: true },
+    linkedin_url: { type: DataTypes.STRING(255), allowNull: true },
+    resume_url: { type: DataTypes.STRING(500), allowNull: true },
+    resume_public_id: { type: DataTypes.STRING(255), allowNull: true },
+    bio: { type: DataTypes.TEXT, allowNull: true },
+    major: { type: DataTypes.STRING(100), allowNull: true },
+    semester: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
     // isEmailVerified: {
     //   type: DataTypes.BOOLEAN,
     //   defaultValue: false,

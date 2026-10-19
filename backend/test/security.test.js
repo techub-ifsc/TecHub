@@ -320,3 +320,10 @@ describe('configuração do servidor', () => {
     await withApp({ VERCEL: '1' }, async (fresh) => assert.equal(fresh.get('trust proxy'), 1));
   });
 });
+
+describe('conexão com o banco', () => {
+  test('em produção o certificado do banco é validado', () => {
+    const config = require('../src/config/config');
+    assert.equal(config.production.dialectOptions.ssl.rejectUnauthorized, true);
+  });
+});

@@ -118,10 +118,7 @@
 
 .creators-page__filter-grid {
   display: grid;
-  grid-template-columns:
-    minmax(220px, 1fr)
-    minmax(180px, 0.7fr)
-    auto;
+  grid-template-columns: minmax(220px, 1fr) auto;
   align-items: end;
   gap: 1rem;
 }
@@ -329,7 +326,7 @@
   line-height: 1.4;
 }
 
-.creator-card__phase {
+.creator-card__projects {
   display: block;
   margin-top: 0.55rem;
   color: #aeb2b7;
@@ -444,7 +441,7 @@
 
 @media (max-width: 850px) {
   .creators-page__filter-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .creators-page__clear {

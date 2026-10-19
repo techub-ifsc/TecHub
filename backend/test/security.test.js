@@ -272,3 +272,51 @@ describe('CSRF e CORS', () => {
     assert.equal(res.headers.get('access-control-allow-origin'), 'http://localhost:5173');
   });
 });
+
+describe('configuração do servidor', () => {
+  // Carrega uma cópia nova do app.js com as variáveis de ambiente informadas.
+  async function withApp(env, check) {
+    const appPath = require.resolve('../src/app');
+    const saved = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
+    Object.assign(process.env, env);
+    delete require.cache[appPath];
+    try {
+      const fresh = require('../src/app');
+      const instance = fresh.listen(0, '127.0.0.1');
+      await new Promise((resolve) => instance.once('listening', resolve));
+      try {
+        await check(fresh, `http://127.0.0.1:${instance.address().port}/api`);
+      } finally {
+        instance.closeAllConnections();
+        await new Promise((resolve) => instance.close(resolve));
+      }
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      delete require.cache[appPath];
+    }
+  }
+
+  test('nenhuma resposta anuncia o Express, nem a do Swagger', async () => {
+    for (const path of ['/projects', '/docs.json']) {
+      const res = await fetch(baseUrl + path);
+      assert.equal(res.headers.get('x-powered-by'), null);
+    }
+  });
+
+  test('o Swagger não é servido no deploy de produção da Vercel', async () => {
+    await withApp({ VERCEL: '1', VERCEL_ENV: 'production', API_DOCS: '' }, async (_, url) => {
+      assert.equal((await fetch(`${url}/docs.json`)).status, 404);
+    });
+    await withApp({ VERCEL: '1', VERCEL_ENV: 'preview', API_DOCS: '' }, async (_, url) => {
+      assert.equal((await fetch(`${url}/docs.json`)).status, 200);
+    });
+  });
+
+  test('só confia no X-Forwarded-For quando roda na Vercel', async () => {
+    await withApp({ VERCEL: '' }, async (fresh) => assert.equal(fresh.get('trust proxy'), false));
+    await withApp({ VERCEL: '1' }, async (fresh) => assert.equal(fresh.get('trust proxy'), 1));
+  });
+});

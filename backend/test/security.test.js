@@ -34,7 +34,15 @@ let projects;
 let captured;
 
 function addUser(role, extra = {}) {
-  const user = User.build({ name: `${role} teste`, email: `${role}-${randomUUID().slice(0, 6)}@aluno.ifsc.edu.br`, password: 'x', role, ...extra });
+  // emailVerifiedAt: contas de teste já confirmadas, para quando a confirmação de e-mail entrar.
+  const user = User.build({
+    name: `${role} teste`,
+    email: `${role}-${randomUUID().slice(0, 6)}@aluno.ifsc.edu.br`,
+    password: 'x',
+    role,
+    emailVerifiedAt: new Date(),
+    ...extra,
+  });
   users.set(user.id, user);
   return user;
 }

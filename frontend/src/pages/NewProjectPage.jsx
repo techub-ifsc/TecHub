@@ -139,12 +139,16 @@ function validateForm({
     errors.title = "O título é obrigatório.";
   } else if (title.trim().length < 3) {
     errors.title = "Informe pelo menos 3 caracteres.";
+  } else if (/[<>]/.test(title)) {
+    errors.title = "Não use os caracteres < ou >.";
   }
 
   if (!descriptionText.trim()) {
     errors.description = "Descreva o projeto antes de enviar.";
   } else if (descriptionText.trim().length < 20) {
     errors.description = "A descrição deve possuir pelo menos 20 caracteres.";
+  } else if (/[<>]/.test(descriptionText)) {
+    errors.description = "Não use os caracteres < ou >.";
   }
 
   if (!course) {
@@ -1322,8 +1326,9 @@ function ProjectForm({ draftId, user }) {
 }
 
 function sanitizeDraftDescription(html) {
-  const container = document.createElement("div");
-  container.innerHTML = html;
+  // DOMParser monta um documento inerte: imagens não carregam e eventos como
+  // onerror não disparam, ao contrário de innerHTML numa div da página.
+  const container = new DOMParser().parseFromString(html, "text/html").body;
   const allowed = new Set(["B", "STRONG", "I", "EM", "U", "S", "STRIKE", "P", "DIV", "BR", "UL", "OL", "LI", "SPAN"]);
   for (const element of [...container.querySelectorAll("*")].reverse()) {
     if (!allowed.has(element.tagName)) {

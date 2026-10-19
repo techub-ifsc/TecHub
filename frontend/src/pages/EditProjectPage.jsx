@@ -119,6 +119,14 @@ function isValidUrl(value) {
   }
 }
 
+// A descrição vem da API como texto puro. Ela entra no editor como texto (nunca
+// interpretada como HTML), para que marcação gravada direto na API não execute código.
+function textToEditorHtml(text) {
+  const container = document.createElement("div");
+  container.textContent = text;
+  return container.innerHTML.replace(/\n/g, "<br>");
+}
+
 function validateForm({
   title,
   descriptionText,
@@ -135,12 +143,16 @@ function validateForm({
     errors.title = "O título é obrigatório.";
   } else if (title.trim().length < 3) {
     errors.title = "Informe pelo menos 3 caracteres.";
+  } else if (/[<>]/.test(title)) {
+    errors.title = "Não use os caracteres < ou >.";
   }
 
   if (!descriptionText.trim()) {
     errors.description = "Descreva o projeto antes de enviar.";
   } else if (descriptionText.trim().length < 20) {
     errors.description = "A descrição deve possuir pelo menos 20 caracteres.";
+  } else if (/[<>]/.test(descriptionText)) {
+    errors.description = "Não use os caracteres < ou >.";
   }
 
   if (!course) {
@@ -302,11 +314,12 @@ export default function EditProjectPage() {
         setTitle(currentProject.title || "");
 
         const initialDesc = currentProject.description || "";
-        setDescriptionHtml(initialDesc);
+        const initialHtml = textToEditorHtml(initialDesc);
+        setDescriptionHtml(initialHtml);
         setDescriptionText(initialDesc);
 
         if (editorRef.current) {
-          editorRef.current.innerHTML = initialDesc;
+          editorRef.current.innerHTML = initialHtml;
         }
 
         if (currentProject.major) {
@@ -765,7 +778,9 @@ export default function EditProjectPage() {
       setFeedbackMessage(
         approvalStatus === "rejected"
           ? "Projeto corrigido e reenviado para moderação com sucesso!"
-          : "Projeto atualizado com sucesso!"
+          : approvalStatus === "approved"
+            ? "Projeto atualizado e reenviado para moderação!"
+            : "Projeto atualizado com sucesso!"
       );
 
       setTimeout(() => navigate(`/projetos/${id}`), 1200);
@@ -815,6 +830,27 @@ export default function EditProjectPage() {
       <h1 className="new-project-title">Editar projeto</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
+        {/* Editar um projeto aprovado o devolve à fila da moderação */}
+        {approvalStatus === "approved" && (
+          <div
+            style={{
+              marginBottom: "2rem",
+              padding: "1rem 1.25rem",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderLeft: "4px solid #f59e0b",
+              color: "#cbd5e1",
+              lineHeight: 1.5,
+            }}
+            role="note"
+          >
+            <i className="fa-solid fa-circle-info" style={{ color: "#f59e0b", marginRight: "0.5rem" }} aria-hidden="true" />
+            Este projeto já foi aprovado. Ao salvar as alterações, ele volta para a análise da moderação e
+            sai da listagem pública até ser aprovado novamente.
+          </div>
+        )}
+
         {/* Banner com parecer da moderação quando o projeto for reprovado */}
         {isRejected && (
           <div

@@ -54,6 +54,11 @@ const mediaSchema = z
     return items.map((m, index) => ({ ...m, isCover: index === firstImage }));
   });
 
+// Textos do projeto são exibidos como texto puro: recusar < e > impede que HTML
+// gravado direto pela API vire código executado em alguma tela.
+const NO_HTML_MESSAGE = 'Não use os caracteres < ou >';
+const hasNoHtml = (value) => !/[<>]/.test(value);
+
 // Links externos exibidos na página do projeto: somente http(s), para impedir
 // URLs como "javascript:" que executariam código ao serem clicadas.
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
@@ -63,13 +68,15 @@ const createProjectSchema = z.object({
     .string({ required_error: 'O título é obrigatório' })
     .trim()
     .min(1, 'O título não pode ser vazio')
-    .max(100, 'O título deve ter no máximo 100 caracteres'),
+    .max(100, 'O título deve ter no máximo 100 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE),
 
   description: z
     .string({ required_error: 'A descrição é obrigatória' })
     .trim()
     .min(1, 'A descrição não pode ser vazia')
-    .max(500, 'A descrição deve ter no máximo 500 caracteres'),
+    .max(500, 'A descrição deve ter no máximo 500 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE),
 
   major: z
     .enum(Object.values(MAJORS), {
@@ -87,7 +94,7 @@ const createProjectSchema = z.object({
     .default(0),
 
   technologies: z
-    .array(z.string().trim().min(1, 'O nome da tecnologia não pode ser vazio'))
+    .array(z.string().trim().min(1, 'O nome da tecnologia não pode ser vazio').refine(hasNoHtml, NO_HTML_MESSAGE))
     .optional()
     .nullable()
     .default([]),
@@ -98,7 +105,7 @@ const createProjectSchema = z.object({
         // Opção 1: Objeto completo com userId e contribution
         z.object({
           userId: z.string().uuid('ID de usuário inválido'),
-          contribution: z.string().max(100).optional(),
+          contribution: z.string().max(100).refine(hasNoHtml, NO_HTML_MESSAGE).optional(),
         }),
         // Opção 2: Apenas o UUID do usuário diretamente como string
         z.string().uuid('ID de usuário inválido'),

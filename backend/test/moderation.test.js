@@ -368,18 +368,27 @@ describe('moderação de projetos', () => {
       assert.equal(project.approvalStatus, 'pending');
     });
 
-    test('editar não muda a situação de um projeto aprovado ou pendente, nem aceita aprovação pelo corpo', async (t) => {
-      for (const approvalStatus of ['approved', 'pending']) {
-        const project = createProject(t, { approvalStatus });
-        const res = await request('PUT', `/projects/${project.id}`, users.get(project.ownerId), {
-          title: 'Novo título',
-          approvalStatus: 'approved',
-          reviewNotes: 'x',
-        });
-        assert.equal(res.status, 200);
-        assert.deepEqual(calls.update.pop(), { title: 'Novo título' });
-        assert.equal(project.approvalStatus, approvalStatus);
-      }
+    test('editar um projeto aprovado o devolve à moderação, para o conteúdo não mudar sem nova análise', async (t) => {
+      const project = createProject(t, { approvalStatus: 'approved' });
+      const before = Date.now();
+      const res = await request('PUT', `/projects/${project.id}`, users.get(project.ownerId), { title: 'Novo título' });
+      assert.equal(res.status, 200);
+      const [values] = calls.update;
+      assert.equal(values.approvalStatus, 'pending');
+      assert.ok(values.submittedAt.getTime() >= before);
+      assert.equal(project.approvalStatus, 'pending');
+    });
+
+    test('editar um projeto pendente não muda a situação, nem aceita aprovação pelo corpo', async (t) => {
+      const project = createProject(t, { approvalStatus: 'pending' });
+      const res = await request('PUT', `/projects/${project.id}`, users.get(project.ownerId), {
+        title: 'Novo título',
+        approvalStatus: 'approved',
+        reviewNotes: 'x',
+      });
+      assert.equal(res.status, 200);
+      assert.deepEqual(calls.update.pop(), { title: 'Novo título' });
+      assert.equal(project.approvalStatus, 'pending');
     });
 
     test('"meus projetos" exige login e traz os do autor e os de colaboração, em qualquer situação', async (t) => {

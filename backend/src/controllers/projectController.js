@@ -17,7 +17,7 @@ const LIST_INCLUDE = [
   {
     model: User,
     as: 'author',
-    attributes: ['id', 'name', 'email'], // busca só os dados públicos do autor
+    attributes: ['id', 'name'], // a listagem é pública: sem e-mail
   },
   {
     model: ProjectTechnology,
@@ -37,6 +37,17 @@ const LIST_INCLUDE = [
     required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
   },
 ];
+
+// Página e tamanho inválidos voltam ao padrão e o tamanho tem teto, para a listagem
+// pública não devolver o banco inteiro numa resposta nem gerar erro no banco.
+const MAX_PAGE_SIZE = 100;
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).catch(1),
+  limit: z.coerce.number().int().min(1).catch(10).transform((value) => Math.min(value, MAX_PAGE_SIZE)),
+  search: z.string().trim().max(100).optional().catch(undefined),
+  major: z.string().optional().catch(undefined),
+  status: z.string().optional().catch(undefined),
+});
 
 // Formata o retorno: tecnologias como array de strings e a capa como coverUrl
 function formatListItem(project) {
@@ -59,8 +70,8 @@ function isProjectInsider(project, user) {
 // Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
   try {
-    const { page = 1, limit = 10, search, major, status } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const { page, limit, search, major, status } = listQuerySchema.parse(req.query);
+    const offset = (page - 1) * limit;
 
     // Somente projetos aprovados pela moderação aparecem publicamente.
     const where = { approvalStatus: APPROVAL_STATUS.APPROVED };
@@ -74,8 +85,8 @@ async function list(req, res, next) {
       where,
       attributes: { exclude: ['reviewNotes'] }, // parecer da moderação não é público
       include: LIST_INCLUDE,
-      limit: Number(limit),
-      offset: Number(offset),
+      limit,
+      offset,
       order: [['created_at', 'DESC']],
       distinct: true, // Garante que a contagem seja correta mesmo com includes
     });
@@ -84,8 +95,8 @@ async function list(req, res, next) {
 
     return res.status(200).json({
       total: count,
-      page: Number(page),
-      totalPages: Math.ceil(count / Number(limit)),
+      page,
+      totalPages: Math.ceil(count / limit),
       projects: formattedProjects,
     });
   } catch (err) {
@@ -284,8 +295,10 @@ async function update(req, res, next) {
         throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
       }
 
-      // Editar um projeto rejeitado o reenvia à moderação e reinicia o prazo de análise.
-      if (project.approvalStatus === APPROVAL_STATUS.REJECTED) {
+      // Qualquer edição de um projeto já analisado (aprovado ou rejeitado) o reenvia à
+      // moderação e reinicia o prazo; sem isso, um conteúdo aprovado poderia ser trocado
+      // depois e continuar público sem nova análise.
+      if (project.approvalStatus !== APPROVAL_STATUS.PENDING) {
         projectData.approvalStatus = APPROVAL_STATUS.PENDING;
         projectData.submittedAt = new Date();
       }

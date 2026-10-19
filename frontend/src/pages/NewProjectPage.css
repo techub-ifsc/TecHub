@@ -1,3 +1,12 @@
+.draft-form-nav { max-width: 680px; margin: 0 auto 24px; font-size: .85rem; }
+.draft-form-nav a, .draft-form-back { color: var(--tc-green); }
+.draft-form-nav a:hover, .draft-form-back:hover { color: var(--tc-green-hover); }
+.draft-form-notice { padding: 16px; border: 1px solid #42573a; border-radius: 10px; background: #242d20; }
+.draft-form-notice p { margin: 10px 0 0; color: #bdc8b7; font-size: .8rem; line-height: 1.65; }
+.draft-form-notice small { display: block; margin-top: 10px; color: #a8b29f; font-size: .7rem; }
+.draft-form-badge { color: #c5e9b7; font-size: .75rem; font-weight: 700; }
+.draft-form-fields { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; border: 0; margin: 0; padding: 0; }
+.draft-form-fields:disabled { opacity: .7; pointer-events: none; }
 .new-project-page {
   --new-project-bg: #18191a;
   --new-project-card: #222426;

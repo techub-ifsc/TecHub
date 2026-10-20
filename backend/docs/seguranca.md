@@ -48,7 +48,7 @@ O token de login carrega `pwv`, uma impressão da senha atual (HMAC do hash com 
 
 Teste feito sem credenciais, com a mesma configuração TLS de produção, contra os servidores do Neon em `sa-east-1` e `us-east-2` usando um endpoint inventado: o certificado foi aceito e a conexão só parou no login (`28P01 password authentication failed`), ou seja, depois do TLS. Como controle, a mesma conexão pelo IP do servidor foi recusada (`ERR_TLS_CERT_ALTNAME_INVALID`), o que confirma que a validação está ativa.
 
-**Antes do merge:** confirmar com o banco real, com o `.env` e `NODE_ENV=production`, rodando `node scripts/check-db.cjs` na pasta `backend`. O script só lê dados e deve mostrar "Conexão PostgreSQL: OK" e "SSL da sessão: ATIVO".
+Teste no banco real (20/10/2026), com o `.env` de produção: `check-db.cjs` conectou e validou o esquema. A conexão do lado da API usou TLS 1.3 com o certificado `*.sa-east-1.aws.neon.tech` (Let's Encrypt) validado pelo Node. O script mostra "SSL da sessão: NÃO CONFIRMADO" porque o Neon termina o TLS num proxy na frente do banco, e `pg_stat_ssl` só enxerga a conexão entre o proxy e o banco.
 
 ## Servidor
 

@@ -1,5 +1,5 @@
 const { User } = require('../models');
-const { signToken } = require('../utils/jwt');
+const { signSessionToken } = require('../utils/jwt');
 const { registerSchema, loginSchema, updateProfileSchema } = require('../validators/authValidators');
 const { ApiError } = require('../middlewares/errorHandler');
 const crypto = require('crypto');
@@ -85,7 +85,7 @@ async function login(req, res, next) {
     //   });
     // }
 
-    const token = signToken({ sub: user.id, role: user.role });
+    const token = signSessionToken(user);
     res.json({ user: user.toSafeJSON(), token });
   } catch (err) {
     handleAuthError(err, res, next);
@@ -133,7 +133,8 @@ async function updateProfile(req, res, next) {
 
     await user.save();
 
-    res.json({ user: user.toSafeJSON() });
+    // Trocar a senha invalida os tokens anteriores; a sessão atual recebe um token novo.
+    res.json({ user: user.toSafeJSON(), ...(data.password && { token: signSessionToken(user) }) });
   } catch (err) {
     next(err);
   }

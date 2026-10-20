@@ -30,7 +30,11 @@ const base = {
 };
 function configuration(production) {
   if (!boolean('DB_SSL', production)) return { ...base };
-  const ssl = { require: true, rejectUnauthorized: true };
+  // O certificado do servidor é sempre validado, para a conexão não aceitar um banco
+  // falso no meio do caminho. O Neon usa certificado de autoridade pública, já conhecida
+  // pelo Node; DB_SSL_CA_FILE serve para bancos com certificado próprio.
+  // DB_SSL_REJECT_UNAUTHORIZED=false desliga a validação: use só para diagnosticar.
+  const ssl = { require: true, rejectUnauthorized: boolean('DB_SSL_REJECT_UNAUTHORIZED', true) };
   if (process.env.DB_SSL_CA_FILE) {
     try {
       ssl.ca = fs.readFileSync(path.resolve(backendRoot, process.env.DB_SSL_CA_FILE), 'utf8');
@@ -38,14 +42,7 @@ function configuration(production) {
       throw new Error('Não foi possível ler o certificado indicado em DB_SSL_CA_FILE.');
     }
   }
-  return {
-    ...base, dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      }
-    }
-  };
+  return { ...base, dialectOptions: { ssl } };
 }
 module.exports = {
   development: configuration(false),

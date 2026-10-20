@@ -1,4 +1,4 @@
-const { verifyToken } = require('../utils/jwt');
+const { verifyToken, isTokenForCurrentPassword } = require('../utils/jwt');
 const { User } = require('../models');
 const { ROLES } = require('../constants/roles');
 
@@ -29,6 +29,10 @@ async function authenticate(req, res, next) {
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
+    // A senha mudou depois que o token foi emitido.
+    if (!isTokenForCurrentPassword(payload, user)) {
+      return res.status(401).json({ message: 'Sessão expirada. Entre novamente.' });
+    }
 
     // Injeta o model do usuário e o id direto para compatibilidade com todos os controllers
     req.user = user;
@@ -56,7 +60,7 @@ async function optionalAuthenticate(req, res, next) {
 
     const userId = payload.sub || payload.id;
     const user = userId ? await User.findByPk(userId) : null;
-    if (user) {
+    if (user && isTokenForCurrentPassword(payload, user)) {
       req.user = user;
       req.userId = user.id;
     }

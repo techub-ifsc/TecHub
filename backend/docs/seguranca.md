@@ -96,10 +96,3 @@ Na pasta `backend`, com as variáveis fictícias de banco usadas nos demais test
 
 - `feature/bloqueio-login-15min` (confirmação de e-mail e bloqueio de login): conflita em `package.json`, `.env.example`, `authController.js` e `auth.js`. A resolução mantém as duas mudanças: as variáveis de ambiente das duas, o `test` com `mail.test.js` e `security.test.js`, o login do bloqueio usando `signSessionToken(user)` e o middleware com as duas checagens (senha atual e e-mail confirmado). Com a resolução, os testes das duas branches juntas passam (128).
 - `feat/funcionamento-edição-de-perfil`: sem conflito; testes juntos passam.
-
-## Pontos em aberto
-
-- confirmação de e-mail e bloqueio de login: implementados em `feature/bloqueio-login-15min`, aguardando merge;
-- o cadastro ainda informa quando o e-mail já existe; com a confirmação de e-mail, a resposta pode passar a ser sempre a mesma;
-- o bloqueio após cinco senhas erradas permite que alguém bloqueie a conta de outra pessoa por 15 minutos digitando senhas erradas; avaliar se basta o limite por IP ou se o bloqueio deve considerar também o IP;
-- atualizar `react-router-dom` para a versão 7 em uma tarefa separada.

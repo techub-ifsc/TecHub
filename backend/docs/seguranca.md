@@ -46,7 +46,9 @@ O token de login carrega `pwv`, uma impressão da senha atual (HMAC do hash com 
 - `DB_SSL_CA_FILE` continua servindo para bancos com certificado próprio;
 - `DB_SSL_REJECT_UNAUTHORIZED=false` desliga a validação e existe apenas para diagnóstico.
 
-**Antes do merge:** testar a conexão numa branch do Neon com `NODE_ENV=production` (`node scripts/check-db.cjs` ou subindo a API). Não foi possível testar contra o Neon nesta etapa.
+Teste feito sem credenciais, com a mesma configuração TLS de produção, contra os servidores do Neon em `sa-east-1` e `us-east-2` usando um endpoint inventado: o certificado foi aceito e a conexão só parou no login (`28P01 password authentication failed`), ou seja, depois do TLS. Como controle, a mesma conexão pelo IP do servidor foi recusada (`ERR_TLS_CERT_ALTNAME_INVALID`), o que confirma que a validação está ativa.
+
+**Antes do merge:** confirmar com o banco real, com o `.env` e `NODE_ENV=production`, rodando `node scripts/check-db.cjs` na pasta `backend`. O script só lê dados e deve mostrar "Conexão PostgreSQL: OK" e "SSL da sessão: ATIVO".
 
 ## Servidor
 

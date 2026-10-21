@@ -1,8 +1,12 @@
-# Testes, build e auditoria de dependências em cada push e pull request.
+# Testes, build e auditoria de dependências em cada pull request e na main.
+# Não roda no push de outras branches: ali a branch é testada sozinha, sem as
+# correções que entraram na main depois, e o resultado confunde. No pull request
+# o teste é feito sobre a junção da branch com a main.
 name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

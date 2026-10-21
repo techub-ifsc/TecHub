@@ -31,3 +31,15 @@ test('valida curso', () => {
     false
   );
 });
+
+test('previsão de término aceita AAAA/S e vazio', () => {
+  assert.equal(profileSchema.parse({ ...base, expected_graduation: '2027/1' }).expected_graduation, '2027/1');
+  assert.equal(profileSchema.parse({ ...base, expected_graduation: '' }).expected_graduation, null);
+  assert.equal(profileSchema.parse({ ...base }).expected_graduation, null);
+});
+test('previsão de término recusa formatos e anos inválidos', () => {
+  const longe = `${new Date().getFullYear() + 11}/1`;
+  for (const expected_graduation of ['2027', '2027/3', '27/1', '2027-1', '1999/2', longe, '<b>2027/1</b>']) {
+    assert.equal(profileSchema.safeParse({ ...base, expected_graduation }).success, false, expected_graduation);
+  }
+});

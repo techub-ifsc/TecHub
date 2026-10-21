@@ -1606,3 +1606,43 @@
   background: #c82333 !important;
   border-color: #c82333 !important;
 }
+
+/* Currículo já salvo: link para baixar e aviso de remoção pendente. */
+.profile-edit-resume-link {
+  color: #69df4f;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.profile-edit-resume-link:hover {
+  text-decoration: underline;
+}
+
+.profile-edit-resume-removed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid rgba(255, 92, 92, 0.35);
+  border-radius: 0.65rem;
+  color: #ffb4b4;
+  font-size: 0.8rem;
+}
+
+.profile-edit-resume-removed button {
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  border: 1px solid #969ea8;
+  border-radius: 0.45rem;
+  color: #f4f5f6;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-edit-resume-removed button:hover {
+  border-color: #f4f5f6;
+}

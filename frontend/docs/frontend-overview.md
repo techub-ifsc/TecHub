@@ -100,29 +100,33 @@ O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferent
 
 ## Perfil do criador
 
-`CreatorProfilePage` não busca dados de perfil no backend, porque a API ainda não guarda bio, câmpus, curso, links ou áreas de interesse. Ela busca apenas os projetos.
+`CreatorProfilePage` busca o perfil em `GET /api/users/:id`, rota pública que devolve só nome, bio, curso, previsão de término, GitHub, LinkedIn e currículo, nunca o e-mail. Os mesmos dados são salvos pela tela de edição em `PUT /api/users/me` (ver `src/api/userProfile.js`). O mesmo vale para o dono e para quem visita: todos veem a mesma coisa, em qualquer computador.
 
-O perfil é montado a partir da constante `DEFAULT_PROFILE`, declarada no próprio arquivo:
+- a bio é dividida em parágrafos pelas quebras de linha;
+- GitHub, LinkedIn e currículo passam por `safeExternalUrl` antes de virar link;
+- o curso vem do perfil e, se a pessoa não informou, do curso mais frequente dos projetos dela;
+- a previsão de término é escolhida na edição entre o semestre atual e os seis anos seguintes, salva como `AAAA/S` (ex.: `2028/1`) e exibida como "1º semestre de 2028";
+- as áreas de interesse são as tecnologias mais usadas nos projetos da pessoa, porque o perfil ainda não guarda tecnologias;
+- o câmpus é fixo (IFSC Câmpus Lages), pois o perfil ainda não guarda esse campo;
+- o avatar mostra as iniciais na cor do criador (`getCreatorColor`); não há foto de perfil;
+- o que não foi informado aparece como tal ("Nenhuma bio informada.", "Nenhum link informado."), sem valores inventados.
 
-- para quem visita o perfil de outra pessoa, são exibidos os valores genéricos de `DEFAULT_PROFILE`;
-- para o dono, o nome e o e-mail vêm da sessão, e os demais campos vêm do que ele salvou na edição.
+A versão anterior lia a edição salva no navegador (`techub:creator-profile:<id>`) e completava com dados fixos, por isso em outro computador o perfil aparecia com valores de exemplo. Essa leitura foi removida.
 
-A edição de perfil grava os dados no navegador, na chave `techub:creator-profile:<id do usuário>`, com o formato:
+## Listagem de criadores
 
-```json
-{
-  "form": {
-    "name": "...", "slug": "...", "bio": "...",
-    "github": "...", "linkedin": "...", "campus": "...", "course": "..."
-  },
-  "interests": ["..."],
-  "savedAt": "<data ISO>"
-}
-```
+O backend ainda não tem rota pública de usuários. Por isso, `CreatorsPage` monta a lista a partir dos autores dos projetos aprovados, que `GET /projects` já devolve com `id` e `name`:
 
-O perfil do dono lê essa chave. A bio é dividida em parágrafos pelas quebras de linha. Os endereços do GitHub e do LinkedIn passam por `safeExternalUrl` antes de virar link, de modo que apenas endereços `http` e `https` são exibidos; a edição também recusa endereços inválidos antes de salvar.
+- `src/api/creators.js` — `fetchAllPublicProjects` percorre a listagem pública página por página (50 por página, até 20 páginas);
+- `src/utils/creators.js` — `buildCreatorsFromProjects` agrupa os projetos por autor e calcula o curso mais frequente, as quatro tecnologias mais usadas e o total de projetos publicados. A cor do card é derivada do `id`, então a mesma pessoa tem sempre a mesma cor.
 
-Como os dados ficam no navegador, eles não aparecem em outro computador nem para outras pessoas. Essa é uma solução provisória até o backend ter os campos de perfil.
+Cada card leva a `/criadores/:id`, e `CreatorProfilePage` usa as mesmas funções para montar o perfil de quem não é o dono.
+
+Limitações enquanto não houver rota de usuários:
+
+- só aparece quem tem pelo menos um projeto aprovado como autor;
+- quem participa apenas como colaborador não aparece, porque a listagem traz só o `userId` dos colaboradores, sem o nome;
+- o filtro por fase foi retirado, pois a fase não existe nos dados; restam a busca por nome ou tecnologia e o filtro por curso.
 
 ## Comunicação com a API
 
@@ -135,10 +139,7 @@ Convivem hoje duas formas de chamar a API:
 
 As chamadas feitas com `fetch` não passam pelo interceptador, portanto não ganham o cabeçalho de autorização automaticamente nem o tratamento de `401`. Padronizar em uma única forma é um ajuste pendente.
 
-Duas telas ainda exibem dados fixos declarados no próprio arquivo:
-
-- `CreatorsPage` usa a lista `CREATORS`;
-- a seção de projetos de `ProfileEditPage` usa `INITIAL_PROFILE_PROJECTS`, e por isso pode mostrar projetos diferentes dos que aparecem no perfil, que vêm da API.
+A seção de projetos de `ProfileEditPage` busca os projetos reais em `GET /projects/mine` (`src/api/projects.js`), com a situação da moderação e a data da última alteração. "Editar" leva à tela de edição do projeto; "Excluir" chama `DELETE /projects/:id` depois da confirmação e só aparece nos projetos de que a pessoa é dona.
 
 ### Moderação
 
@@ -242,7 +243,7 @@ Na pasta `frontend`:
 npm.cmd test
 ```
 
-Os testes usam o executor nativo do Node (`node:test`), o mesmo do backend, sem dependência extra. Cobrem `createRegistrationPayload` e o cálculo de prazo da moderação em `moderationSla.js`, num total de cinco casos. Não há testes de componentes ou de telas.
+Os testes usam o executor nativo do Node (`node:test`), o mesmo do backend. Os de rascunhos usam `fake-indexeddb` (dependência de desenvolvimento) para simular o IndexedDB; depois de atualizar a branch, rode `npm.cmd install` para instalá-la. Cobrem `createRegistrationPayload`, o cálculo de prazo da moderação em `moderationSla.js`, os rascunhos em `projectDrafts.js` e a montagem dos criadores em `utils/creators.js`, num total de 15 casos. Não há testes de componentes ou de telas.
 
 ## Dependências
 
@@ -256,6 +257,8 @@ Não há biblioteca de componentes, de formulários ou de estado. Validação de
 ## Arquivos criados
 
 - `docs/frontend-overview.md`: este documento.
+- `src/api/creators.js` e `src/utils/creators.js`: busca paginada dos projetos públicos e montagem dos criadores a partir dos autores.
+- `test/creators.test.js`: testes da montagem dos criadores.
 
 ## Arquivos modificados
 
@@ -267,14 +270,16 @@ Não há biblioteca de componentes, de formulários ou de estado. Validação de
 - `src/pages/ProfileEditPage.jsx` e `.css`: remove o campo fase, com sua validação e opções, e alinha o card de projeto ao padrão do perfil.
 - `src/pages/ProjectValidationPage.jsx` e `.css`: inclui o criador na lista de colaboradores, com etiqueta própria.
 - `src/pages/NewProjectPage.css`, `ProjectsPage.css` e `ProjectValidationPage.css`: a barra de rolagem passa a usar as variáveis compartilhadas.
+- `src/pages/CreatorsPage.jsx` e `.css`: troca a lista fixa `CREATORS` pelos criadores reais, com carregamento, erro e estado vazio; retira o filtro por fase e mostra o total de projetos publicados no lugar da fase.
+- `src/pages/CreatorProfilePage.jsx` e `.css`: o perfil de outra pessoa mostra nome, curso e tecnologias reais; links e áreas vazias mostram "não informado".
+- `package.json`: inclui `test/creators.test.js` no `npm test`.
 
 Nenhum arquivo do backend foi alterado.
 
 ## Pontos em aberto
 
-- acrescentar ao backend os campos de perfil e uma rota pública de perfil, para que o perfil deixe de depender do navegador e de `DEFAULT_PROFILE`;
-- fazer a seção de projetos de `ProfileEditPage` buscar os projetos reais em vez de `INITIAL_PROFILE_PROJECTS`;
-- ligar `CreatorsPage` à API;
+- guardar no backend as áreas de interesse e o endereço personalizado do perfil, que a tela de edição ainda mostra mas não salva;
+- criar no backend uma rota pública de criadores (somente `id`, nome e dados de perfil, sem e-mail), para listar também quem ainda não publicou ou só colabora;
 - decidir se `PrivateRoute` será usado ou removido;
 - unificar as chaves de sessão do `localStorage` em uma só;
 - padronizar as chamadas à API em uma única forma, para que todas passem pelo interceptador, e ler o endereço base apenas de `apiUrl.js`;

@@ -831,3 +831,9 @@ button.creator-profile-projects__create:hover {
     width: 100%;
   }
 }
+
+.creator-profile-card__empty {
+  margin: 0;
+  color: #9ca1a7;
+  font-size: 0.88rem;
+}

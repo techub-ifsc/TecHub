@@ -138,7 +138,7 @@ Convivem hoje duas formas de chamar a API:
 
 As chamadas feitas com `fetch` não passam pelo interceptador, portanto não ganham o cabeçalho de autorização automaticamente nem o tratamento de `401`. Padronizar em uma única forma é um ajuste pendente.
 
-A seção de projetos de `ProfileEditPage` ainda usa dados fixos (`INITIAL_PROFILE_PROJECTS`), e por isso pode mostrar projetos diferentes dos que aparecem no perfil, que vêm da API.
+A seção de projetos de `ProfileEditPage` busca os projetos reais em `GET /projects/mine` (`src/api/projects.js`), com a situação da moderação e a data da última alteração. "Editar" leva à tela de edição do projeto; "Excluir" chama `DELETE /projects/:id` depois da confirmação e só aparece nos projetos de que a pessoa é dona.
 
 ### Moderação
 
@@ -278,7 +278,6 @@ Nenhum arquivo do backend foi alterado.
 ## Pontos em aberto
 
 - guardar no backend as áreas de interesse e o endereço personalizado do perfil, que a tela de edição ainda mostra mas não salva;
-- fazer a seção de projetos de `ProfileEditPage` buscar os projetos reais em vez de `INITIAL_PROFILE_PROJECTS`;
 - criar no backend uma rota pública de criadores (somente `id`, nome e dados de perfil, sem e-mail), para listar também quem ainda não publicou ou só colabora;
 - decidir se `PrivateRoute` será usado ou removido;
 - unificar as chaves de sessão do `localStorage` em uma só;

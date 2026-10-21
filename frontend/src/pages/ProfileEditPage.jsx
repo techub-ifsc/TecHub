@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { fetchEditableProfile, saveEditableProfile } from "../api/userProfile";
+import { deleteProject, fetchMyProjects } from "../api/projects";
 import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
@@ -104,35 +105,29 @@ const INITIAL_FORM = {
   course: "",
 };
 
-const INITIAL_PROFILE_PROJECTS = [
-  {
-    id: 1,
-    title: "Sistema de Monitoramento Ambiental",
-    description:
-      "Plataforma para acompanhar sensores ambientais em tempo real.",
-    status: "Em desenvolvimento",
-    technologies: ["React", "Node.js", "PostgreSQL"],
-    updatedAt: "Atualizado hoje",
-  },
-  {
-    id: 2,
-    title: "Biblioteca Digital IFSC",
-    description:
-      "Aplicação para organizar e disponibilizar materiais acadêmicos.",
-    status: "Em design",
-    technologies: ["React", "Express", "Sequelize"],
-    updatedAt: "Atualizado ontem",
-  },
-  {
-    id: 3,
-    title: "Controle Inteligente de Laboratórios",
-    description:
-      "Sistema para reservas e acompanhamento dos laboratórios.",
-    status: "Concluído",
-    technologies: ["JavaScript", "Vite", "PostgreSQL"],
-    updatedAt: "Atualizado em 7 de outubro",
-  },
-];
+const APPROVAL_LABELS = {
+  pending: "Em análise",
+  approved: "Publicado",
+  rejected: "Reprovado",
+};
+
+// Formato usado nos cards a partir do retorno de GET /projects/mine.
+function toProfileProject(project, userId) {
+  const updatedAt = project.updatedAt ? new Date(project.updatedAt) : null;
+  const updatedLabel = updatedAt && !Number.isNaN(updatedAt.getTime())
+    ? `Atualizado em ${updatedAt.toLocaleDateString("pt-BR")}`
+    : "";
+
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description || "",
+    status: project.status || "Sem status",
+    technologies: Array.isArray(project.technologies) ? project.technologies : [],
+    isOwner: project.ownerId === userId,
+    updatedAt: [APPROVAL_LABELS[project.approvalStatus], updatedLabel].filter(Boolean).join(" · "),
+  };
+}
 
 const PROJECT_STATUS_OPTIONS = [
   "Em design",
@@ -218,9 +213,9 @@ export default function ProfileEditPage() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const portfolioInputRef = useRef(null);
 
-  const [profileProjects, setProfileProjects] = useState(
-    INITIAL_PROFILE_PROJECTS,
-  );
+  const [profileProjects, setProfileProjects] = useState([]);
+  const [projectsStatus, setProjectsStatus] = useState("loading");
+  const [deletingProject, setDeletingProject] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [projectEditForm, setProjectEditForm] = useState({
     title: "",
@@ -251,6 +246,21 @@ export default function ProfileEditPage() {
       setFeedbackType('error');
       setFeedbackMessage(error.response?.data?.message || 'Não foi possível carregar o perfil do servidor.');
     });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  // Projetos reais da pessoa (como autor ou colaborador).
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return () => { active = false; };
+    setProjectsStatus("loading");
+    fetchMyProjects()
+      .then((projects) => {
+        if (!active) return;
+        setProfileProjects(projects.map((project) => toProfileProject(project, user.id)));
+        setProjectsStatus("ready");
+      })
+      .catch(() => active && setProjectsStatus("error"));
     return () => { active = false; };
   }, [user?.id]);
 
@@ -490,21 +500,29 @@ export default function ProfileEditPage() {
     clearFeedback();
   }
 
-  function confirmProjectDeletion() {
-    if (!projectToDelete) {
+  async function confirmProjectDeletion() {
+    if (!projectToDelete || deletingProject) {
       return;
     }
 
-    setProfileProjects((currentProjects) =>
-      currentProjects.filter(
-        (project) => project.id !== projectToDelete.id,
-      ),
-    );
-
-    setProjectToDelete(null);
-    setEditingProjectId(null);
-    setFeedbackType("success");
-    setFeedbackMessage("Projeto excluído com sucesso.");
+    setDeletingProject(true);
+    try {
+      await deleteProject(projectToDelete.id);
+      setProfileProjects((currentProjects) =>
+        currentProjects.filter(
+          (project) => project.id !== projectToDelete.id,
+        ),
+      );
+      setEditingProjectId(null);
+      setFeedbackType("success");
+      setFeedbackMessage("Projeto excluído com sucesso.");
+    } catch (error) {
+      setFeedbackType("error");
+      setFeedbackMessage(error.response?.data?.message || "Não foi possível excluir o projeto.");
+    } finally {
+      setDeletingProject(false);
+      setProjectToDelete(null);
+    }
   }
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1038,7 +1056,18 @@ export default function ProfileEditPage() {
               </button>
             </div>
 
-            {profileProjects.length > 0 ? (
+            {projectsStatus === "loading" ? (
+              <div className="profile-edit-projects__empty">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+                <strong>Carregando seus projetos...</strong>
+              </div>
+            ) : projectsStatus === "error" ? (
+              <div className="profile-edit-projects__empty" role="alert">
+                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                <strong>Não foi possível carregar seus projetos</strong>
+                <p>Verifique sua conexão e recarregue a página.</p>
+              </div>
+            ) : profileProjects.length > 0 ? (
               <div className="profile-edit-projects__list">
                 {profileProjects.map((project) => {
                   const isEditing = editingProjectId === project.id;
@@ -1182,17 +1211,20 @@ export default function ProfileEditPage() {
                               Editar
                             </button>
 
-                            <button
-                              type="button"
-                              className="profile-edit-project__delete"
-                              onClick={() => setProjectToDelete(project)}
-                            >
-                              <i
-                                className="fa-regular fa-trash-can"
-                                aria-hidden="true"
-                              />
-                              Excluir
-                            </button>
+                            {/* Só o dono exclui; colaboradores apenas editam. */}
+                            {project.isOwner && (
+                              <button
+                                type="button"
+                                className="profile-edit-project__delete"
+                                onClick={() => setProjectToDelete(project)}
+                              >
+                                <i
+                                  className="fa-regular fa-trash-can"
+                                  aria-hidden="true"
+                                />
+                                Excluir
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -1203,7 +1235,7 @@ export default function ProfileEditPage() {
             ) : (
               <div className="profile-edit-projects__empty">
                 <i className="fa-regular fa-folder-open" aria-hidden="true" />
-                <strong>Nenhum projeto publicado</strong>
+                <strong>Nenhum projeto ainda</strong>
                 <p>
                   Crie seu primeiro projeto para exibi-lo no perfil.
                 </p>
@@ -1240,10 +1272,10 @@ export default function ProfileEditPage() {
         title="Excluir projeto?"
         description={
           projectToDelete
-            ? `O projeto "${projectToDelete.title}" será removido do seu perfil. Esta ação não poderá ser desfeita.`
+            ? `O projeto "${projectToDelete.title}" será excluído permanentemente, para você e para os colaboradores. Esta ação não poderá ser desfeita.`
             : ""
         }
-        confirmLabel="Sim, excluir"
+        confirmLabel={deletingProject ? "Excluindo..." : "Sim, excluir"}
         cancelLabel="Cancelar"
         onCancel={() => setProjectToDelete(null)}
         onConfirm={confirmProjectDeletion}

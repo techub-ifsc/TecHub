@@ -4,44 +4,13 @@ import { safeExternalUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
 import { fetchAllPublicProjects } from "../api/creators";
-import { findCreator } from "../utils/creators";
+import { fetchPublicProfile } from "../api/userProfile";
+import { byFrequency, findCreator, getCreatorColor, getInitials } from "../utils/creators";
 import "./CreatorProfilePage.css";
 
-const PROFILE_PHOTO =
-  "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
-
-// A página de edição ainda não salva no backend: grava os dados no navegador
-// nesta chave. Enquanto a API não tiver os campos de perfil, o perfil do dono
-// lê daqui para mostrar o que ele acabou de editar.
-function readSavedProfile(userId) {
-  try {
-    const raw = localStorage.getItem(`techub:creator-profile:${userId}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-const DEFAULT_PROFILE = {
-  name: "Estudante IFSC",
-  initials: "IF",
-  campus: "IFSC Câmpus Lages",
-  course: "Ciência da Computação",
-  conclusion: "2026/2",
-  status: "Em formação",
-  bio: [
-    "Estudante e entusiasta de tecnologia desenvolvendo soluções e projetos acadêmicos no IFSC Câmpus Lages.",
-  ],
-  interests: ["React", "Node.js", "PostgreSQL", "Git"],
-  links: [
-    {
-      id: "github",
-      label: "GitHub",
-      url: "https://github.com",
-      icon: "fa-brands fa-github",
-    },
-  ],
-};
+// Todo o IFSC do Tech Hub é o Câmpus Lages; o perfil ainda não guarda o câmpus.
+const CAMPUS = "IFSC Câmpus Lages";
+const MAX_INTERESTS = 8;
 
 export default function CreatorProfilePage() {
   const { id } = useParams();
@@ -53,6 +22,9 @@ export default function CreatorProfilePage() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
   const [publicCreator, setPublicCreator] = useState(null);
+  // Perfil salvo pela tela de edição (nome, bio, curso, links e currículo).
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Estado para controlar a visibilidade da bolinha de notificação de reprovados
   const [hasSeenRejected, setHasSeenRejected] = useState(false);
@@ -91,59 +63,49 @@ export default function CreatorProfilePage() {
     ).length;
   }, [projects]);
 
-  // Monta as informações visuais mesclando o que temos do usuário logado
+  useEffect(() => {
+    let active = true;
+    setLoadingProfile(true);
+    setProfile(null);
+
+    fetchPublicProfile(id)
+      .then((data) => active && setProfile(data))
+      .catch((err) => console.error("Falha ao carregar o perfil:", err))
+      .finally(() => active && setLoadingProfile(false));
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  // Dados exibidos: o perfil salvo pela pessoa; sem ele, o que dá para tirar dos projetos.
+  // Nada é inventado: o que não foi informado aparece como tal.
   const profileInfo = useMemo(() => {
-    if (isOwner && loggedUser) {
-      const names = (loggedUser.name || "Usuário").trim().split(" ");
-      const initials =
-        names.length > 1
-          ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
-          : names[0].slice(0, 2).toUpperCase();
+    const name = profile?.name || publicCreator?.name || (isOwner && loggedUser?.name) || "";
 
-      const saved = readSavedProfile(loggedUser.id);
-      const form = saved?.form || {};
+    const links = [
+      { id: "github", label: "GitHub", url: safeExternalUrl(profile?.github_url), icon: "fa-brands fa-github" },
+      { id: "linkedin", label: "LinkedIn", url: safeExternalUrl(profile?.linkedin_url), icon: "fa-brands fa-linkedin" },
+      { id: "resume", label: "Currículo (PDF)", url: safeExternalUrl(profile?.resume_url), icon: "fa-solid fa-file-pdf" },
+    ].filter((link) => link.url);
 
-      const links = [
-        { id: "github", label: "GitHub", url: safeExternalUrl(form.github), icon: "fa-brands fa-github" },
-        { id: "linkedin", label: "LinkedIn", url: safeExternalUrl(form.linkedin), icon: "fa-brands fa-linkedin" },
-      ].filter((link) => link.url);
+    const bio = (profile?.bio || "")
+      .split(/\n+/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
 
-      const bio = (form.bio || "")
-        .split(/\n+/)
-        .map((paragraph) => paragraph.trim())
-        .filter(Boolean);
-
-      const interests = (saved?.interests || [])
-        .map((item) => (typeof item === "string" ? item : item?.name || item?.label))
-        .filter(Boolean);
-
-      return {
-        ...DEFAULT_PROFILE,
-        name: form.name?.trim() || loggedUser.name,
-        initials,
-        email: loggedUser.email,
-        campus: form.campus || DEFAULT_PROFILE.campus,
-        course: form.course || DEFAULT_PROFILE.course,
-        bio: bio.length ? bio : DEFAULT_PROFILE.bio,
-        interests: interests.length ? interests : DEFAULT_PROFILE.interests,
-        links: links.length ? links : DEFAULT_PROFILE.links,
-        profileSlug: `/criadores/${form.slug || loggedUser.id.slice(0, 8)}`,
-      };
-    }
-
-    // Perfil de outra pessoa: nome, curso e tecnologias vêm dos projetos publicados.
-    // Links e previsão de término ainda não existem na API, então não são inventados.
     return {
-      ...DEFAULT_PROFILE,
-      name: publicCreator?.name || "Criador",
-      initials: publicCreator?.initials || "?",
-      course: publicCreator?.course || "Curso não informado",
-      interests: publicCreator?.skills || [],
-      links: [],
-      conclusion: "Não informada",
+      name: name || (loadingProfile ? "" : "Criador"),
+      initials: name ? getInitials(name) : "",
+      color: getCreatorColor(id),
+      course: profile?.major || publicCreator?.course || "Curso não informado",
+      campus: CAMPUS,
+      bio,
+      interests: byFrequency(projects.flatMap((project) => project.tags)).slice(0, MAX_INTERESTS),
+      links,
       profileSlug: `/criadores/${id?.slice(0, 8) || ""}`,
     };
-  }, [id, isOwner, loggedUser, publicCreator]);
+  }, [id, isOwner, loggedUser, profile, publicCreator, projects, loadingProfile]);
 
   // Carrega e filtra os projetos reais do banco
   useEffect(() => {
@@ -317,12 +279,9 @@ export default function CreatorProfilePage() {
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
-                  {/* Foto ilustrativa só no próprio perfil; para os demais, as iniciais. */}
-                  {isOwner && <img src={PROFILE_PHOTO} alt={profileInfo.name} />}
-
                   <span
                     className="creator-profile-avatar__fallback"
-                    style={!isOwner && publicCreator ? { backgroundColor: publicCreator.color } : undefined}
+                    style={{ backgroundColor: profileInfo.color }}
                     aria-hidden="true"
                   >
                     {profileInfo.initials}
@@ -362,6 +321,11 @@ export default function CreatorProfilePage() {
                 {profileInfo.bio.map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))}
+                {!loadingProfile && profileInfo.bio.length === 0 && (
+                  <p className="creator-profile-card__empty">
+                    {isOwner ? "Você ainda não escreveu sua bio. Use \"Editar perfil\" para contar um pouco sobre você." : "Nenhuma bio informada."}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -725,21 +689,6 @@ export default function CreatorProfilePage() {
                 <div className="creator-profile-academic__field">
                   <dt>Curso</dt>
                   <dd>{profileInfo.course}</dd>
-                </div>
-
-                <div className="creator-profile-academic__field">
-                  <dt>Previsão de término</dt>
-                  <dd>{profileInfo.conclusion}</dd>
-                </div>
-
-                <div className="creator-profile-academic__field">
-                  <dt>Status</dt>
-                  <dd>
-                    <span className="creator-profile-status">
-                      <span aria-hidden="true" />
-                      {profileInfo.status}
-                    </span>
-                  </dd>
                 </div>
               </dl>
             </section>

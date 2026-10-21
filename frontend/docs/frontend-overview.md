@@ -100,29 +100,17 @@ O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferent
 
 ## Perfil do criador
 
-`CreatorProfilePage` não busca dados de perfil no backend, porque a API ainda não guarda bio, câmpus, curso, links ou áreas de interesse. Ela busca apenas os projetos.
+`CreatorProfilePage` busca o perfil em `GET /api/users/:id`, rota pública que devolve só nome, bio, curso, GitHub, LinkedIn e currículo, nunca o e-mail. Os mesmos dados são salvos pela tela de edição em `PUT /api/users/me` (ver `src/api/userProfile.js`). O mesmo vale para o dono e para quem visita: todos veem a mesma coisa, em qualquer computador.
 
-O perfil é montado a partir da constante `DEFAULT_PROFILE`, declarada no próprio arquivo:
+- a bio é dividida em parágrafos pelas quebras de linha;
+- GitHub, LinkedIn e currículo passam por `safeExternalUrl` antes de virar link;
+- o curso vem do perfil e, se a pessoa não informou, do curso mais frequente dos projetos dela;
+- as áreas de interesse são as tecnologias mais usadas nos projetos da pessoa, porque o perfil ainda não guarda tecnologias;
+- o câmpus é fixo (IFSC Câmpus Lages), pois o perfil ainda não guarda esse campo;
+- o avatar mostra as iniciais na cor do criador (`getCreatorColor`); não há foto de perfil;
+- o que não foi informado aparece como tal ("Nenhuma bio informada.", "Nenhum link informado."), sem valores inventados.
 
-- para quem visita o perfil de outra pessoa, o nome, as iniciais, o curso e as áreas de interesse vêm dos projetos publicados dela (ver "Listagem de criadores"); a bio, o câmpus e o status continuam genéricos, e links e previsão de término aparecem como não informados, sem valores inventados. A foto ilustrativa só aparece no próprio perfil; para os demais, o avatar mostra as iniciais na cor do criador;
-- para o dono, o nome e o e-mail vêm da sessão, e os demais campos vêm do que ele salvou na edição.
-
-A edição de perfil grava os dados no navegador, na chave `techub:creator-profile:<id do usuário>`, com o formato:
-
-```json
-{
-  "form": {
-    "name": "...", "slug": "...", "bio": "...",
-    "github": "...", "linkedin": "...", "campus": "...", "course": "..."
-  },
-  "interests": ["..."],
-  "savedAt": "<data ISO>"
-}
-```
-
-O perfil do dono lê essa chave. A bio é dividida em parágrafos pelas quebras de linha. Os endereços do GitHub e do LinkedIn passam por `safeExternalUrl` antes de virar link, de modo que apenas endereços `http` e `https` são exibidos; a edição também recusa endereços inválidos antes de salvar.
-
-Como os dados ficam no navegador, eles não aparecem em outro computador nem para outras pessoas. Essa é uma solução provisória até o backend ter os campos de perfil.
+A versão anterior lia a edição salva no navegador (`techub:creator-profile:<id>`) e completava com dados fixos, por isso em outro computador o perfil aparecia com valores de exemplo. Essa leitura foi removida.
 
 ## Listagem de criadores
 
@@ -289,7 +277,7 @@ Nenhum arquivo do backend foi alterado.
 
 ## Pontos em aberto
 
-- acrescentar ao backend os campos de perfil e uma rota pública de perfil, para que o perfil deixe de depender do navegador e de `DEFAULT_PROFILE`;
+- guardar no backend as áreas de interesse e o endereço personalizado do perfil, que a tela de edição ainda mostra mas não salva;
 - fazer a seção de projetos de `ProfileEditPage` buscar os projetos reais em vez de `INITIAL_PROFILE_PROJECTS`;
 - criar no backend uma rota pública de criadores (somente `id`, nome e dados de perfil, sem e-mail), para listar também quem ainda não publicou ou só colabora;
 - decidir se `PrivateRoute` será usado ou removido;

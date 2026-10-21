@@ -19,7 +19,7 @@ export function getCreatorColor(id = "") {
 }
 
 // Ordena os valores pela quantidade de vezes que aparecem (empate: ordem alfabética).
-function byFrequency(values) {
+export function byFrequency(values) {
   const counts = new Map();
   values.filter(Boolean).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
   return [...counts.entries()]

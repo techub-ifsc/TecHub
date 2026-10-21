@@ -1,19 +1,40 @@
-# Abre pull requests quando sai correção de segurança ou atualização das dependências.
+# Abre pull requests com atualizações das dependências.
+# As de versão menor e de correção chegam juntas, num PR por pasta e por mês.
+# Versões principais (ex.: React 18 → 19) mudam a forma de usar a biblioteca e
+# ficam de fora: são planejadas como tarefa própria, não aceitas no automático.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /backend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      backend:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      frontend:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      actions:
+        update-types: ["minor", "patch"]

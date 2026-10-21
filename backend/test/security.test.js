@@ -388,3 +388,28 @@ describe('sessão e troca de senha', () => {
     assert.ok(!JSON.stringify(payload).includes(user.password));
   });
 });
+
+describe('perfil público', () => {
+  test('qualquer pessoa vê o perfil de um criador, sem e-mail nem papel', async () => {
+    const creator = addUser('creator', { bio: 'Bio', github_url: 'https://github.com/x' });
+    const res = await call('GET', `/users/${creator.id}`);
+    assert.equal(res.status, 200);
+    const { profile } = await res.json();
+    assert.equal(profile.name, creator.name);
+    assert.equal(profile.github_url, 'https://github.com/x');
+    for (const field of ['email', 'role', 'password', 'resume_public_id', 'createdAt']) {
+      assert.equal(profile[field], undefined, field);
+    }
+  });
+
+  test('visitante, administrador e ID inexistente não têm perfil público', async () => {
+    for (const id of [addUser('visitor').id, addUser('super_admin').id, randomUUID()]) {
+      assert.equal((await call('GET', `/users/${id}`)).status, 404);
+    }
+  });
+
+  test('o perfil editável continua exigindo login', async () => {
+    assert.equal((await call('GET', '/users/me')).status, 401);
+    assert.equal((await call('GET', '/users/me', { user: addUser('creator') })).status, 200);
+  });
+});

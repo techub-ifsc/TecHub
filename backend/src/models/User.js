@@ -14,6 +14,12 @@ class User extends Model {
     const { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, createdAt, updatedAt } = this;
    return { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, createdAt, updatedAt };
   }
+
+  // Dados que qualquer visitante pode ver no perfil público: sem e-mail, papel ou datas.
+  toPublicProfileJSON() {
+    const { id, name, bio, major, github_url, linkedin_url, resume_url } = this;
+    return { id, name, bio, major, github_url, linkedin_url, resume_url };
+  }
 }
 
 User.init(

@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
-const { getMe, updateMe, MAX_RESUME_BYTES } = require('../controllers/userProfileController');
+const { getMe, getPublicProfile, updateMe, MAX_RESUME_BYTES } = require('../controllers/userProfileController');
 const { ApiError } = require('../middlewares/errorHandler');
 
 const router = Router();
@@ -13,6 +13,29 @@ const upload = multer({
     callback(null, true);
   },
 });
+const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
+/**
+ * @openapi
+ * /users/{id}:
+ *   get:
+ *     summary: Perfil público de um criador
+ *     description: Não exige login. Traz somente nome, bio, curso, links e currículo; nunca o e-mail.
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Perfil encontrado.
+ *       404:
+ *         description: Não existe criador com esse ID.
+ */
+// Antes do authenticate: é a única rota pública deste grupo.
+router.get(`/:id(${UUID})`, getPublicProfile);
+
 router.use(authenticate);
 router.get('/me', getMe);
 router.put('/me', (req, res, next) => {

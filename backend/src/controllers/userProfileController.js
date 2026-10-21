@@ -2,6 +2,8 @@ const { Readable } = require('stream');
 const { cloudinary, isCloudinaryConfigured } = require('../config/cloudinary');
 const { profileSchema } = require('../validators/userProfileValidators');
 const { ApiError } = require('../middlewares/errorHandler');
+const { User } = require('../models');
+const { ROLES } = require('../constants/roles');
 
 const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 function pdfLooksValid(file) {
@@ -22,6 +24,16 @@ function uploadResume(file, userId) {
 }
 function deleteResume(publicId) {
   return cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+}
+// Perfil público de um criador. Visitantes e administradores não têm perfil público.
+async function getPublicProfile(req, res, next) {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user || user.role !== ROLES.CREATOR) throw new ApiError(404, 'Perfil não encontrado.');
+    res.json({ profile: user.toPublicProfileJSON() });
+  } catch (error) {
+    next(error);
+  }
 }
 async function getMe(req, res) {
   res.json({ user: req.user.toSafeJSON() });
@@ -69,4 +81,4 @@ async function updateMe(req, res, next) {
     next(error);
   }
 }
-module.exports = { getMe, updateMe, pdfLooksValid, MAX_RESUME_BYTES };
+module.exports = { getMe, getPublicProfile, updateMe, pdfLooksValid, MAX_RESUME_BYTES };

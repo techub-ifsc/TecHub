@@ -439,9 +439,13 @@ export default function CreatorProfilePage() {
                         <Link
                           to={`/projetos/${project.id}`}
                           style={{
+                            // Ocupa a altura que sobra no card: assim as tecnologias e os
+                            // botões ficam no fundo, alinhados entre cards de textos diferentes.
                             textDecoration: "none",
                             color: "inherit",
-                            display: "block",
+                            display: "flex",
+                            flexDirection: "column",
+                            flex: 1,
                           }}
                         >
                           <div className="creator-profile-project__image">

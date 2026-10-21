@@ -100,6 +100,10 @@ export default function CreatorProfilePage() {
       color: getCreatorColor(id),
       course: profile?.major || publicCreator?.course || "Curso não informado",
       campus: CAMPUS,
+      // "2027/1" → "1º semestre de 2027"
+      graduation: profile?.expected_graduation
+        ? profile.expected_graduation.replace(/^(\d{4})\/([12])$/, "$2º semestre de $1")
+        : "Não informada",
       bio,
       interests: byFrequency(projects.flatMap((project) => project.tags)).slice(0, MAX_INTERESTS),
       links,
@@ -693,6 +697,11 @@ export default function CreatorProfilePage() {
                 <div className="creator-profile-academic__field">
                   <dt>Curso</dt>
                   <dd>{profileInfo.course}</dd>
+                </div>
+
+                <div className="creator-profile-academic__field">
+                  <dt>Previsão de término</dt>
+                  <dd>{profileInfo.graduation}</dd>
                 </div>
               </dl>
             </section>

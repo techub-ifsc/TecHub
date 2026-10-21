@@ -100,11 +100,12 @@ O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferent
 
 ## Perfil do criador
 
-`CreatorProfilePage` busca o perfil em `GET /api/users/:id`, rota pública que devolve só nome, bio, curso, GitHub, LinkedIn e currículo, nunca o e-mail. Os mesmos dados são salvos pela tela de edição em `PUT /api/users/me` (ver `src/api/userProfile.js`). O mesmo vale para o dono e para quem visita: todos veem a mesma coisa, em qualquer computador.
+`CreatorProfilePage` busca o perfil em `GET /api/users/:id`, rota pública que devolve só nome, bio, curso, previsão de término, GitHub, LinkedIn e currículo, nunca o e-mail. Os mesmos dados são salvos pela tela de edição em `PUT /api/users/me` (ver `src/api/userProfile.js`). O mesmo vale para o dono e para quem visita: todos veem a mesma coisa, em qualquer computador.
 
 - a bio é dividida em parágrafos pelas quebras de linha;
 - GitHub, LinkedIn e currículo passam por `safeExternalUrl` antes de virar link;
 - o curso vem do perfil e, se a pessoa não informou, do curso mais frequente dos projetos dela;
+- a previsão de término é escolhida na edição entre o semestre atual e os seis anos seguintes, salva como `AAAA/S` (ex.: `2028/1`) e exibida como "1º semestre de 2028";
 - as áreas de interesse são as tecnologias mais usadas nos projetos da pessoa, porque o perfil ainda não guarda tecnologias;
 - o câmpus é fixo (IFSC Câmpus Lages), pois o perfil ainda não guarda esse campo;
 - o avatar mostra as iniciais na cor do criador (`getCreatorColor`); não há foto de perfil;

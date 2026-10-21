@@ -103,7 +103,29 @@ const INITIAL_FORM = {
   linkedin: "",
   campus: "IFSC Câmpus Lages",
   course: "",
+  graduation: "",
 };
+
+// Semestres oferecidos na previsão de término: do semestre atual até seis anos depois.
+function graduationOptions(now = new Date()) {
+  const options = [];
+  let year = now.getFullYear();
+  let semester = now.getMonth() < 6 ? 1 : 2;
+  for (let i = 0; i < 13; i += 1) {
+    options.push(`${year}/${semester}`);
+    if (semester === 2) year += 1;
+    semester = semester === 1 ? 2 : 1;
+  }
+  return options;
+}
+
+const GRADUATION_PATTERN = /^\d{4}\/[12]$/;
+
+// "2027/1" → "1º semestre de 2027"
+function graduationLabel(value) {
+  const [year, semester] = value.split("/");
+  return `${semester}º semestre de ${year}`;
+}
 
 const APPROVAL_LABELS = {
   pending: "Em análise",
@@ -239,6 +261,7 @@ export default function ProfileEditPage() {
         github: data.github_url || '',
         linkedin: data.linkedin_url || '',
         course: data.major || '',
+        graduation: data.expected_graduation || '',
       }));
       setSavedResumeUrl(data.resume_url || null);
     }).catch(error => {
@@ -435,6 +458,7 @@ export default function ProfileEditPage() {
     if (form.bio.length > 500) validationErrors.bio = 'A bio deve ter até 500 caracteres.';
     const limits = { 'Ciência da Computação': 8, 'Técnico em Informática para Internet': 4, 'Técnico em Desenvolvimento de Sistemas': 4 };
     if (form.course && !Object.prototype.hasOwnProperty.call(limits, form.course)) validationErrors.course = 'Selecione um curso válido.';
+    if (form.graduation && !GRADUATION_PATTERN.test(form.graduation)) validationErrors.graduation = 'Selecione uma previsão de término válida.';
     if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > 5 * 1024 * 1024 || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 5 MB.';
 
     return validationErrors;
@@ -542,10 +566,11 @@ export default function ProfileEditPage() {
         name: form.name.trim(), github_url: form.github.trim(),
         linkedin_url: form.linkedin.trim(), bio: form.bio.trim(),
         major: form.course,
+        expected_graduation: form.graduation,
       }, portfolioFile, removeResume, setUploadProgress);
       setForm(current => ({ ...current, name: saved.name, github: saved.github_url || '',
         linkedin: saved.linkedin_url || '', bio: saved.bio || '',
-        course: saved.major || '' }));
+        course: saved.major || '', graduation: saved.expected_graduation || '' }));
       setSavedResumeUrl(saved.resume_url || null);
       setPortfolioFile(null);
       setRemoveResume(false);
@@ -1029,6 +1054,39 @@ export default function ProfileEditPage() {
                     {errors.course && (
                       <span className="profile-edit-error" role="alert">
                         {errors.course}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-graduation">
+                      Previsão de término
+                    </label>
+
+                    <CustomSelect
+                      id="profile-graduation"
+                      name="graduation"
+                      value={form.graduation}
+                      onChange={handleChange}
+                      invalid={Boolean(errors.graduation)}
+                      placeholder="Selecione o semestre"
+                      options={[
+                        { value: "", label: "Não informar" },
+                        // Mantém um valor salvo antes que já tenha saído da lista.
+                        ...(form.graduation && !graduationOptions().includes(form.graduation)
+                          ? [form.graduation]
+                          : []),
+                        ...graduationOptions(),
+                      ].map((option) =>
+                        typeof option === "string"
+                          ? { value: option, label: graduationLabel(option) }
+                          : option,
+                      )}
+                    />
+
+                    {errors.graduation && (
+                      <span className="profile-edit-error" role="alert">
+                        {errors.graduation}
                       </span>
                     )}
                   </div>

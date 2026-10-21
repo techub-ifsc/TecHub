@@ -391,12 +391,13 @@ describe('sessão e troca de senha', () => {
 
 describe('perfil público', () => {
   test('qualquer pessoa vê o perfil de um criador, sem e-mail nem papel', async () => {
-    const creator = addUser('creator', { bio: 'Bio', github_url: 'https://github.com/x' });
+    const creator = addUser('creator', { bio: 'Bio', github_url: 'https://github.com/x', expected_graduation: '2027/1' });
     const res = await call('GET', `/users/${creator.id}`);
     assert.equal(res.status, 200);
     const { profile } = await res.json();
     assert.equal(profile.name, creator.name);
     assert.equal(profile.github_url, 'https://github.com/x');
+    assert.equal(profile.expected_graduation, '2027/1');
     for (const field of ['email', 'role', 'password', 'resume_public_id', 'createdAt']) {
       assert.equal(profile[field], undefined, field);
     }

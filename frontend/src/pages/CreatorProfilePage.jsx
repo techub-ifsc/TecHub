@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { safeExternalUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
+import { fetchAllPublicProjects } from "../api/creators";
+import { findCreator } from "../utils/creators";
 import "./CreatorProfilePage.css";
 
 const PROFILE_PHOTO =
@@ -50,6 +52,7 @@ export default function CreatorProfilePage() {
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
+  const [publicCreator, setPublicCreator] = useState(null);
 
   // Estado para controlar a visibilidade da bolinha de notificação de reprovados
   const [hasSeenRejected, setHasSeenRejected] = useState(false);
@@ -128,11 +131,19 @@ export default function CreatorProfilePage() {
       };
     }
 
+    // Perfil de outra pessoa: nome, curso e tecnologias vêm dos projetos publicados.
+    // Links e previsão de término ainda não existem na API, então não são inventados.
     return {
       ...DEFAULT_PROFILE,
+      name: publicCreator?.name || "Criador",
+      initials: publicCreator?.initials || "?",
+      course: publicCreator?.course || "Curso não informado",
+      interests: publicCreator?.skills || [],
+      links: [],
+      conclusion: "Não informada",
       profileSlug: `/criadores/${id?.slice(0, 8) || ""}`,
     };
-  }, [id, isOwner, loggedUser]);
+  }, [id, isOwner, loggedUser, publicCreator]);
 
   // Carrega e filtra os projetos reais do banco
   useEffect(() => {
@@ -144,26 +155,28 @@ export default function CreatorProfilePage() {
 
         // Se o usuário logado estiver vendo o próprio perfil, busca também por /projects/mine
         // para obter rascunhos e projetos reprovados com suas justificativas (reviewNotes)
-        let endpoint = `${API_URL}/projects?limit=100`;
-        const headers = {};
+        let allProjects;
+        setPublicCreator(null);
 
         if (isOwner && token) {
-          endpoint = `${API_URL}/projects/mine`;
-          headers.Authorization = `Bearer ${token}`;
+          const response = await fetch(`${API_URL}/projects/mine`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+            throw new Error("Erro ao buscar projetos");
+          }
+
+          const data = await response.json();
+          allProjects = Array.isArray(data.projects)
+            ? data.projects
+            : Array.isArray(data)
+              ? data
+              : [];
+        } else {
+          allProjects = await fetchAllPublicProjects();
+          setPublicCreator(findCreator(allProjects, id));
         }
-
-        const response = await fetch(endpoint, { headers });
-
-        if (!response.ok) {
-          throw new Error("Erro ao buscar projetos");
-        }
-
-        const data = await response.json();
-        const allProjects = Array.isArray(data.projects)
-          ? data.projects
-          : Array.isArray(data)
-            ? data
-            : [];
 
         // Filtra e normaliza projetos onde o usuário atual é autor ou colaborador
         const userProjects = [];
@@ -304,10 +317,12 @@ export default function CreatorProfilePage() {
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
-                  <img src={PROFILE_PHOTO} alt={profileInfo.name} />
+                  {/* Foto ilustrativa só no próprio perfil; para os demais, as iniciais. */}
+                  {isOwner && <img src={PROFILE_PHOTO} alt={profileInfo.name} />}
 
                   <span
                     className="creator-profile-avatar__fallback"
+                    style={!isOwner && publicCreator ? { backgroundColor: publicCreator.color } : undefined}
                     aria-hidden="true"
                   >
                     {profileInfo.initials}
@@ -669,12 +684,18 @@ export default function CreatorProfilePage() {
                 {profileInfo.interests.map((interest) => (
                   <span key={interest}>{interest}</span>
                 ))}
+                {profileInfo.interests.length === 0 && (
+                  <p className="creator-profile-card__empty">Nenhuma tecnologia informada.</p>
+                )}
               </div>
             </section>
 
             <section className="creator-profile-card">
               <h2>Links e contato</h2>
               <div className="creator-profile-links">
+                {profileInfo.links.length === 0 && (
+                  <p className="creator-profile-card__empty">Nenhum link informado.</p>
+                )}
                 {profileInfo.links.map((link) => (
                   <a
                     key={link.id}

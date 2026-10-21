@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "node --test test/registrationPayload.test.js test/moderationSla.test.js test/projectDrafts.test.js"
+    "test": "node --test test/registrationPayload.test.js test/moderationSla.test.js test/projectDrafts.test.js test/creators.test.js"
   },
   "dependencies": {
     "axios": "^1.7.7",

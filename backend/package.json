@@ -14,7 +14,8 @@
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
-    "db:setup": "npm run db:create && npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:create && npm run db:migrate && npm run db:seed",
+    "test:profile": "node --test test/userProfileValidation.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -33,7 +34,8 @@
     "sequelize": "^6.37.3",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "multer": "^2.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",

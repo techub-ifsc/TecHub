@@ -102,7 +102,6 @@ const INITIAL_FORM = {
   linkedin: "",
   campus: "IFSC Câmpus Lages",
   course: "",
-  semester: 0,
 };
 
 const INITIAL_PROFILE_PROJECTS = [
@@ -245,7 +244,6 @@ export default function ProfileEditPage() {
         github: data.github_url || '',
         linkedin: data.linkedin_url || '',
         course: data.major || '',
-        semester: data.semester ?? 0,
       }));
       setSavedResumeUrl(data.resume_url || null);
     }).catch(error => {
@@ -427,8 +425,6 @@ export default function ProfileEditPage() {
     if (form.bio.length > 500) validationErrors.bio = 'A bio deve ter até 500 caracteres.';
     const limits = { 'Ciência da Computação': 8, 'Técnico em Informática para Internet': 4, 'Técnico em Desenvolvimento de Sistemas': 4 };
     if (form.course && !Object.prototype.hasOwnProperty.call(limits, form.course)) validationErrors.course = 'Selecione um curso válido.';
-    const semester = Number(form.semester);
-    if (!Number.isInteger(semester) || semester < 0 || semester > (limits[form.course] || 0)) validationErrors.semester = 'Semestre incompatível com o curso.';
     if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > 5 * 1024 * 1024 || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 5 MB.';
 
     return validationErrors;
@@ -527,11 +523,11 @@ export default function ProfileEditPage() {
       const saved = await saveEditableProfile({
         name: form.name.trim(), github_url: form.github.trim(),
         linkedin_url: form.linkedin.trim(), bio: form.bio.trim(),
-        major: form.course, semester: form.semester,
+        major: form.course,
       }, portfolioFile, removeResume, setUploadProgress);
       setForm(current => ({ ...current, name: saved.name, github: saved.github_url || '',
         linkedin: saved.linkedin_url || '', bio: saved.bio || '',
-        course: saved.major || '', semester: saved.semester ?? 0 }));
+        course: saved.major || '' }));
       setSavedResumeUrl(saved.resume_url || null);
       setPortfolioFile(null);
       setRemoveResume(false);
@@ -1017,12 +1013,6 @@ export default function ProfileEditPage() {
                         {errors.course}
                       </span>
                     )}
-                  </div>
-                  <div className="profile-edit-field">
-                    <label htmlFor="profile-semester">Fase / Semestre</label>
-                    <input id="profile-semester" name="semester" type="number" min="0" max={form.course === 'Ciência da Computação' ? 8 : 4}
-                      value={form.semester} onChange={handleChange} aria-invalid={Boolean(errors.semester)} />
-                    {errors.semester && <span className="profile-edit-error" role="alert">{errors.semester}</span>}
                   </div>
                 </div>
               </section>

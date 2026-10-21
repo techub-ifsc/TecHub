@@ -48,7 +48,6 @@ async function updateMe(req, res, next) {
     user.linkedin_url = values.linkedin_url;
     user.bio = values.bio;
     user.major = values.major;
-    user.semester = values.semester;
     if (uploaded) {
       user.resume_url = uploaded.secure_url;
       user.resume_public_id = uploaded.public_id;

@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { profileSchema } = require('../src/validators/userProfileValidators');
-const base = { name: 'Pessoa Teste', major: 'Ciência da Computação', semester: '4' };
+const base = {
+  name: 'Pessoa Teste',
+  major: 'Ciência da Computação'
+};
 
 test('aceita links HTTPS e campos opcionais vazios', () => {
   const result = profileSchema.parse({ ...base, github_url: 'https://github.com/exemplo', linkedin_url: '', bio: '' });
@@ -19,7 +22,12 @@ test('valida nome entre 3 e 100 caracteres', () => {
 test('valida bio até 500 caracteres', () => {
   assert.equal(profileSchema.safeParse({ ...base, bio: 'X'.repeat(501) }).success, false);
 });
-test('valida curso e limite de semestre', () => {
-  assert.equal(profileSchema.safeParse({ ...base, semester: '9' }).success, false);
-  assert.equal(profileSchema.safeParse({ ...base, major: 'Curso inexistente' }).success, false);
+test('valida curso', () => {
+  assert.equal(
+    profileSchema.safeParse({
+      ...base,
+      major: 'Curso inexistente'
+    }).success,
+    false
+  );
 });

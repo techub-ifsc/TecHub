@@ -994,11 +994,39 @@ export default function ProfileEditPage() {
                       )}
                       {savedResumeUrl && !removeResume && (
                         <div className="profile-edit-portfolio-file">
-                          <a href={savedResumeUrl} target="_blank" rel="noopener noreferrer" download>Baixar currículo atual</a>
-                          <button type="button" onClick={() => setRemoveResume(true)}>Remover currículo</button>
+                          <i className="fa-solid fa-file-pdf" aria-hidden="true" />
+
+                          <div>
+                            <strong>Currículo atual</strong>
+                            <a
+                              className="profile-edit-resume-link"
+                              href={savedResumeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                            >
+                              Baixar PDF
+                            </a>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setRemoveResume(true)}
+                            aria-label="Remover currículo"
+                            title="Remover currículo"
+                          >
+                            <i className="fa-regular fa-trash-can" aria-hidden="true" />
+                          </button>
                         </div>
                       )}
-                      {removeResume && <button type="button" onClick={() => setRemoveResume(false)}>Desfazer remoção</button>}
+                      {removeResume && (
+                        <div className="profile-edit-resume-removed" role="status">
+                          <span>O currículo será removido ao salvar.</span>
+                          <button type="button" onClick={() => setRemoveResume(false)}>
+                            Desfazer
+                          </button>
+                        </div>
+                      )}
                       {errors.resume && <span role="alert" className="profile-edit-error">{errors.resume}</span>}
                       {saving && portfolioFile && <p role="status">Enviando: {uploadProgress ?? 0}%</p>}
                     </div>

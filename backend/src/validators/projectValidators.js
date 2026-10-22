@@ -75,7 +75,7 @@ const createProjectSchema = z.object({
     .string({ required_error: 'A descrição é obrigatória' })
     .trim()
     .min(1, 'A descrição não pode ser vazia')
-    .max(500, 'A descrição deve ter no máximo 500 caracteres')
+    .max(3000, 'A descrição deve ter no máximo 3000 caracteres')
     .refine(hasNoHtml, NO_HTML_MESSAGE),
 
   major: z
@@ -145,6 +145,19 @@ const createProjectSchema = z.object({
 
 const updateProjectSchema = createProjectSchema.partial();
 
+// Rascunho: tudo opcional e incompleto é aceito, mas o que vier segue as mesmas regras
+// do projeto. Campos fora da lista (approvalStatus, ownerId, reviewNotes, datas) são
+// descartados: o cliente nunca escolhe a situação na moderação nem o dono.
+const draftProjectSchema = createProjectSchema.extend({
+  title: z.string().trim().max(100, 'O título deve ter no máximo 100 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE).optional().nullable(),
+  description: z.string().trim().max(3000, 'A descrição deve ter no máximo 3000 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE).optional().nullable(),
+  media: z.array(mediaItemSchema)
+    .max(MAX_MEDIA_PER_PROJECT, `O limite é de ${MAX_MEDIA_PER_PROJECT} mídias por projeto`)
+    .optional(),
+}).partial();
+
 const MAX_REVIEW_NOTES_LENGTH = 1000;
 const REVIEW_NOTES_REQUIRED = 'Informe a justificativa da rejeição';
 
@@ -170,6 +183,7 @@ const rejectProjectSchema = z.object({
 module.exports = {
   createProjectSchema,
   updateProjectSchema,
+  draftProjectSchema,
   approveProjectSchema,
   rejectProjectSchema,
 };

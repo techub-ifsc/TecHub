@@ -446,3 +446,60 @@ describe('mensagens de erro', () => {
     assert.equal(body.message, 'Upload de mídias indisponível no momento.');
   });
 });
+
+describe('rascunhos', () => {
+  test('atualizar rascunho ignora approvalStatus, ownerId e parecer vindos do cliente', async () => {
+    const owner = addUser('creator');
+    const draft = addProject(owner, 'draft');
+    const res = await call('PUT', `/projects/draft/${draft.id}`, {
+      user: owner,
+      body: { title: 'Meu rascunho', approvalStatus: 'approved', ownerId: randomUUID(), reviewNotes: 'ok', submittedAt: '2020-01-01' },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(captured.update.title, 'Meu rascunho');
+    for (const field of ['approvalStatus', 'ownerId', 'reviewNotes', 'submittedAt']) {
+      assert.equal(captured.update[field], undefined, field);
+    }
+  });
+
+  test('criar rascunho sempre grava como rascunho e do próprio usuário', async () => {
+    const creator = addUser('creator');
+    const res = await call('POST', '/projects/draft', {
+      user: creator,
+      body: { title: 'Novo', approvalStatus: 'approved', ownerId: randomUUID() },
+    });
+    assert.equal(res.status, 201);
+    assert.equal(captured.create.approvalStatus, 'draft');
+    assert.equal(captured.create.ownerId, creator.id);
+  });
+
+  test('rascunho segue as regras de conteúdo: sem HTML no título e sem mídia de fora', async () => {
+    const owner = addUser('creator');
+    const draft = addProject(owner, 'draft');
+    const bodies = [
+      { title: '<img src=x onerror=alert(1)>' },
+      { media: [{ url: 'https://rastreador.example/pixel.png', mediaType: 'image' }] },
+    ];
+    for (const body of bodies) {
+      const res = await call('PUT', `/projects/draft/${draft.id}`, { user: owner, body });
+      assert.equal(res.status, 400, JSON.stringify(body));
+    }
+    assert.equal(captured.update, undefined);
+  });
+
+  test('outra pessoa não edita o rascunho', async () => {
+    const draft = addProject(addUser('creator'), 'draft');
+    const res = await call('PUT', `/projects/draft/${draft.id}`, { user: addUser('creator'), body: { title: 'invadido' } });
+    assert.equal(res.status, 403);
+  });
+
+  test('só rascunho pode ser enviado para análise', async () => {
+    const owner = addUser('creator');
+    const approved = addProject(owner, 'approved');
+    const res = await call('POST', `/projects/${approved.id}/submit`, {
+      user: owner,
+      body: { title: 'Projeto', description: 'Descrição suficiente', media: VIDEO },
+    });
+    assert.equal(res.status, 400);
+  });
+});

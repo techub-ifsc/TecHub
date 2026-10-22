@@ -1,6 +1,6 @@
 const { z } = require('zod');
 const { Op } = require('sequelize');
-const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidators');
+const { createProjectSchema, updateProjectSchema, draftProjectSchema } = require('../validators/projectValidators');
 const ProjectTechnology = require('../models/ProjectTechnology');
 const ProjectCollaborator = require('../models/ProjectCollaborator');
 const ProjectMedia = require('../models/ProjectMedia');
@@ -380,7 +380,7 @@ async function createDraft(req, res, next) {
   const transaction = await sequelize.transaction();
   try {
     const ownerId = req.user?.id || req.userId;
-    const { technologies, collaborators, media = [], ...projectData } = req.body;
+    const { technologies, collaborators, media = [], ...projectData } = draftProjectSchema.parse(req.body);
 
     // Se o título estiver vazio, define um padrão para o banco aceitar
     if (!projectData.title || projectData.title.trim() === '') {
@@ -443,7 +443,7 @@ async function updateDraft(req, res, next) {
       if (project.ownerId !== userId) throw new ApiError(403, 'Apenas o dono pode editar este rascunho.');
       if (project.approvalStatus !== APPROVAL_STATUS.DRAFT) throw new ApiError(400, 'Este projeto não é mais um rascunho.');
 
-      const { technologies, collaborators, media, ...projectData } = req.body;
+      const { technologies, collaborators, media, ...projectData } = draftProjectSchema.parse(req.body);
       if (!projectData.title || projectData.title.trim() === '') {
         projectData.title = 'Projeto sem título';
       }
@@ -486,6 +486,7 @@ async function submitDraft(req, res, next) {
       const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
       if (!project) throw new ApiError(404, 'Rascunho não encontrado.');
       if (project.ownerId !== userId) throw new ApiError(403, 'Apenas o dono pode submeter este rascunho.');
+      if (project.approvalStatus !== APPROVAL_STATUS.DRAFT) throw new ApiError(400, 'Este projeto não é mais um rascunho.');
       
       const { technologies, collaborators, media, ...projectData } = data;
       projectData.approvalStatus = APPROVAL_STATUS.PENDING; // Muda de Rascunho para Pendente

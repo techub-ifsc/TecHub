@@ -57,7 +57,9 @@ const PROFILE_FILES = {
       folder: `techub/users/${userId}`,
       public_id: `avatar_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       format: 'webp',
-      transformation: 'c_fill,g_face,h_500,w_500,q_auto',
+      // No envio pelo servidor, a transformação precisa ser objeto: um texto como
+      // "c_fill,..." é lido pelo Cloudinary como nome de transformação salva e é recusado.
+      transformation: [{ crop: 'fill', gravity: 'face', width: 500, height: 500, quality: 'auto' }],
     }),
   },
   banner: {
@@ -72,7 +74,7 @@ const PROFILE_FILES = {
       folder: `techub/users/${userId}`,
       public_id: `banner_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       format: 'webp',
-      transformation: 'c_limit,h_900,w_1600,q_auto',
+      transformation: [{ crop: 'limit', width: 1600, height: 900, quality: 'auto' }],
     }),
   },
 };
@@ -174,6 +176,12 @@ async function updateMe(req, res, next) {
     for (const { kind, publicId } of newlyUploaded) {
       try { await deleteProfileFile(kind, publicId); }
       catch (cleanupError) { console.error('Falha na limpeza do upload:', cleanupError); }
+    }
+    // Erro devolvido pelo Cloudinary (tem http_code): registra o motivo e responde
+    // com uma mensagem clara, em vez de "Erro interno do servidor".
+    if (error?.http_code && !(error instanceof ApiError)) {
+      console.error('Cloudinary recusou o envio do perfil:', error.http_code, error.message);
+      return next(new ApiError(502, 'Não foi possível enviar o arquivo agora. Tente novamente em instantes.'));
     }
     next(error);
   }

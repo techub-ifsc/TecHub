@@ -51,6 +51,7 @@ describe('PUT /users/me com fotos', () => {
   let uploads;
   let destroyed;
   let failUploadOf;
+  let failUploadWith;
 
   before(async () => {
     mock.method(User, 'findByPk', async (id) => users.get(id) || null);
@@ -65,7 +66,7 @@ describe('PUT /users/me com fotos', () => {
         final(done) {
           const kind = options.public_id.split('_')[0];
           if (kind === failUploadOf) {
-            callback(new Error('falha simulada'));
+            callback(failUploadWith || new Error('falha simulada'));
           } else {
             const publicId = `${options.folder}/${options.public_id}`;
             uploads.push({ options, bytes: Buffer.concat(chunks).length, publicId });
@@ -100,6 +101,7 @@ describe('PUT /users/me com fotos', () => {
     uploads = [];
     destroyed = [];
     failUploadOf = null;
+    failUploadWith = null;
   });
 
   function creator(extra = {}) {
@@ -142,7 +144,10 @@ describe('PUT /users/me com fotos', () => {
     assert.equal(avatar.options.folder, `techub/users/${user.id}`);
     assert.equal(avatar.options.format, 'webp');
     assert.equal(avatar.options.resource_type, 'image');
-    assert.match(avatar.options.transformation, /w_500/);
+    // Objeto, e não texto: o Cloudinary lê texto como nome de transformação salva.
+    assert.deepEqual(avatar.options.transformation, [{ crop: 'fill', gravity: 'face', width: 500, height: 500, quality: 'auto' }]);
+    const banner = uploads.find((u) => u.publicId.includes('banner_'));
+    assert.deepEqual(banner.options.transformation, [{ crop: 'limit', width: 1600, height: 900, quality: 'auto' }]);
     assert.equal(uploads.find((u) => u.publicId.includes('banner_')).options.format, 'webp');
   });
 
@@ -201,6 +206,15 @@ describe('PUT /users/me com fotos', () => {
     assert.equal(uploads.length, 1);
     assert.deepEqual(destroyed.map((d) => d.publicId), [uploads[0].publicId]);
     assert.equal(user.avatar_url ?? null, null);
+  });
+
+  test('recusa do Cloudinary vira mensagem clara (502), não "erro interno"', async () => {
+    const user = creator();
+    failUploadOf = 'avatar';
+    failUploadWith = Object.assign(new Error('Transformation Unknown transformation c_fill'), { http_code: 400 });
+    const res = await saveProfile(user, { avatar: [PNG, 'image/png', 'foto.png'] });
+    assert.equal(res.status, 502);
+    assert.match((await res.json()).message, /Não foi possível enviar o arquivo/);
   });
 
   test('o perfil público mostra foto e capa, sem os identificadores internos', async () => {

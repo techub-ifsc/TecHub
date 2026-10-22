@@ -675,3 +675,13 @@
 .project-details-description__content ol {
   list-style: decimal;
 }
+
+/* Título e textos longos sem espaço (ex.: "9999...") quebram em vez de passar da tela. */
+.project-details-hero__content {
+  min-width: 0;
+}
+
+.project-details-hero h1,
+.project-details-hero p {
+  overflow-wrap: anywhere;
+}

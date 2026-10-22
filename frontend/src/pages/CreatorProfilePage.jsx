@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { safeExternalUrl } from "../utils/externalUrl";
+import { safeExternalUrl, safeImageUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
 import { fetchAllPublicProjects } from "../api/creators";
@@ -99,6 +99,8 @@ export default function CreatorProfilePage() {
       initials: name ? getInitials(name) : "",
       color: getCreatorColor(id),
       course: profile?.major || publicCreator?.course || "Curso não informado",
+      avatarUrl: safeImageUrl(profile?.avatar_url),
+      bannerUrl: safeImageUrl(profile?.banner_url),
       campus: CAMPUS,
       // "2027/1" → "1º semestre de 2027"
       graduation: profile?.expected_graduation
@@ -261,15 +263,22 @@ export default function CreatorProfilePage() {
   return (
     <main className="creator-profile-page">
       <div className="creator-profile-page__container">
-        <Link to="/projetos" className="creator-profile-page__back">
-          <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-          Voltar para projetos
-        </Link>
-
         <div className="creator-profile-layout">
           <div className="creator-profile-main">
             <section className="creator-profile-hero">
-              <div className="creator-profile-hero__cover" />
+              {/* Sem foto de capa, fica o gradiente padrão do tema. */}
+              <div
+                className="creator-profile-hero__cover"
+                style={
+                  profileInfo.bannerUrl
+                    ? {
+                        backgroundImage: `url("${profileInfo.bannerUrl}")`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+              />
 
               {isOwner && (
                 <Link
@@ -283,6 +292,16 @@ export default function CreatorProfilePage() {
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
+                  {profileInfo.avatarUrl && (
+                    <img
+                      src={profileInfo.avatarUrl}
+                      alt={`Foto de ${profileInfo.name}`}
+                      // Se a imagem não carregar, aparecem as iniciais que estão por baixo.
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )}
                   <span
                     className="creator-profile-avatar__fallback"
                     style={{ backgroundColor: profileInfo.color }}

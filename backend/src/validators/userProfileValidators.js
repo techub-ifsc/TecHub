@@ -33,6 +33,8 @@ const profileSchema = z.object({
   expected_graduation: expectedGraduation,
   major: z.string().refine(value => !value || Object.prototype.hasOwnProperty.call(COURSE_PHASES, value), 'Selecione um curso válido.').optional().transform(value => value || null),
   remove_resume: z.enum(['true', 'false']).optional().default('false'),
+  remove_avatar: z.enum(['true', 'false']).optional().default('false'),
+  remove_banner: z.enum(['true', 'false']).optional().default('false'),
 }).strict();
 
 module.exports = { profileSchema, COURSE_PHASES };

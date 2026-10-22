@@ -4,6 +4,7 @@ import CustomSelect from "../components/CustomSelect";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { fetchEditableProfile, saveEditableProfile } from "../api/userProfile";
 import { deleteProject, fetchMyProjects } from "../api/projects";
+import { safeImageUrl } from "../utils/externalUrl";
 import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
@@ -119,6 +120,13 @@ function graduationOptions(now = new Date()) {
   return options;
 }
 
+// Mesmas regras do backend para foto (até 3 MB) e capa (até 5 MB).
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_LIMITS = {
+  profile: { bytes: 3 * 1024 * 1024, label: "A foto de perfil", size: "3 MB" },
+  banner: { bytes: 5 * 1024 * 1024, label: "A foto de capa", size: "5 MB" },
+};
+
 const GRADUATION_PATTERN = /^\d{4}\/[12]$/;
 
 // "2027/1" → "1º semestre de 2027"
@@ -228,6 +236,12 @@ export default function ProfileEditPage() {
   const [bannerImage, setBannerImage] = useState(null);
   const [bannerPreview, setBannerPreview] = useState("");
 
+  // Imagens já salvas no perfil e pedidos de remoção ainda não salvos.
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState(null);
+  const [savedBannerUrl, setSavedBannerUrl] = useState(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [removeBanner, setRemoveBanner] = useState(false);
+
   const [portfolioFile, setPortfolioFile] = useState(null);
   const [savedResumeUrl, setSavedResumeUrl] = useState(null);
   const [removeResume, setRemoveResume] = useState(false);
@@ -264,6 +278,8 @@ export default function ProfileEditPage() {
         graduation: data.expected_graduation || '',
       }));
       setSavedResumeUrl(data.resume_url || null);
+      setSavedAvatarUrl(safeImageUrl(data.avatar_url));
+      setSavedBannerUrl(safeImageUrl(data.banner_url));
     }).catch(error => {
       if (!active) return;
       setFeedbackType('error');
@@ -286,6 +302,10 @@ export default function ProfileEditPage() {
       .catch(() => active && setProjectsStatus("error"));
     return () => { active = false; };
   }, [user?.id]);
+
+  // Imagem exibida: a escolhida agora; se não houver, a salva (a menos que vá ser removida).
+  const avatarUrlShown = profilePhotoPreview || (!removeAvatar && savedAvatarUrl) || "";
+  const bannerUrlShown = bannerPreview || (!removeBanner && savedBannerUrl) || "";
 
   const profileInitials =
     form.name
@@ -341,9 +361,10 @@ export default function ProfileEditPage() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    const limit = IMAGE_LIMITS[type];
+    if (!IMAGE_TYPES.includes(file.type) || file.size > limit.bytes) {
       setFeedbackType("error");
-      setFeedbackMessage("Selecione um arquivo de imagem válido.");
+      setFeedbackMessage(`${limit.label} deve ser JPG, PNG ou WEBP de até ${limit.size}.`);
       event.target.value = "";
       return;
     }
@@ -357,6 +378,7 @@ export default function ProfileEditPage() {
 
       setProfilePhoto(file);
       setProfilePhotoPreview(previewUrl);
+      setRemoveAvatar(false);
     } else {
       if (bannerPreview) {
         URL.revokeObjectURL(bannerPreview);
@@ -364,8 +386,33 @@ export default function ProfileEditPage() {
 
       setBannerImage(file);
       setBannerPreview(previewUrl);
+      setRemoveBanner(false);
     }
 
+    clearFeedback();
+  }
+
+  // Descarta a imagem escolhida e ainda não salva.
+  function clearImageSelection(type) {
+    if (type === "profile") {
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+      setProfilePhoto(null);
+      setProfilePhotoPreview("");
+    } else {
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+      setBannerImage(null);
+      setBannerPreview("");
+    }
+  }
+
+  // Remove a imagem escolhida agora ou, se não houver, marca a salva para remoção.
+  function handleRemoveImage(type) {
+    const hasSelection = type === "profile" ? profilePhoto : bannerImage;
+    clearImageSelection(type);
+    if (!hasSelection) {
+      if (type === "profile") setRemoveAvatar(true);
+      else setRemoveBanner(true);
+    }
     clearFeedback();
   }
 
@@ -567,11 +614,19 @@ export default function ProfileEditPage() {
         linkedin_url: form.linkedin.trim(), bio: form.bio.trim(),
         major: form.course,
         expected_graduation: form.graduation,
-      }, portfolioFile, removeResume, setUploadProgress);
+      }, portfolioFile, removeResume, setUploadProgress,
+        { avatar: profilePhoto, banner: bannerImage },
+        { avatar: removeAvatar, banner: removeBanner });
       setForm(current => ({ ...current, name: saved.name, github: saved.github_url || '',
         linkedin: saved.linkedin_url || '', bio: saved.bio || '',
         course: saved.major || '', graduation: saved.expected_graduation || '' }));
       setSavedResumeUrl(saved.resume_url || null);
+      setSavedAvatarUrl(safeImageUrl(saved.avatar_url));
+      setSavedBannerUrl(safeImageUrl(saved.banner_url));
+      clearImageSelection("profile");
+      clearImageSelection("banner");
+      setRemoveAvatar(false);
+      setRemoveBanner(false);
       setPortfolioFile(null);
       setRemoveResume(false);
       if (portfolioInputRef.current) portfolioInputRef.current.value = '';
@@ -618,41 +673,58 @@ export default function ProfileEditPage() {
                 <div
                   className="profile-edit-banner"
                   style={
-                    bannerPreview
+                    bannerUrlShown
                       ? {
-                          backgroundImage: `url("${bannerPreview}")`,
+                          backgroundImage: `url("${bannerUrlShown}")`,
                         }
                       : undefined
                   }
                 >
-                  <label
-                    className="profile-edit-image-button profile-edit-banner__button"
-                    title="Alterar imagem de capa"
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => handleImageChange(event, "banner")}
-                    />
+                  <div className="profile-edit-banner__button profile-edit-banner__actions">
+                    {bannerUrlShown && (
+                      <button
+                        type="button"
+                        className="profile-edit-image-button"
+                        onClick={() => handleRemoveImage("banner")}
+                      >
+                        <i className="fa-regular fa-trash-can" aria-hidden="true" />
+                        <span>Remover capa</span>
+                      </button>
+                    )}
 
-                    <i className="fa-solid fa-camera" aria-hidden="true" />
+                    <label
+                      className="profile-edit-image-button"
+                      title="Alterar imagem de capa (JPG, PNG ou WEBP, até 5 MB)"
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => handleImageChange(event, "banner")}
+                      />
 
-                    <span>Alterar capa</span>
-                  </label>
+                      <i className="fa-solid fa-camera" aria-hidden="true" />
+
+                      <span>Alterar capa</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="profile-edit-identity__content">
-                  <label className="profile-edit-avatar">
+                  <div className="profile-edit-avatar-column">
+                  <label
+                    className="profile-edit-avatar"
+                    title="Alterar foto de perfil (JPG, PNG ou WEBP, até 3 MB)"
+                  >
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={(event) => handleImageChange(event, "profile")}
                     />
 
-                    {profilePhotoPreview ? (
+                    {avatarUrlShown ? (
                       <img
-                        src={profilePhotoPreview}
-                        alt="Prévia da nova foto de perfil"
+                        src={avatarUrlShown}
+                        alt={profilePhotoPreview ? "Prévia da nova foto de perfil" : "Foto de perfil atual"}
                       />
                     ) : (
                       <span aria-hidden="true">
@@ -664,6 +736,17 @@ export default function ProfileEditPage() {
                       <i className="fa-solid fa-camera" aria-hidden="true" />
                     </span>
                   </label>
+
+                  {avatarUrlShown && (
+                    <button
+                      type="button"
+                      className="profile-edit-avatar-remove"
+                      onClick={() => handleRemoveImage("profile")}
+                    >
+                      Remover foto
+                    </button>
+                  )}
+                  </div>
 
                   <div className="profile-edit-identity__fields">
                     <div className="profile-edit-field">

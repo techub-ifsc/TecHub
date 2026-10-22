@@ -139,20 +139,20 @@ function ProjectForm({ draftId, user }) {
   useEffect(() => {
     if (!draftId) return;
     let cancelled = false;
-    
+
     const fetchDraft = async () => {
       try {
         const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
         const res = await fetch(`${API_URL}/projects/${draftId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         if (!res.ok) throw new Error("Rascunho não encontrado no servidor.");
         const data = await res.json();
-        
+
         if (cancelled) return;
         const draft = data.project;
-        
+
         setTitle(draft.title || "");
         setDescriptionHtml(sanitizeDraftDescription(draft.description || ""));
         setDescriptionText(draft.description || "");
@@ -171,7 +171,7 @@ function ProjectForm({ draftId, user }) {
         if (!cancelled) setIsLoadingDraft(false);
       }
     };
-    
+
     fetchDraft();
     return () => { cancelled = true; };
   }, [draftId, user.id, loadDraftMedia]);
@@ -370,7 +370,7 @@ function ProjectForm({ draftId, user }) {
     if (isSavingDraft || isSubmitting) return;
     setIsSavingDraft(true);
     setFeedbackMessage("");
-    
+
     try {
       const token = localStorage.getItem("techub_token") || localStorage.getItem("token");
       let media = [];
@@ -525,7 +525,7 @@ function ProjectForm({ draftId, user }) {
       setFeedbackType("success");
       setFeedbackMessage("Projeto enviado para análise! Ele ficará público após a aprovação.");
       setTimeout(() => navigate("/meus-rascunhos", { state: { submitted: true } }), 1500);
-      
+
     } catch (err) {
       setFeedbackType("error");
       setFeedbackMessage("Não foi possível conectar ao servidor.");
@@ -549,10 +549,14 @@ function ProjectForm({ draftId, user }) {
     <main className="new-project-page">
       <div className="draft-form-nav">
         {/* NOVO DESIGN DO LINK DO TOPO */}
-        <Link 
-          to="/meus-rascunhos" 
-          className="text-green-600 border border-green-600 px-4 py-2 rounded"
-          style={{ color: '#16a34a', borderColor: '#16a34a', borderStyle: 'solid', borderWidth: '1px', padding: '0.5rem 1rem', borderRadius: '0.25rem', textDecoration: 'none' }}
+        <Link
+          to="/meus-rascunhos"
+          className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-normal border border-[#85CE5A] text-gray-200 bg-[#161616]/40 hover:bg-[#85CE5A]/10 hover:text-white transition-colors"
+          style={{
+            borderColor: '#85CE5A',
+            borderRadius: '9999px',
+            textDecoration: 'none'
+          }}
         >
           Rascunhos
         </Link>
@@ -560,264 +564,260 @@ function ProjectForm({ draftId, user }) {
       <h1 className="new-project-title">{isEditing ? "Editar rascunho" : "Novo projeto"}</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
-        <div className="draft-form-notice">
-          <p>Salve no seu ritmo, mesmo com campos incompletos. Seu projeto só vai para aprovação quando você clicar em “Enviar para a revisão”.</p>
-          {savedAt && <small>Último salvamento: {new Date(savedAt).toLocaleString("pt-BR")}. Novas alterações precisam ser salvas.</small>}
-        </div>
         <fieldset className="draft-form-fields" disabled={isSavingDraft || isSubmitting}>
-        
-        <div className="form-field">
-          <label className="form-label" htmlFor="project-title">
-            Título <span className="required" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="project-title" type="text" maxLength={100} value={title} onChange={handleTitleChange}
-            className={errors.title ? "project-input is-invalid" : "project-input"}
-            placeholder="Digite o título do projeto" aria-invalid={Boolean(errors.title)}
-            aria-describedby={errors.title ? "title-error" : "title-counter"} required
-          />
-          <span id="title-counter" className="input-counter">{title.length}/100</span>
-          {errors.title && <span id="title-error" className="field-error" role="alert">{errors.title}</span>}
-        </div>
 
-        <div className="form-field">
-          <span id="description-label" className="form-label">
-            Descrição do projeto <span className="required" aria-hidden="true">*</span>
-          </span>
-          <div className={errors.description ? "description-container is-invalid" : "description-container"}>
-            <div className="project-toolbar" role="toolbar" aria-label="Formatação da descrição">
-              <div className="project-toolbar-group">
-                <EditorButton label="Negrito" icon="fa-bold" active={activeFormats.bold} onClick={() => applyEditorCommand("bold")} />
-                <EditorButton label="Itálico" icon="fa-italic" active={activeFormats.italic} onClick={() => applyEditorCommand("italic")} />
-                <EditorButton label="Sublinhado" icon="fa-underline" active={activeFormats.underline} onClick={() => applyEditorCommand("underline")} />
-                <EditorButton label="Tachado" icon="fa-strikethrough" active={activeFormats.strikeThrough} onClick={() => applyEditorCommand("strikeThrough")} />
-              </div>
-              <span className="project-toolbar-divider" aria-hidden="true" />
-              <div className="project-toolbar-group">
-                <EditorButton label="Lista com marcadores" icon="fa-list-ul" active={activeFormats.unorderedList} onClick={() => applyEditorCommand("insertUnorderedList")} />
-                <EditorButton label="Lista numerada" icon="fa-list-ol" active={activeFormats.orderedList} onClick={() => applyEditorCommand("insertOrderedList")} />
-              </div>
-              <span className="project-toolbar-divider" aria-hidden="true" />
-              <div className="project-toolbar-group">
-                <EditorButton label="Alinhar à esquerda" icon="fa-align-left" active={activeFormats.justifyLeft} onClick={() => applyEditorCommand("justifyLeft")} />
-                <EditorButton label="Centralizar" icon="fa-align-center" active={activeFormats.justifyCenter} onClick={() => applyEditorCommand("justifyCenter")} />
-                <EditorButton label="Alinhar à direita" icon="fa-align-right" active={activeFormats.justifyRight} onClick={() => applyEditorCommand("justifyRight")} />
-              </div>
-              <span className="project-toolbar-divider" aria-hidden="true" />
-              <div className="project-toolbar-group">
-                <EditorButton label="Remover formatação" icon="fa-eraser" onClick={() => applyEditorCommand("removeFormat")} />
-                <EditorButton label="Desfazer" icon="fa-rotate-left" onClick={() => applyEditorCommand("undo")} />
-                <EditorButton label="Refazer" icon="fa-rotate-right" onClick={() => applyEditorCommand("redo")} />
-              </div>
-            </div>
-
-            <div
-              ref={editorRef} className="description-editor" contentEditable={!isSubmitting && !isSavingDraft}
-              role="textbox" aria-multiline="true" aria-labelledby="description-label"
-              aria-invalid={Boolean(errors.description)} data-placeholder="Descreva seu projeto..."
-              onInput={handleEditorInput} onBeforeInput={handleEditorBeforeInput} onPaste={handleEditorPaste}
-              suppressContentEditableWarning
-            />
-          </div>
-          <span className="description-counter">{descriptionText.length}/{MAX_DESCRIPTION_LENGTH}</span>
-          {errors.description && <span className="field-error" role="alert">{errors.description}</span>}
-        </div>
-
-        <div className="project-classification">
           <div className="form-field">
-            <label className="form-label" htmlFor="project-course">
-              Curso <span className="required" aria-hidden="true">*</span>
+            <label className="form-label" htmlFor="project-title">
+              Título <span className="required" aria-hidden="true">*</span>
             </label>
-            <CustomSelect
-              id="project-course" value={course} onChange={handleCourseChange}
-              invalid={Boolean(errors.course)} ariaDescribedBy={errors.course ? "project-course-error" : undefined}
-              placeholder="Selecione o curso"
-              options={[
-                { value: "", label: "Selecione o curso" },
-                ...Object.keys(COURSE_PHASES).map((courseOption) => ({ value: courseOption, label: courseOption })),
-              ]}
+            <input
+              id="project-title" type="text" maxLength={100} value={title} onChange={handleTitleChange}
+              className={errors.title ? "project-input is-invalid" : "project-input"}
+              placeholder="Digite o título do projeto" aria-invalid={Boolean(errors.title)}
+              aria-describedby={errors.title ? "title-error" : "title-counter"} required
             />
-            {errors.course && <span id="project-course-error" className="field-error" role="alert">{errors.course}</span>}
+            <span id="title-counter" className="input-counter">{title.length}/100</span>
+            {errors.title && <span id="title-error" className="field-error" role="alert">{errors.title}</span>}
           </div>
 
           <div className="form-field">
-            <label className="form-label" htmlFor="project-phase">
-              Fase <span className="required" aria-hidden="true">*</span>
+            <span id="description-label" className="form-label">
+              Descrição do projeto <span className="required" aria-hidden="true">*</span>
+            </span>
+            <div className={errors.description ? "description-container is-invalid" : "description-container"}>
+              <div className="project-toolbar" role="toolbar" aria-label="Formatação da descrição">
+                <div className="project-toolbar-group">
+                  <EditorButton label="Negrito" icon="fa-bold" active={activeFormats.bold} onClick={() => applyEditorCommand("bold")} />
+                  <EditorButton label="Itálico" icon="fa-italic" active={activeFormats.italic} onClick={() => applyEditorCommand("italic")} />
+                  <EditorButton label="Sublinhado" icon="fa-underline" active={activeFormats.underline} onClick={() => applyEditorCommand("underline")} />
+                  <EditorButton label="Tachado" icon="fa-strikethrough" active={activeFormats.strikeThrough} onClick={() => applyEditorCommand("strikeThrough")} />
+                </div>
+                <span className="project-toolbar-divider" aria-hidden="true" />
+                <div className="project-toolbar-group">
+                  <EditorButton label="Lista com marcadores" icon="fa-list-ul" active={activeFormats.unorderedList} onClick={() => applyEditorCommand("insertUnorderedList")} />
+                  <EditorButton label="Lista numerada" icon="fa-list-ol" active={activeFormats.orderedList} onClick={() => applyEditorCommand("insertOrderedList")} />
+                </div>
+                <span className="project-toolbar-divider" aria-hidden="true" />
+                <div className="project-toolbar-group">
+                  <EditorButton label="Alinhar à esquerda" icon="fa-align-left" active={activeFormats.justifyLeft} onClick={() => applyEditorCommand("justifyLeft")} />
+                  <EditorButton label="Centralizar" icon="fa-align-center" active={activeFormats.justifyCenter} onClick={() => applyEditorCommand("justifyCenter")} />
+                  <EditorButton label="Alinhar à direita" icon="fa-align-right" active={activeFormats.justifyRight} onClick={() => applyEditorCommand("justifyRight")} />
+                </div>
+                <span className="project-toolbar-divider" aria-hidden="true" />
+                <div className="project-toolbar-group">
+                  <EditorButton label="Remover formatação" icon="fa-eraser" onClick={() => applyEditorCommand("removeFormat")} />
+                  <EditorButton label="Desfazer" icon="fa-rotate-left" onClick={() => applyEditorCommand("undo")} />
+                  <EditorButton label="Refazer" icon="fa-rotate-right" onClick={() => applyEditorCommand("redo")} />
+                </div>
+              </div>
+
+              <div
+                ref={editorRef} className="description-editor" contentEditable={!isSubmitting && !isSavingDraft}
+                role="textbox" aria-multiline="true" aria-labelledby="description-label"
+                aria-invalid={Boolean(errors.description)} data-placeholder="Descreva seu projeto..."
+                onInput={handleEditorInput} onBeforeInput={handleEditorBeforeInput} onPaste={handleEditorPaste}
+                suppressContentEditableWarning
+              />
+            </div>
+            <span className="description-counter">{descriptionText.length}/{MAX_DESCRIPTION_LENGTH}</span>
+            {errors.description && <span className="field-error" role="alert">{errors.description}</span>}
+          </div>
+
+          <div className="project-classification">
+            <div className="form-field">
+              <label className="form-label" htmlFor="project-course">
+                Curso <span className="required" aria-hidden="true">*</span>
+              </label>
+              <CustomSelect
+                id="project-course" value={course} onChange={handleCourseChange}
+                invalid={Boolean(errors.course)} ariaDescribedBy={errors.course ? "project-course-error" : undefined}
+                placeholder="Selecione o curso"
+                options={[
+                  { value: "", label: "Selecione o curso" },
+                  ...Object.keys(COURSE_PHASES).map((courseOption) => ({ value: courseOption, label: courseOption })),
+                ]}
+              />
+              {errors.course && <span id="project-course-error" className="field-error" role="alert">{errors.course}</span>}
+            </div>
+
+            <div className="form-field">
+              <label className="form-label" htmlFor="project-phase">
+                Fase <span className="required" aria-hidden="true">*</span>
+              </label>
+              <CustomSelect
+                id="project-phase" value={phase} disabled={!course}
+                onChange={(event) => { setPhase(event.target.value); clearFieldError("phase"); }}
+                invalid={Boolean(errors.phase)} ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
+                placeholder={course ? "Selecione a fase" : "Selecione primeiro o curso"}
+                options={[
+                  { value: "", label: course ? "Selecione a fase" : "Selecione primeiro o curso" },
+                  ...phaseOptions.map((phaseOption) => ({ value: phaseOption, label: phaseOption })),
+                ]}
+              />
+              {errors.phase && <span className="field-error" role="alert">{errors.phase}</span>}
+            </div>
+          </div>
+
+          <div className="form-field" ref={tagsContainerRef}>
+            <label className="form-label" htmlFor="technology-input">
+              Tecnologias <span className="required" aria-hidden="true">*</span>
             </label>
-            <CustomSelect
-              id="project-phase" value={phase} disabled={!course}
-              onChange={(event) => { setPhase(event.target.value); clearFieldError("phase"); }}
-              invalid={Boolean(errors.phase)} ariaDescribedBy={errors.phase ? "project-phase-error" : undefined}
-              placeholder={course ? "Selecione a fase" : "Selecione primeiro o curso"}
-              options={[
-                { value: "", label: course ? "Selecione a fase" : "Selecione primeiro o curso" },
-                ...phaseOptions.map((phaseOption) => ({ value: phaseOption, label: phaseOption })),
-              ]}
-            />
-            {errors.phase && <span className="field-error" role="alert">{errors.phase}</span>}
-          </div>
-        </div>
-
-        <div className="form-field" ref={tagsContainerRef}>
-          <label className="form-label" htmlFor="technology-input">
-            Tecnologias <span className="required" aria-hidden="true">*</span>
-          </label>
-          <div className={errors.tags ? "tags-container is-invalid" : "tags-container"}>
-            <div className="tags-search">
-              <i className="fa-solid fa-tag toolbar-icon" aria-hidden="true" />
-              <input
-                id="technology-input" type="text" placeholder="Digite para buscar tecnologias"
-                value={tagInput} onChange={handleTagInputChange} onFocus={() => setTagsOpen(true)}
-                onKeyDown={handleTagKeyDown} className="tags-input" autoComplete="off"
-                role="combobox" aria-expanded={tagsOpen} aria-controls="technology-suggestions" aria-autocomplete="list"
-              />
-            </div>
-            {tagsOpen && (
-              <ul id="technology-suggestions" className="technology-suggestions" role="listbox">
-                {filteredTags.length > 0 ? (
-                  filteredTags.map((technology, index) => (
-                    <li key={technology}>
-                      <button
-                        type="button" className={index === activeTagIndex ? "technology-suggestion is-active" : "technology-suggestion"}
-                        onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(technology)}
-                        role="option" aria-selected={index === activeTagIndex}
-                      >
-                        <span>{technology}</span> <span aria-hidden="true">+</span>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="suggestion-empty">
-                    {tags.length >= MAX_TAGS ? `Limite de ${MAX_TAGS} tecnologias atingido.` : "Nenhuma tecnologia encontrada."}
-                  </li>
-                )}
-              </ul>
-            )}
-            {tags.length > 0 && (
-              <div className="selected-tags">
-                {tags.map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="tag-remove-button" aria-label={`Remover ${tag}`}>×</button>
-                  </span>
-                ))}
+            <div className={errors.tags ? "tags-container is-invalid" : "tags-container"}>
+              <div className="tags-search">
+                <i className="fa-solid fa-tag toolbar-icon" aria-hidden="true" />
+                <input
+                  id="technology-input" type="text" placeholder="Digite para buscar tecnologias"
+                  value={tagInput} onChange={handleTagInputChange} onFocus={() => setTagsOpen(true)}
+                  onKeyDown={handleTagKeyDown} className="tags-input" autoComplete="off"
+                  role="combobox" aria-expanded={tagsOpen} aria-controls="technology-suggestions" aria-autocomplete="list"
+                />
               </div>
-            )}
-          </div>
-          <span className="field-helper">Selecione até {MAX_TAGS} tecnologias da lista.</span>
-          {errors.tags && <span className="field-error" role="alert">{errors.tags}</span>}
-        </div>
-
-        <div className="form-field" ref={collaboratorContainerRef}>
-          <label className="form-label" htmlFor="collaborator-input">Colaboradores</label>
-          <div className="tags-container">
-            <div className="tags-search">
-              <i className="fa-solid fa-users toolbar-icon" aria-hidden="true" />
-              <input
-                id="collaborator-input" type="text" placeholder="Pesquisar colaborador"
-                value={collaboratorInput}
-                onChange={(event) => { setCollaboratorInput(event.target.value); setCollaboratorsOpen(true); }}
-                onFocus={() => setCollaboratorsOpen(true)} className="tags-input" autoComplete="off"
-              />
-            </div>
-            {collaboratorsOpen && collaboratorInput.trim().length >= 2 && (
-              <ul className="collaborator-suggestions">
-                {collaboratorSearchStatus === "searching" ? (
-                  <li className="collaborator-empty">Pesquisando colaboradores...</li>
-                ) : collaboratorSearchStatus === "error" ? (
-                  <li className="collaborator-empty">Não foi possível buscar colaboradores. Tente novamente.</li>
-                ) : collaboratorSuggestions.length > 0 ? (
-                  collaboratorSuggestions.map((person) => (
-                    <li key={person.id}>
-                      <button
-                        type="button" className="collaborator-suggestion" onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => addCollaborator(person)}
-                      >
-                        <CollaboratorAvatar name={person.name} profilePhotoUrl={person.profilePhotoUrl} compact />
-                        {person.name}
-                      </button>
+              {tagsOpen && (
+                <ul id="technology-suggestions" className="technology-suggestions" role="listbox">
+                  {filteredTags.length > 0 ? (
+                    filteredTags.map((technology, index) => (
+                      <li key={technology}>
+                        <button
+                          type="button" className={index === activeTagIndex ? "technology-suggestion is-active" : "technology-suggestion"}
+                          onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(technology)}
+                          role="option" aria-selected={index === activeTagIndex}
+                        >
+                          <span>{technology}</span> <span aria-hidden="true">+</span>
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="suggestion-empty">
+                      {tags.length >= MAX_TAGS ? `Limite de ${MAX_TAGS} tecnologias atingido.` : "Nenhuma tecnologia encontrada."}
                     </li>
-                  ))
-                ) : (
-                  <li className="collaborator-empty">Nenhum colaborador encontrado.</li>
-                )}
-              </ul>
-            )}
-            {collaborators.length > 0 && (
-              <div className="collaborators-grid">
-                {collaborators.map((collaborator) => (
-                  <div key={collaborator.id || collaborator.userId} className="collaborator-card">
-                    <button
-                      type="button" onClick={() => removeCollaborator(collaborator.id || collaborator.userId)}
-                      className="collaborator-remove-button" aria-label={`Remover ${collaborator.name}`}
-                    >×</button>
-                    <CollaboratorAvatar name={collaborator.name} profilePhotoUrl={collaborator.profilePhotoUrl} />
-                    <span className="collaborator-name">{collaborator.name}</span>
-                  </div>
-                ))}
+                  )}
+                </ul>
+              )}
+              {tags.length > 0 && (
+                <div className="selected-tags">
+                  {tags.map((tag) => (
+                    <span key={tag} className="tag">
+                      {tag}
+                      <button type="button" onClick={() => removeTag(tag)} className="tag-remove-button" aria-label={`Remover ${tag}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <span className="field-helper">Selecione até {MAX_TAGS} tecnologias da lista.</span>
+            {errors.tags && <span className="field-error" role="alert">{errors.tags}</span>}
+          </div>
+
+          <div className="form-field" ref={collaboratorContainerRef}>
+            <label className="form-label" htmlFor="collaborator-input">Colaboradores</label>
+            <div className="tags-container">
+              <div className="tags-search">
+                <i className="fa-solid fa-users toolbar-icon" aria-hidden="true" />
+                <input
+                  id="collaborator-input" type="text" placeholder="Pesquisar colaborador"
+                  value={collaboratorInput}
+                  onChange={(event) => { setCollaboratorInput(event.target.value); setCollaboratorsOpen(true); }}
+                  onFocus={() => setCollaboratorsOpen(true)} className="tags-input" autoComplete="off"
+                />
               </div>
-            )}
-          </div>
-          <ul className="collaborator-rules">
-            {COLLABORATOR_RULES.map((rule) => <li key={rule}>{rule}</li>)}
-          </ul>
-        </div>
-
-        <div className="external-links">
-          <div className="form-field">
-            <label className="form-label" htmlFor="github-url">Repositório no GitHub</label>
-            <div className="external-link-field">
-              <GithubIcon />
-              <input
-                id="github-url" type="url" placeholder="https://github.com/usuario/repositorio"
-                value={github} onChange={(event) => { setGithub(event.target.value); clearFieldError("github"); }}
-                className={errors.github ? "project-input is-invalid" : "project-input"}
-                aria-invalid={Boolean(errors.github)}
-              />
+              {collaboratorsOpen && collaboratorInput.trim().length >= 2 && (
+                <ul className="collaborator-suggestions">
+                  {collaboratorSearchStatus === "searching" ? (
+                    <li className="collaborator-empty">Pesquisando colaboradores...</li>
+                  ) : collaboratorSearchStatus === "error" ? (
+                    <li className="collaborator-empty">Não foi possível buscar colaboradores. Tente novamente.</li>
+                  ) : collaboratorSuggestions.length > 0 ? (
+                    collaboratorSuggestions.map((person) => (
+                      <li key={person.id}>
+                        <button
+                          type="button" className="collaborator-suggestion" onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => addCollaborator(person)}
+                        >
+                          <CollaboratorAvatar name={person.name} profilePhotoUrl={person.profilePhotoUrl} compact />
+                          {person.name}
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="collaborator-empty">Nenhum colaborador encontrado.</li>
+                  )}
+                </ul>
+              )}
+              {collaborators.length > 0 && (
+                <div className="collaborators-grid">
+                  {collaborators.map((collaborator) => (
+                    <div key={collaborator.id || collaborator.userId} className="collaborator-card">
+                      <button
+                        type="button" onClick={() => removeCollaborator(collaborator.id || collaborator.userId)}
+                        className="collaborator-remove-button" aria-label={`Remover ${collaborator.name}`}
+                      >×</button>
+                      <CollaboratorAvatar name={collaborator.name} profilePhotoUrl={collaborator.profilePhotoUrl} />
+                      <span className="collaborator-name">{collaborator.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {errors.github && <span className="field-error" role="alert">{errors.github}</span>}
+            <ul className="collaborator-rules">
+              {COLLABORATOR_RULES.map((rule) => <li key={rule}>{rule}</li>)}
+            </ul>
           </div>
 
-          <div className="form-field">
-            <label className="form-label" htmlFor="live-url">Link para demonstração</label>
-            <div className="external-link-field">
-              <ExternalLinkIcon />
-              <input
-                id="live-url" type="url" placeholder="https://meu-projeto.com" value={liveUrl}
-                onChange={(event) => { setLiveUrl(event.target.value); clearFieldError("liveUrl"); }}
-                className={errors.liveUrl ? "project-input is-invalid" : "project-input"}
-                aria-invalid={Boolean(errors.liveUrl)}
-              />
+          <div className="external-links">
+            <div className="form-field">
+              <label className="form-label" htmlFor="github-url">Repositório no GitHub</label>
+              <div className="external-link-field">
+                <GithubIcon />
+                <input
+                  id="github-url" type="url" placeholder="https://github.com/usuario/repositorio"
+                  value={github} onChange={(event) => { setGithub(event.target.value); clearFieldError("github"); }}
+                  className={errors.github ? "project-input is-invalid" : "project-input"}
+                  aria-invalid={Boolean(errors.github)}
+                />
+              </div>
+              {errors.github && <span className="field-error" role="alert">{errors.github}</span>}
             </div>
-            {errors.liveUrl && <span className="field-error" role="alert">{errors.liveUrl}</span>}
+
+            <div className="form-field">
+              <label className="form-label" htmlFor="live-url">Link para demonstração</label>
+              <div className="external-link-field">
+                <ExternalLinkIcon />
+                <input
+                  id="live-url" type="url" placeholder="https://meu-projeto.com" value={liveUrl}
+                  onChange={(event) => { setLiveUrl(event.target.value); clearFieldError("liveUrl"); }}
+                  className={errors.liveUrl ? "project-input is-invalid" : "project-input"}
+                  aria-invalid={Boolean(errors.liveUrl)}
+                />
+              </div>
+              {errors.liveUrl && <span className="field-error" role="alert">{errors.liveUrl}</span>}
+            </div>
           </div>
-        </div>
 
-        <ProjectGallery gallery={gallery} error={errors.files} onInputChange={() => clearFieldError("files")} />
+          <ProjectGallery gallery={gallery} error={errors.files} onInputChange={() => clearFieldError("files")} />
 
-        <fieldset className="status-section">
-          <legend className="form-label">Status</legend>
-          <div className="status-options">
-            {STATUS_OPTIONS.map((option) => {
-              const active = status === option;
-              return (
-                <button
-                  type="button" key={option} onClick={() => setStatus(option)}
-                  className={`status-button ${active ? "active" : ""}`} aria-pressed={active}
-                >
-                  <span className="status-radio">{active && <span className="status-radio-inner" />}</span>
-                  {option}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
+          <fieldset className="status-section">
+            <legend className="form-label">Status</legend>
+            <div className="status-options">
+              {STATUS_OPTIONS.map((option) => {
+                const active = status === option;
+                return (
+                  <button
+                    type="button" key={option} onClick={() => setStatus(option)}
+                    className={`status-button ${active ? "active" : ""}`} aria-pressed={active}
+                  >
+                    <span className="status-radio">{active && <span className="status-radio-inner" />}</span>
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
-        {feedbackMessage && (
-          <p className={`form-feedback ${feedbackType}`} role={feedbackType === "error" ? "alert" : "status"}>
-            {feedbackMessage}
-          </p>
-        )}
+          {feedbackMessage && (
+            <p className={`form-feedback ${feedbackType}`} role={feedbackType === "error" ? "alert" : "status"}>
+              {feedbackMessage}
+            </p>
+          )}
         </fieldset>
 
         <div className="actions">

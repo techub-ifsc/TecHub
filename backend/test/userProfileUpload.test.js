@@ -50,6 +50,7 @@ describe('PUT /users/me com fotos', () => {
   let users;
   let uploads;
   let destroyed;
+  let cacheNotInvalidated;
   let failUploadOf;
   let failUploadWith;
 
@@ -78,6 +79,7 @@ describe('PUT /users/me com fotos', () => {
     });
     mock.method(cloudinary.uploader, 'destroy', async (publicId, options) => {
       destroyed.push({ publicId, resourceType: options.resource_type });
+      if (options.invalidate !== true) cacheNotInvalidated.push(publicId);
       return { result: 'ok' };
     });
 
@@ -100,6 +102,7 @@ describe('PUT /users/me com fotos', () => {
     users = new Map();
     uploads = [];
     destroyed = [];
+    cacheNotInvalidated = [];
     failUploadOf = null;
     failUploadWith = null;
   });
@@ -176,6 +179,7 @@ describe('PUT /users/me com fotos', () => {
     assert.equal(res.status, 200);
     await new Promise((resolve) => setImmediate(resolve));
     assert.deepEqual(destroyed, [{ publicId: 'techub/users/old/avatar_1', resourceType: 'image' }]);
+    assert.deepEqual(cacheNotInvalidated, [], 'a imagem apagada continuaria abrindo pelo cache da CDN');
     assert.notEqual(user.avatar_public_id, 'techub/users/old/avatar_1');
   });
 

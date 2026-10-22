@@ -9,6 +9,7 @@ import { useProjectMedia } from "../hooks/useProjectMedia";
 import { useAuth } from "../context/AuthContext";
 import Spinner from "../components/Spinner";
 import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -132,6 +133,21 @@ function ProjectForm({ draftId, user }) {
     onError: (message) =>
       message ? setErrors((curr) => ({ ...curr, files: message })) : clearFieldError("files"),
   });
+
+  // "Foto" do formulário: comparada com a tirada ao abrir ou salvar para saber se há
+  // alterações não salvas (aviso antes de sair da tela).
+  const formSnapshot = JSON.stringify({
+    title, descriptionText, course, phase, tags, github, liveUrl, status,
+    collaborators: collaborators.map((c) => c.id || c.userId),
+    media: gallery.media.map((m) => m.url || m.videoId || m.id),
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+  const confirmLeave = useUnsavedChangesGuard(savedSnapshot !== null && formSnapshot !== savedSnapshot);
+
+  // A foto de referência é tirada quando o formulário termina de carregar (novo ou rascunho).
+  useEffect(() => {
+    if (!isLoadingDraft && savedSnapshot === null) setSavedSnapshot(formSnapshot);
+  }, [isLoadingDraft, savedSnapshot, formSnapshot]);
 
   const { loadDraftMedia } = gallery;
 
@@ -418,6 +434,7 @@ function ProjectForm({ draftId, user }) {
       setErrors({});
       setFeedbackType("success");
       setFeedbackMessage("Rascunho salvo no servidor! Ele não foi publicado.");
+      setSavedSnapshot(formSnapshot);
       if (!draftId) navigate(`/meus-rascunhos/${data.project.id}/editar`, { replace: true });
     } catch (error) {
       setFeedbackType("error");
@@ -526,6 +543,7 @@ function ProjectForm({ draftId, user }) {
       created = true;
       setFeedbackType("success");
       setFeedbackMessage("Projeto enviado para análise! Ele ficará público após a aprovação.");
+      setSavedSnapshot(formSnapshot);
       setTimeout(() => navigate("/meus-rascunhos", { state: { submitted: true } }), 1500);
 
     } catch (err) {

@@ -7,6 +7,7 @@ import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
 import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -237,6 +238,21 @@ export default function EditProjectPage() {
         ? setErrors((curr) => ({ ...curr, files: message }))
         : clearFieldError("files"),
   });
+
+  // "Foto" do formulário: comparada com a tirada ao abrir ou salvar para saber se há
+  // alterações não salvas (aviso antes de sair da tela).
+  const formSnapshot = JSON.stringify({
+    title, descriptionText, course, phase, tags, github, liveUrl, status,
+    collaborators: collaborators.map((c) => c.id || c.userId),
+    media: gallery.media.map((m) => m.url || m.videoId || m.id),
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+  const confirmLeave = useUnsavedChangesGuard(savedSnapshot !== null && formSnapshot !== savedSnapshot);
+
+  // A foto de referência é tirada quando o projeto termina de carregar.
+  useEffect(() => {
+    if (!isLoading && savedSnapshot === null) setSavedSnapshot(formSnapshot);
+  }, [isLoading, savedSnapshot, formSnapshot]);
 
   // Carrega os dados existentes do projeto
   // Quem está logado vem do AuthContext; a ref evita recarregar o projeto quando ele muda.
@@ -766,6 +782,7 @@ export default function EditProjectPage() {
       }
 
       saved = true;
+      setSavedSnapshot(formSnapshot);
       setFeedbackType("success");
       setFeedbackMessage(
         approvalStatus === "rejected"
@@ -1455,7 +1472,9 @@ export default function EditProjectPage() {
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (confirmLeave()) navigate(-1);
+          }}
         >
           Cancelar e voltar
         </button>

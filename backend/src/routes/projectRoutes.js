@@ -144,6 +144,24 @@ router.get('/mine', authenticate, projectController.listMine);
 // Precisa vir antes de /:id para não interpretar "collaborators" como UUID.
 router.get('/collaborators/search', authenticate, projectController.searchCollaborators);
 
+// =========================================================================
+// NOVAS ROTAS DE RASCUNHO (Migração IndexedDB -> Backend)
+// =========================================================================
+
+// Cria um novo rascunho
+router.post('/draft', authenticate, authorize(ROLES.CREATOR), projectController.createDraft);
+
+// Lista os rascunhos do usuário logado
+router.get('/drafts', authenticate, projectController.listDrafts);
+
+// Atualiza os dados de um rascunho salvo
+router.put('/draft/:id', authenticate, authorize(ROLES.CREATOR), projectController.updateDraft);
+
+// Submete um rascunho para a fila de aprovação oficial
+router.post('/:id/submit', authenticate, authorize(ROLES.CREATOR), projectController.submitDraft);
+
+// =========================================================================
+
 /**
  * @openapi
  * /projects/{id}:

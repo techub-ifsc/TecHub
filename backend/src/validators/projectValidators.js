@@ -7,6 +7,7 @@ const { STATUS } = require('../constants/status');
 const { MEDIA_TYPES, MAX_MEDIA_PER_PROJECT } = require('../constants/media');
 const { isManagedMediaUrl } = require('../services/mediaStorageService');
 const { normalizeYoutubeUrl } = require('../utils/youtube');
+const { sanitizeRichText, richTextToPlain } = require('../utils/richText');
 
 // Cada mídia precisa ter sido enviada ao Cloudinary com assinatura do POST /media/signature ou ser um link do YouTube.
 const mediaItemSchema = z
@@ -59,6 +60,27 @@ const mediaSchema = z
 const NO_HTML_MESSAGE = 'Não use os caracteres < ou >';
 const hasNoHtml = (value) => !/[<>]/.test(value);
 
+// Descrição com formatação: o HTML é limpo (só a formatação do editor sobrevive) e o
+// limite vale para o texto visível, sem contar as marcações.
+const MAX_DESCRIPTION_TEXT = 3000;
+const MAX_DESCRIPTION_HTML = 20000;
+function richDescription({ required }) {
+  return z.string().transform((value, ctx) => {
+    const html = sanitizeRichText(value);
+    const text = richTextToPlain(html);
+    if (required && !text) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A descrição não pode ser vazia' });
+    }
+    if (text.length > MAX_DESCRIPTION_TEXT) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `A descrição deve ter no máximo ${MAX_DESCRIPTION_TEXT} caracteres` });
+    }
+    if (html.length > MAX_DESCRIPTION_HTML) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A descrição tem formatação demais' });
+    }
+    return html;
+  });
+}
+
 // Links externos exibidos na página do projeto: somente http(s), para impedir
 // URLs como "javascript:" que executariam código ao serem clicadas.
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
@@ -71,12 +93,7 @@ const createProjectSchema = z.object({
     .max(100, 'O título deve ter no máximo 100 caracteres')
     .refine(hasNoHtml, NO_HTML_MESSAGE),
 
-  description: z
-    .string({ required_error: 'A descrição é obrigatória' })
-    .trim()
-    .min(1, 'A descrição não pode ser vazia')
-    .max(3000, 'A descrição deve ter no máximo 3000 caracteres')
-    .refine(hasNoHtml, NO_HTML_MESSAGE),
+  description: z.string({ required_error: 'A descrição é obrigatória' }).pipe(richDescription({ required: true })),
 
   major: z
     .enum(Object.values(MAJORS), {
@@ -151,8 +168,7 @@ const updateProjectSchema = createProjectSchema.partial();
 const draftProjectSchema = createProjectSchema.extend({
   title: z.string().trim().max(100, 'O título deve ter no máximo 100 caracteres')
     .refine(hasNoHtml, NO_HTML_MESSAGE).optional().nullable(),
-  description: z.string().trim().max(3000, 'A descrição deve ter no máximo 3000 caracteres')
-    .refine(hasNoHtml, NO_HTML_MESSAGE).optional().nullable(),
+  description: richDescription({ required: false }).optional().nullable(),
   media: z.array(mediaItemSchema)
     .max(MAX_MEDIA_PER_PROJECT, `O limite é de ${MAX_MEDIA_PER_PROJECT} mídias por projeto`)
     .optional(),

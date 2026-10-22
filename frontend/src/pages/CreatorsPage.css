@@ -118,14 +118,16 @@
 
 .creators-page__filter-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
-  align-items: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: flex-end;
   gap: 1rem;
+  width: 100%;
 }
 
 .creators-page__filter-grid label {
   display: flex;
   flex-direction: column;
+  width: 100%;
   gap: 0.4375rem;
 }
 
@@ -143,16 +145,8 @@
   appearance: none;
   background-color: #18191a;
   background-image:
-    linear-gradient(
-      45deg,
-      transparent 50%,
-      #a0a4a8 50%
-    ),
-    linear-gradient(
-      135deg,
-      #a0a4a8 50%,
-      transparent 50%
-    );
+    linear-gradient(45deg, transparent 50%, #a0a4a8 50%),
+    linear-gradient(135deg, #a0a4a8 50%, transparent 50%);
   background-position:
     calc(100% - 17px) 19px,
     calc(100% - 12px) 19px;
@@ -184,8 +178,14 @@
 }
 
 .creators-page__clear {
+  width: 100%;
+  height: 48px;
   min-height: 44px;
   padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   appearance: none;
   background: transparent !important;
   border: 1.5px solid #606469 !important;
@@ -228,6 +228,7 @@
   gap: 1.25rem;
 }
 
+/* Card do Criador */
 .creator-card {
   position: relative;
   min-width: 0;
@@ -261,7 +262,7 @@
 }
 
 .creator-card__cover {
-  height: 92px;
+  height: 104px;
   flex-shrink: 0;
   background:
     linear-gradient(
@@ -273,10 +274,10 @@
 
 .creator-card__avatar {
   position: absolute;
-  top: 54px;
+  top: 62px;
   left: 50%;
-  width: 72px;
-  height: 72px;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
   transform: translateX(-50%);
@@ -284,13 +285,23 @@
   border: 4px solid #18191a;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 800;
   line-height: 1;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.creator-card__photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .creator-card__content {
-  padding: 2.75rem 1rem 1rem;
+  padding: 3.25rem 1rem 1rem;
   display: flex;
   flex-direction: column;
   text-align: center;
@@ -422,6 +433,7 @@
   background: #8ae667 !important;
 }
 
+/* Responsividade */
 @media (max-width: 1100px) {
   .creators-page__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -429,17 +441,18 @@
 }
 
 @media (max-width: 850px) {
+  .creators-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
   .creators-page__filter-grid {
     grid-template-columns: 1fr;
   }
 
   .creators-page__clear {
-    grid-column: 1 / -1;
     width: 100%;
-  }
-
-  .creators-page__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -456,14 +469,6 @@
     padding: 0 1rem 1.5rem;
   }
 
-  .creators-page__filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .creators-page__clear {
-    grid-column: auto;
-  }
-
   .creators-page__result-count {
     text-align: left;
   }
@@ -473,50 +478,16 @@
   }
 
   .creator-card__cover {
-    height: 88px;
+    height: 96px;
   }
 
   .creator-card__avatar {
-    top: 50px;
+    top: 56px;
+    width: 78px;
+    height: 78px;
   }
-}
-/* Foto de perfil no card, recortada em círculo; sem foto, ficam as iniciais. */
-.creator-card__photo {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  border-radius: 50%;
-}
 
-.creators-page__filter-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: flex-end;
-  width: 100%;
-}
-
-/* Garante que os containers dos selects ocupem 100% da sua coluna */
-.creators-page__filter-grid label {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-/* Faz o botão de limpar ter a mesma altura e largura total da coluna */
-.creators-page__clear {
-  width: 100%;
-  height: 48px; /* Ajuste para bater com a altura exata do seu CustomSelect se for diferente */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-/* Responsividade opcional para telas muito estreitas (mobile) */
-@media (max-width: 768px) {
-  .creators-page__filter-grid {
-    grid-template-columns: 1fr;
+  .creator-card__content {
+    padding-top: 3rem;
   }
 }

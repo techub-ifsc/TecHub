@@ -548,17 +548,23 @@ function ProjectForm({ draftId, user }) {
   return (
     <main className="new-project-page">
       <div className="draft-form-nav">
-        {/* NOVO DESIGN DO LINK DO TOPO */}
         <Link
           to="/meus-rascunhos"
-          className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-normal border border-[#85CE5A] text-gray-200 bg-[#161616]/40 hover:bg-[#85CE5A]/10 hover:text-white transition-colors"
           style={{
-            borderColor: '#85CE5A',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '12px 15px',
             borderRadius: '9999px',
-            textDecoration: 'none'
+            backgroundColor: '#252525',
+            border: '1px solid #85CE5A',
+            textDecoration: 'none',
+            fontSize: '13px',
+            lineHeight: '1',
+            boxSizing: 'border-box'
           }}
         >
-          Rascunhos
+          <span style={{ color: '#d4d4d4', fontSize: '15px', fontWeight: 500 }}>Rascunhos</span>
         </Link>
       </div>
       <h1 className="new-project-title">{isEditing ? "Editar rascunho" : "Novo projeto"}</h1>

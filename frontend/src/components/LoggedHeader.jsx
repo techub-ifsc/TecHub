@@ -172,13 +172,6 @@ export default function LoggedHeader() {
                 Validação
               </NavLink>
             )}
-            
-            {/* Rascunhos ocultados para o Admin, visível apenas para Criadores */}
-            {isCreator && (
-              <NavLink to="/meus-rascunhos" className={({ isActive }) => `site-header__nav-item${isActive ? " is-active" : ""}`} onClick={closeMenu}>
-                Meus rascunhos
-              </NavLink>
-            )}
           </nav>
 
           <div className="site-header__actions logged-header__actions">

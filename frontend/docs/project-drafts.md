@@ -4,7 +4,6 @@ Branch: `feat/gerencia-de-rascunhos-de-projeto`.
 
 ## O que foi implementado
 
-- `Meus rascunhos` na navegação e na rota `/meus-rascunhos`.
 - Listagem dos rascunhos do usuário conectado, busca por título/descrição/tecnologia e ordenação por atualização ou título.
 - Estado vazio, tratamento de falha de armazenamento, exclusão com confirmação e layout responsivo.
 - Salvar projetos incompletos, inclusive sem título, sem criar registros públicos nem enviar à fila de aprovação.

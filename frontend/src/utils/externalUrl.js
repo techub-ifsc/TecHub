@@ -8,3 +8,14 @@ export function safeExternalUrl(value) {
     return null;
   }
 }
+
+// Imagens vindas da API (foto e capa do perfil): somente https, para não carregar
+// conteúdo por conexão sem criptografia nem esquemas como "javascript:".
+export function safeImageUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}

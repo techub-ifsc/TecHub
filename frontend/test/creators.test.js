@@ -34,3 +34,14 @@ test("iniciais e cor são estáveis", () => {
   assert.equal(getInitials(""), "?");
   assert.equal(getCreatorColor("a1"), getCreatorColor("a1"));
 });
+
+test("usa a foto do autor quando ela é https e ignora as demais", () => {
+  const withPhoto = [
+    { id: "p1", author: { id: "a1", name: "Ana", avatar_url: "javascript:alert(1)" } },
+    { id: "p2", author: { id: "a1", name: "Ana", avatar_url: "https://res.cloudinary.com/x/a.webp" } },
+    { id: "p3", author: { id: "b2", name: "Beto", avatar_url: "http://exemplo.com/b.png" } },
+  ];
+  const [ana, beto] = buildCreatorsFromProjects(withPhoto);
+  assert.equal(ana.avatarUrl, "https://res.cloudinary.com/x/a.webp");
+  assert.equal(beto.avatarUrl, null);
+});

@@ -11,14 +11,14 @@ class User extends Model {
 
   // Retorna uma representação do usuário sem incluir sua senha.
   toSafeJSON() {
-    const { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, expected_graduation, createdAt, updatedAt } = this;
-   return { id, name, email, role, github_url, linkedin_url, resume_url, bio, major, expected_graduation, createdAt, updatedAt };
+    const { id, name, email, role, github_url, linkedin_url, resume_url, avatar_url, banner_url, bio, major, expected_graduation, createdAt, updatedAt } = this;
+   return { id, name, email, role, github_url, linkedin_url, resume_url, avatar_url, banner_url, bio, major, expected_graduation, createdAt, updatedAt };
   }
 
   // Dados que qualquer visitante pode ver no perfil público: sem e-mail, papel ou datas.
   toPublicProfileJSON() {
-    const { id, name, bio, major, expected_graduation, github_url, linkedin_url, resume_url } = this;
-    return { id, name, bio, major, expected_graduation, github_url, linkedin_url, resume_url };
+    const { id, name, bio, major, expected_graduation, github_url, linkedin_url, resume_url, avatar_url, banner_url } = this;
+    return { id, name, bio, major, expected_graduation, github_url, linkedin_url, resume_url, avatar_url, banner_url };
   }
 }
 
@@ -59,6 +59,10 @@ User.init(
     bio: { type: DataTypes.TEXT, allowNull: true },
     major: { type: DataTypes.STRING(100), allowNull: true },
     expected_graduation: { type: DataTypes.STRING(7), allowNull: true },
+    avatar_url: { type: DataTypes.STRING(500), allowNull: true },
+    avatar_public_id: { type: DataTypes.STRING(255), allowNull: true },
+    banner_url: { type: DataTypes.STRING(500), allowNull: true },
+    banner_public_id: { type: DataTypes.STRING(255), allowNull: true },
     // isEmailVerified: {
     //   type: DataTypes.BOOLEAN,
     //   defaultValue: false,

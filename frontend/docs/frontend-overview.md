@@ -108,7 +108,9 @@ O `axiosClient` lê apenas `token`. As outras duas existem porque telas diferent
 - a previsão de término é escolhida na edição entre o semestre atual e os seis anos seguintes, salva como `AAAA/S` (ex.: `2028/1`) e exibida como "1º semestre de 2028";
 - as áreas de interesse são as tecnologias mais usadas nos projetos da pessoa, porque o perfil ainda não guarda tecnologias;
 - o câmpus é fixo (IFSC Câmpus Lages), pois o perfil ainda não guarda esse campo;
-- o avatar mostra as iniciais na cor do criador (`getCreatorColor`); não há foto de perfil;
+- foto de perfil (`avatar_url`) e foto de capa (`banner_url`) vêm do perfil e passam por `safeImageUrl` (somente https); sem foto, o avatar mostra as iniciais na cor do criador (`getCreatorColor`) e a capa fica com o gradiente do tema;
+- a edição envia foto (JPG, PNG ou WEBP, até 3 MB) e capa (até 5 MB) no mesmo `PUT /api/users/me`, com a mesma validação do backend antes do envio, e permite remover cada uma (`remove_avatar` e `remove_banner`). O backend recorta a foto em 500x500 e converte as duas para webp no Cloudinary;
+- o card da listagem de criadores mostra a foto do autor quando ela existe.
 - o que não foi informado aparece como tal ("Nenhuma bio informada.", "Nenhum link informado."), sem valores inventados.
 
 A versão anterior lia a edição salva no navegador (`techub:creator-profile:<id>`) e completava com dados fixos, por isso em outro computador o perfil aparecia com valores de exemplo. Essa leitura foi removida.

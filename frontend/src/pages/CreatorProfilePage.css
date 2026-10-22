@@ -22,32 +22,6 @@
   margin: 0 auto;
 }
 
-.creator-profile-page__back {
-  width: fit-content;
-  margin-bottom: 1.25rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--profile-text-secondary);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.creator-profile-page__back:hover {
-  color: var(--profile-green);
-  transform: translateX(-3px);
-}
-
-.creator-profile-page__back:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
-  outline-offset: 4px;
-  border-radius: 4px;
-}
-
 .creator-profile-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;

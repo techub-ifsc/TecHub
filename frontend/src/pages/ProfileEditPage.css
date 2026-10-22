@@ -1646,3 +1646,30 @@
 .profile-edit-resume-removed button:hover {
   border-color: #f4f5f6;
 }
+
+/* Foto e capa do perfil: botões de remover ao lado dos de trocar. */
+.profile-edit-banner__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.profile-edit-avatar-column {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+
+.profile-edit-avatar-remove {
+  padding: 0.2rem 0.5rem;
+  background: transparent;
+  border: 0;
+  color: #ff9a9a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-edit-avatar-remove:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}

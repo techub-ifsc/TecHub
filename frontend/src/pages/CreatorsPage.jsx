@@ -186,7 +186,11 @@ export default function CreatorsPage() {
                 }}
                 aria-hidden="true"
               >
-                {creator.initials}
+                {creator.avatarUrl ? (
+                  <img src={creator.avatarUrl} alt="" className="creator-card__photo" />
+                ) : (
+                  creator.initials
+                )}
               </div>
 
               <div className="creator-card__content">

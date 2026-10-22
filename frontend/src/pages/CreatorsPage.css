@@ -488,3 +488,35 @@
   object-fit: cover;
   border-radius: 50%;
 }
+
+.creators-page__filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: flex-end;
+  width: 100%;
+}
+
+/* Garante que os containers dos selects ocupem 100% da sua coluna */
+.creators-page__filter-grid label {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Faz o botão de limpar ter a mesma altura e largura total da coluna */
+.creators-page__clear {
+  width: 100%;
+  height: 48px; /* Ajuste para bater com a altura exata do seu CustomSelect se for diferente */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Responsividade opcional para telas muito estreitas (mobile) */
+@media (max-width: 768px) {
+  .creators-page__filter-grid {
+    grid-template-columns: 1fr;
+  }
+}

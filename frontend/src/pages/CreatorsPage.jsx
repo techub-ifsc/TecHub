@@ -21,6 +21,7 @@ export default function CreatorsPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
   const [course, setCourse] = useState("");
+  const [technology, setTechnology] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -44,6 +45,17 @@ export default function CreatorsPage() {
     };
   }, [reloadKey]);
 
+  // Lista única de tecnologias dos criadores
+  const availableTechnologies = useMemo(() => {
+    const techSet = new Set();
+    creators.forEach((creator) => {
+      if (Array.isArray(creator.skills)) {
+        creator.skills.forEach((skill) => techSet.add(skill));
+      }
+    });
+    return Array.from(techSet).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [creators]);
+
   const filteredCreators = useMemo(() => {
     const searchTerm = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -57,22 +69,27 @@ export default function CreatorsPage() {
 
       const matchesCourse = !course || creator.course === course;
 
-      return matchesSearch && matchesCourse;
-    });
-  }, [creators, search, course]);
+      const matchesTechnology =
+        !technology ||
+        (Array.isArray(creator.skills) && creator.skills.includes(technology));
 
+      return matchesSearch && matchesCourse && matchesTechnology;
+    });
+  }, [creators, search, course, technology]);
+
+  // Limpa todos os filtros incluindo a tecnologia
   function clearFilters() {
     setSearch("");
     setCourse("");
+    setTechnology("");
   }
 
-  const hasFilters = Boolean(search || course);
+  const hasFilters = Boolean(search || course || technology);
 
   return (
     <main className="creators-page">
       <section className="creators-page__hero">
         <h1>Encontre criadores</h1>
-
         <p>
           Conheça estudantes, suas habilidades e os projetos desenvolvidos no
           IFSC.
@@ -109,20 +126,33 @@ export default function CreatorsPage() {
         <div className="creators-page__filter-grid">
           <label>
             <span>Curso</span>
-
             <CustomSelect
               id="creator-course-filter"
               value={course}
               onChange={(event) => setCourse(event.target.value)}
               placeholder="Todos os cursos"
               options={[
-                {
-                  value: "",
-                  label: "Todos os cursos",
-                },
+                { value: "", label: "Todos os cursos" },
                 ...COURSES.map((courseOption) => ({
                   value: courseOption,
                   label: courseOption,
+                })),
+              ]}
+            />
+          </label>
+
+          <label>
+            <span>Áreas de interesse</span>
+            <CustomSelect
+              id="creator-tech-filter"
+              value={technology}
+              onChange={(event) => setTechnology(event.target.value)}
+              placeholder="Todas as tecnologias"
+              options={[
+                { value: "", label: "Todas as áreas" },
+                ...availableTechnologies.map((tech) => ({
+                  value: tech,
+                  label: tech,
                 })),
               ]}
             />
@@ -151,11 +181,8 @@ export default function CreatorsPage() {
       ) : error ? (
         <section className="creators-page__empty">
           <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-
           <h2>{error}</h2>
-
           <p>Verifique sua conexão e tente novamente.</p>
-
           <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
             Tentar novamente
           </button>
@@ -172,7 +199,6 @@ export default function CreatorsPage() {
               key={creator.id}
               aria-label={`Abrir perfil de ${creator.name}`}
             >
-              {/* Com foto de capa, ela cobre o fundo colorido. */}
               <div
                 className="creator-card__cover"
                 style={{
@@ -201,9 +227,7 @@ export default function CreatorsPage() {
 
               <div className="creator-card__content">
                 <h2>{creator.name}</h2>
-
                 <p>{creator.course || "Curso não informado"}</p>
-
                 <span className="creator-card__projects">
                   {creator.projectCount}{" "}
                   {creator.projectCount === 1
@@ -234,13 +258,10 @@ export default function CreatorsPage() {
       ) : (
         <section className="creators-page__empty">
           <i className="fa-solid fa-user-group" aria-hidden="true" />
-
           <h2>Nenhum criador encontrado</h2>
-
           {hasFilters ? (
             <>
               <p>Tente alterar a busca ou remover os filtros selecionados.</p>
-
               <button type="button" onClick={clearFilters}>
                 Limpar filtros
               </button>

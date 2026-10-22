@@ -1426,3 +1426,18 @@
   border-radius: 50%;
   font-size: 0.65rem;
 }
+
+/* Linha abaixo do campo: erro à esquerda e contador à direita, colados ao campo. */
+.field-footer {
+  margin-top: -0.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.field-footer .input-counter,
+.field-footer .description-counter {
+  margin-left: auto;
+  flex-shrink: 0;
+}

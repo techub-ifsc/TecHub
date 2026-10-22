@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/apiUrl";
 import ConfirmationModal from "../components/ConfirmationModal";
 import Spinner from "../components/Spinner";
+import { descriptionToPlainText } from "../utils/richText";
 import "./ProjectDraftsPage.css";
 
 function DraftCover({ draft }) {
@@ -71,7 +72,7 @@ export default function ProjectDraftsPage() {
     const query = search.trim().toLocaleLowerCase("pt-BR");
     return drafts.filter((draft) => {
       // Remove tags HTML da descrição para a busca
-      const plainDescription = (draft.description || "").replace(/<[^>]*>?/gm, '');
+      const plainDescription = descriptionToPlainText(draft.description);
       const searchString = [
         draft.title || "Projeto sem título", 
         plainDescription, 
@@ -137,7 +138,7 @@ export default function ProjectDraftsPage() {
             {filtered.length > 0 ? (
               <div className="drafts-page__grid">
                 {filtered.map((draft) => {
-                  const plainDescription = (draft.description || "").replace(/<[^>]*>?/gm, '').trim();
+                  const plainDescription = descriptionToPlainText(draft.description).trim();
                   
                   return (
                     <article className="draft-card" key={draft.id}>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 
 import { API_URL } from "../api/apiUrl";
+import { descriptionToPlainText } from "../utils/richText";
 import "./ProjectsPage.css";
 
 const COURSES = {
@@ -100,7 +101,7 @@ export default function ProjectsPage() {
         const normalized = rawProjects.map((p, index) => ({
           id: p.id,
           title: p.title,
-          description: p.description,
+          description: descriptionToPlainText(p.description),
           author: p.author?.name || "Estudante IFSC",
           course: p.major || "Geral",
           phase: p.semester ? `${p.semester}ª Fase` : "Fase livre",

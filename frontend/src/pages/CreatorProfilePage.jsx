@@ -6,6 +6,7 @@ import { API_URL } from "../api/apiUrl";
 import { fetchAllPublicProjects } from "../api/creators";
 import { fetchPublicProfile } from "../api/userProfile";
 import { byFrequency, findCreator, getCreatorColor, getInitials } from "../utils/creators";
+import { descriptionToPlainText } from "../utils/richText";
 import "./CreatorProfilePage.css";
 
 // Todo o IFSC do Tech Hub é o Câmpus Lages; o perfil ainda não guarda o câmpus.
@@ -169,7 +170,7 @@ export default function CreatorProfilePage() {
             userProjects.push({
               id: p.id,
               title: p.title,
-              description: p.description,
+              description: descriptionToPlainText(p.description),
               tags: Array.isArray(p.technologies) ? p.technologies : [],
               role,
               approvalStatus: p.approvalStatus || p.approval_status || "approved",

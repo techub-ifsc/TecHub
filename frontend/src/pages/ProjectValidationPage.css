@@ -1678,3 +1678,24 @@ a.validation-details__media:hover {
   font-size: 0.7rem;
   font-weight: 700;
 }
+
+/* Descrição formatada na moderação. */
+.validation-details__rich-text {
+  color: inherit;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.validation-details__rich-text ul,
+.validation-details__rich-text ol {
+  margin: 0.4rem 0;
+  padding-left: 1.4rem;
+}
+
+.validation-details__rich-text ul {
+  list-style: disc;
+}
+
+.validation-details__rich-text ol {
+  list-style: decimal;
+}

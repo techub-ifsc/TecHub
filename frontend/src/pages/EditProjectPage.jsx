@@ -5,6 +5,7 @@ import { API_URL } from "../api/apiUrl";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -119,14 +120,6 @@ function isValidUrl(value) {
   }
 }
 
-// A descrição vem da API como texto puro. Ela entra no editor como texto (nunca
-// interpretada como HTML), para que marcação gravada direto na API não execute código.
-function textToEditorHtml(text) {
-  const container = document.createElement("div");
-  container.textContent = text;
-  return container.innerHTML.replace(/\n/g, "<br>");
-}
-
 function validateForm({
   title,
   descriptionText,
@@ -151,8 +144,6 @@ function validateForm({
     errors.description = "Descreva o projeto antes de enviar.";
   } else if (descriptionText.trim().length < 20) {
     errors.description = "A descrição deve possuir pelo menos 20 caracteres.";
-  } else if (/[<>]/.test(descriptionText)) {
-    errors.description = "Não use os caracteres < ou >.";
   }
 
   if (!course) {
@@ -314,9 +305,10 @@ export default function EditProjectPage() {
         setTitle(currentProject.title || "");
 
         const initialDesc = currentProject.description || "";
-        const initialHtml = textToEditorHtml(initialDesc);
+        // A formatação volta para o editor, limpa; descrições antigas (texto puro) também funcionam.
+        const initialHtml = descriptionToSafeHtml(initialDesc);
         setDescriptionHtml(initialHtml);
-        setDescriptionText(initialDesc);
+        setDescriptionText(descriptionToPlainText(initialDesc));
 
         if (editorRef.current) {
           editorRef.current.innerHTML = initialHtml;
@@ -711,7 +703,8 @@ export default function EditProjectPage() {
 
       const payload = {
         title: title.trim(),
-        description: descriptionText.trim(),
+        // HTML do editor, limpo: a API limpa de novo antes de salvar.
+        description: descriptionToSafeHtml(descriptionHtml),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,

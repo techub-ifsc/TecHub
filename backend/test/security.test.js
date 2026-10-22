@@ -414,3 +414,35 @@ describe('perfil público', () => {
     assert.equal((await call('GET', '/users/me', { user: addUser('creator') })).status, 200);
   });
 });
+
+describe('mensagens de erro', () => {
+  const express = require('express');
+  const { errorHandler, ApiError } = require('../src/middlewares/errorHandler');
+
+  async function respostaDe(erro) {
+    const app = express();
+    app.get('/', (req, res, next) => next(erro));
+    app.use(errorHandler);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise((resolve) => server.once('listening', resolve));
+    try {
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/`);
+      return { status: res.status, body: await res.json() };
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  }
+
+  test('erro inesperado não expõe a mensagem interna', async () => {
+    const { status, body } = await respostaDe(new Error('senha do banco: segredo123'));
+    assert.equal(status, 500);
+    assert.equal(body.message, 'Erro interno do servidor.');
+  });
+
+  test('ApiError 5xx mostra a mensagem escrita por nós', async () => {
+    const { status, body } = await respostaDe(new ApiError(503, 'Upload de mídias indisponível no momento.'));
+    assert.equal(status, 503);
+    assert.equal(body.message, 'Upload de mídias indisponível no momento.');
+  });
+});

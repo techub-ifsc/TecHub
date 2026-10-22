@@ -71,7 +71,7 @@
   background:
     radial-gradient(circle at 50% 0%, rgb(68 158 222 / 24%), transparent 56%),
     linear-gradient(145deg, #0a192f 0%, #0f2d4f 48%, #0f4c81 100%);
-  border-bottom: 1px solid #294259;
+  border-bottom: 1px solid var(--profile-border);
 }
 
 .creator-profile-page .creator-profile-hero__edit {

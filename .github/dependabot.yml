@@ -12,6 +12,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # A partir da 2.18 a sanitize-html exige Node 22.12+ e derruba a API no deploy.
+      - dependency-name: "sanitize-html"
+        versions: [">=2.18.0"]
     groups:
       backend:
         update-types: ["minor", "patch"]

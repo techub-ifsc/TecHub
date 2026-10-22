@@ -15,8 +15,7 @@ const ROLE_LABELS = {
 export default function LoggedHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [logoutConfirmationOpen, setLogoutConfirmationOpen] =
-    useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
   const accountMenuRef = useRef(null);
 
   const { user, logout } = useAuth();
@@ -25,8 +24,7 @@ export default function LoggedHeader() {
   const isCreator = user?.role === "creator";
   const isAdmin = user?.role === "super_admin";
 
-  const userInitial =
-    user?.name?.trim().charAt(0).toUpperCase() || "U";
+  const userInitial = user?.name?.trim().charAt(0).toUpperCase() || "U";
 
   function closeMenu() {
     setMenuOpen(false);
@@ -174,7 +172,9 @@ export default function LoggedHeader() {
                 Validação
               </NavLink>
             )}
-            {(isCreator || isAdmin) && (
+            
+            {/* Rascunhos ocultados para o Admin, visível apenas para Criadores */}
+            {isCreator && (
               <NavLink to="/meus-rascunhos" className={({ isActive }) => `site-header__nav-item${isActive ? " is-active" : ""}`} onClick={closeMenu}>
                 Meus rascunhos
               </NavLink>
@@ -284,7 +284,7 @@ export default function LoggedHeader() {
           </div>
         </div>
       </div>
-    <ConfirmationModal
+      <ConfirmationModal
         open={logoutConfirmationOpen}
         tone="danger"
         title="Sair da conta?"
@@ -297,6 +297,6 @@ export default function LoggedHeader() {
           handleLogout();
         }}
       />
-      </header>
+    </header>
   );
 }

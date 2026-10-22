@@ -172,10 +172,16 @@ export default function CreatorsPage() {
               key={creator.id}
               aria-label={`Abrir perfil de ${creator.name}`}
             >
+              {/* Com foto de capa, ela cobre o fundo colorido. */}
               <div
                 className="creator-card__cover"
                 style={{
                   "--creator-color": creator.color,
+                  ...(creator.bannerUrl && {
+                    backgroundImage: `url("${creator.bannerUrl}")`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }),
                 }}
               />
 

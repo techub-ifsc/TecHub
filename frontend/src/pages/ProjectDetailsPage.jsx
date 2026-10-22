@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { API_URL } from "../api/apiUrl";
 import { safeExternalUrl } from "../utils/externalUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
 import "./ProjectDetailsPage.css";
 
 const LONG_DESCRIPTION_LENGTH = 400;
@@ -147,9 +148,9 @@ export default function ProjectDetailsPage() {
   const demoUrl = safeExternalUrl(project.liveURL);
   const githubUrl = safeExternalUrl(project.githubURL);
   const updatedAt = formatUpdatedAt(project.updatedAt);
-  const description = project.description || "";
-  const paragraphs = description.split(/\n+/).filter((text) => text.trim());
-  const isLongDescription = description.length > LONG_DESCRIPTION_LENGTH;
+  // Formatação do editor, limpa antes de exibir (a API também limpa ao salvar).
+  const descriptionHtml = descriptionToSafeHtml(project.description);
+  const isLongDescription = descriptionToPlainText(project.description).length > LONG_DESCRIPTION_LENGTH;
   const technologies = project.technologies || [];
   const collaborators = project.collaborators || [];
   const isRejected = project.approvalStatus === "rejected";
@@ -390,9 +391,10 @@ export default function ProjectDetailsPage() {
                   expanded || !isLongDescription ? " is-expanded" : ""
                 }`}
               >
-                {paragraphs.map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
+                <div
+                  className="project-details-description__content"
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                />
               </div>
 
               {isLongDescription && (

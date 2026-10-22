@@ -123,6 +123,7 @@ export default function LoggedHeader() {
 
             <NavLink
               to="/projetos"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${
                   isActive ? " is-active" : ""
@@ -135,6 +136,7 @@ export default function LoggedHeader() {
 
             <NavLink
               to="/criadores"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${
                   isActive ? " is-active" : ""

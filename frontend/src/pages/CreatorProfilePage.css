@@ -74,17 +74,6 @@
   border-bottom: 1px solid #294259;
 }
 
-.creator-profile-hero__cover::after {
-  content: "</>";
-  position: absolute;
-  top: 1rem;
-  left: 1.25rem;
-  color: rgb(255 255 255 / 14%);
-  font-family: monospace;
-  font-size: 3rem;
-  font-weight: 800;
-}
-
 .creator-profile-page .creator-profile-hero__edit {
   position: absolute;
   top: 1rem;
@@ -810,4 +799,9 @@ button.creator-profile-projects__create:hover {
   margin: 0;
   color: #9ca1a7;
   font-size: 0.88rem;
+}
+
+/* Textos longos sem espaço quebram dentro do card em vez de vazar. */
+.creator-profile-project__content > p {
+  overflow-wrap: anywhere;
 }

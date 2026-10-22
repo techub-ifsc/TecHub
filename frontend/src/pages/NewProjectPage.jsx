@@ -8,6 +8,7 @@ import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
 import { useAuth } from "../context/AuthContext";
 import Spinner from "../components/Spinner";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -64,7 +65,6 @@ function validateForm({ title, descriptionText, course, phase, tags, github, liv
 
   if (!descriptionText.trim()) errors.description = "Descreva o projeto antes de enviar.";
   else if (descriptionText.trim().length < 20) errors.description = "A descrição deve possuir pelo menos 20 caracteres.";
-  else if (/[<>]/.test(descriptionText)) errors.description = "Não use os caracteres < ou >.";
 
   if (!course) errors.course = "Selecione o curso relacionado ao projeto.";
   if (!phase) errors.phase = "Selecione a fase relacionada ao projeto.";
@@ -154,8 +154,8 @@ function ProjectForm({ draftId, user }) {
         const draft = data.project;
 
         setTitle(draft.title || "");
-        setDescriptionHtml(sanitizeDraftDescription(draft.description || ""));
-        setDescriptionText(draft.description || "");
+        setDescriptionHtml(descriptionToSafeHtml(draft.description));
+        setDescriptionText(descriptionToPlainText(draft.description));
         setCourse(draft.major || "");
         setPhase(draft.semester ? `${draft.semester}ª Fase` : "");
         setTags(draft.technologies || []);
@@ -178,7 +178,7 @@ function ProjectForm({ draftId, user }) {
 
   useEffect(() => {
     if (!isLoadingDraft && draftId && editorRef.current) {
-      editorRef.current.innerHTML = sanitizeDraftDescription(descriptionHtml);
+      editorRef.current.innerHTML = descriptionToSafeHtml(descriptionHtml);
     }
   }, [isLoadingDraft, draftId, descriptionHtml]);
 
@@ -386,7 +386,8 @@ function ProjectForm({ draftId, user }) {
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
       const payload = {
         title: title.trim(),
-        description: descriptionText.trim(),
+        // HTML do editor, limpo: a API limpa de novo antes de salvar.
+        description: descriptionToSafeHtml(descriptionHtml),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
@@ -472,7 +473,8 @@ function ProjectForm({ draftId, user }) {
       const semesterNumber = phase ? parseInt(phase.replace(/\D/g, ""), 10) : 0;
       const payload = {
         title: title.trim(),
-        description: descriptionText.trim(),
+        // HTML do editor, limpo: a API limpa de novo antes de salvar.
+        description: descriptionToSafeHtml(descriptionHtml),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
@@ -574,7 +576,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field">
             <label className="form-label" htmlFor="project-title">
-              Título <span className="required" aria-hidden="true">*</span>
+              Título{errors.title && <span className="required" aria-hidden="true">*</span>}
             </label>
             <input
               id="project-title" type="text" maxLength={100} value={title} onChange={handleTitleChange}
@@ -588,7 +590,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field">
             <span id="description-label" className="form-label">
-              Descrição do projeto <span className="required" aria-hidden="true">*</span>
+              Descrição do projeto{errors.description && <span className="required" aria-hidden="true">*</span>}
             </span>
             <div className={errors.description ? "description-container is-invalid" : "description-container"}>
               <div className="project-toolbar" role="toolbar" aria-label="Formatação da descrição">
@@ -632,7 +634,7 @@ function ProjectForm({ draftId, user }) {
           <div className="project-classification">
             <div className="form-field">
               <label className="form-label" htmlFor="project-course">
-                Curso <span className="required" aria-hidden="true">*</span>
+                Curso{errors.course && <span className="required" aria-hidden="true">*</span>}
               </label>
               <CustomSelect
                 id="project-course" value={course} onChange={handleCourseChange}
@@ -648,7 +650,7 @@ function ProjectForm({ draftId, user }) {
 
             <div className="form-field">
               <label className="form-label" htmlFor="project-phase">
-                Fase <span className="required" aria-hidden="true">*</span>
+                Fase{errors.phase && <span className="required" aria-hidden="true">*</span>}
               </label>
               <CustomSelect
                 id="project-phase" value={phase} disabled={!course}
@@ -666,7 +668,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field" ref={tagsContainerRef}>
             <label className="form-label" htmlFor="technology-input">
-              Tecnologias <span className="required" aria-hidden="true">*</span>
+              Tecnologias{errors.tags && <span className="required" aria-hidden="true">*</span>}
             </label>
             <div className={errors.tags ? "tags-container is-invalid" : "tags-container"}>
               <div className="tags-search">
@@ -837,21 +839,6 @@ function ProjectForm({ draftId, user }) {
       </form>
     </main>
   );
-}
-
-function sanitizeDraftDescription(html) {
-  const container = new DOMParser().parseFromString(html, "text/html").body;
-  const allowed = new Set(["B", "STRONG", "I", "EM", "U", "S", "STRIKE", "P", "DIV", "BR", "UL", "OL", "LI", "SPAN"]);
-  for (const element of [...container.querySelectorAll("*")].reverse()) {
-    if (!allowed.has(element.tagName)) {
-      element.replaceWith(document.createTextNode(element.textContent));
-      continue;
-    }
-    const alignment = element.style.textAlign;
-    for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
-    if (["left", "center", "right"].includes(alignment)) element.style.textAlign = alignment;
-  }
-  return container.innerHTML;
 }
 
 function EditorButton({ label, icon, onClick, active }) {

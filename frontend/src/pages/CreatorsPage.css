@@ -271,17 +271,6 @@
     );
 }
 
-.creator-card__cover::after {
-  content: "</>";
-  display: block;
-  padding: 0.8rem 1rem;
-  color: rgb(255 255 255 / 18%);
-  font-family: monospace;
-  font-size: 2.25rem;
-  font-weight: 800;
-  text-align: right;
-}
-
 .creator-card__avatar {
   position: absolute;
   top: 54px;

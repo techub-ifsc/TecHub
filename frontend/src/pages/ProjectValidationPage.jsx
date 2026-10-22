@@ -11,6 +11,7 @@ import { getSlaStatus } from "../utils/moderationSla";
 import { getYoutubeVideoId } from "../utils/youtube";
 
 import "./ProjectValidationPage.css";
+import { descriptionToSafeHtml } from "../utils/richText";
 
 const STATUS_LABELS = {
   pending: "Pendente",
@@ -457,7 +458,11 @@ export default function ProjectValidationPage() {
 
                 <div className="validation-details__section">
                   <h3>Descrição do projeto</h3>
-                  <p>{selectedProject.description}</p>
+                  {/* Mesma formatação que o público verá, limpa antes de exibir. */}
+                  <div
+                    className="validation-details__rich-text"
+                    dangerouslySetInnerHTML={{ __html: descriptionToSafeHtml(selectedProject.description) }}
+                  />
                 </div>
 
                 <div className="validation-details__metadata">

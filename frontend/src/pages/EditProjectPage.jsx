@@ -5,6 +5,7 @@ import { API_URL } from "../api/apiUrl";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -119,14 +120,6 @@ function isValidUrl(value) {
   }
 }
 
-// A descrição vem da API como texto puro. Ela entra no editor como texto (nunca
-// interpretada como HTML), para que marcação gravada direto na API não execute código.
-function textToEditorHtml(text) {
-  const container = document.createElement("div");
-  container.textContent = text;
-  return container.innerHTML.replace(/\n/g, "<br>");
-}
-
 function validateForm({
   title,
   descriptionText,
@@ -151,8 +144,6 @@ function validateForm({
     errors.description = "Descreva o projeto antes de enviar.";
   } else if (descriptionText.trim().length < 20) {
     errors.description = "A descrição deve possuir pelo menos 20 caracteres.";
-  } else if (/[<>]/.test(descriptionText)) {
-    errors.description = "Não use os caracteres < ou >.";
   }
 
   if (!course) {
@@ -314,9 +305,10 @@ export default function EditProjectPage() {
         setTitle(currentProject.title || "");
 
         const initialDesc = currentProject.description || "";
-        const initialHtml = textToEditorHtml(initialDesc);
+        // A formatação volta para o editor, limpa; descrições antigas (texto puro) também funcionam.
+        const initialHtml = descriptionToSafeHtml(initialDesc);
         setDescriptionHtml(initialHtml);
-        setDescriptionText(initialDesc);
+        setDescriptionText(descriptionToPlainText(initialDesc));
 
         if (editorRef.current) {
           editorRef.current.innerHTML = initialHtml;
@@ -711,7 +703,8 @@ export default function EditProjectPage() {
 
       const payload = {
         title: title.trim(),
-        description: descriptionText.trim(),
+        // HTML do editor, limpo: a API limpa de novo antes de salvar.
+        description: descriptionToSafeHtml(descriptionHtml),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
@@ -924,9 +917,7 @@ export default function EditProjectPage() {
         <div className="form-field">
           <label className="form-label" htmlFor="project-title">
             Título
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.title && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <input
@@ -958,9 +949,7 @@ export default function EditProjectPage() {
         <div className="form-field">
           <span id="description-label" className="form-label">
             Descrição do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.description && <span className="required" aria-hidden="true">*</span>}
           </span>
 
           <div
@@ -1094,9 +1083,7 @@ export default function EditProjectPage() {
           <div className="form-field">
             <label className="form-label" htmlFor="project-course">
               Curso
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.course && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -1127,9 +1114,7 @@ export default function EditProjectPage() {
           <div className="form-field">
             <label className="form-label" htmlFor="project-phase">
               Fase
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.phase && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -1167,9 +1152,7 @@ export default function EditProjectPage() {
         <div className="form-field" ref={tagsContainerRef}>
           <label className="form-label" htmlFor="technology-input">
             Tecnologias
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.tags && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <div

@@ -16,9 +16,14 @@ Esta entrega reúne as correções da revisão de segurança de outubro de 2026,
 
 ## Textos do projeto
 
-`projectValidators.js` recusa os caracteres `<` e `>` em `title`, `description`, `technologies` e `contribution`, com a mensagem "Não use os caracteres < ou >". O frontend envia a descrição como texto, então o uso normal não é afetado.
+`projectValidators.js` recusa os caracteres `<` e `>` em `title`, `technologies` e `contribution`, com a mensagem "Não use os caracteres < ou >".
 
-No frontend, `EditProjectPage.jsx` carrega a descrição no editor com `textToEditorHtml`, que converte o texto em HTML escapado: o conteúdo vindo da API nunca é interpretado como marcação. `NewProjectPage.jsx` monta o rascunho com `DOMParser`, que não carrega imagens nem dispara eventos. As duas telas também avisam sobre `<` e `>` antes de enviar.
+A descrição aceita formatação (negrito, itálico, sublinhado, tachado, listas e alinhamento). Ela é limpa em duas camadas, com a mesma lista do que é permitido:
+
+- **API** (`src/utils/richText.js`, biblioteca `sanitize-html`): antes de salvar, mantém só `p`, `div`, `br`, `b`, `strong`, `i`, `em`, `u`, `s`, `strike`, `ul`, `ol`, `li` e `span`; do atributo `style`, só `text-align`. Imagens, links, `script`, `iframe` e atributos como `onerror` são removidos. O limite de 3000 caracteres vale para o texto visível; o HTML tem teto de 20000.
+- **Tela** (`frontend/src/utils/richText.js`, biblioteca DOMPurify): a descrição é limpa de novo antes de ir para o editor ou de ser exibida nos detalhes e na moderação. Descrições antigas, em texto puro, são escapadas e têm as quebras de linha convertidas. Cards e prévias mostram só o texto.
+
+Os rascunhos (`POST /projects/draft` e `PUT /projects/draft/:id`) passam por `draftProjectSchema`: tudo é opcional, mas o que vier segue as mesmas regras, e `approvalStatus`, `ownerId`, parecer e datas enviados pelo cliente são descartados. Só um rascunho pode ser enviado para análise.
 
 ## Moderação
 

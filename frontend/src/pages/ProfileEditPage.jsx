@@ -8,6 +8,7 @@ import { safeImageUrl } from "../utils/externalUrl";
 import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
+import { descriptionToPlainText } from "../utils/richText";
 
 const INITIAL_BIO = "";
 
@@ -151,7 +152,7 @@ function toProfileProject(project, userId) {
   return {
     id: project.id,
     title: project.title,
-    description: project.description || "",
+    description: descriptionToPlainText(project.description),
     status: project.status || "Sem status",
     technologies: Array.isArray(project.technologies) ? project.technologies : [],
     isOwner: project.ownerId === userId,

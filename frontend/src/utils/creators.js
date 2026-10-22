@@ -34,19 +34,23 @@ export function buildCreatorsFromProjects(projects = []) {
   projects.forEach((project) => {
     const author = project?.author;
     if (!author?.id || !author.name) return;
-    if (!byAuthor.has(author.id)) byAuthor.set(author.id, { id: author.id, name: author.name, avatarUrl: null, projects: [] });
+    if (!byAuthor.has(author.id)) byAuthor.set(author.id, { id: author.id, name: author.name, avatarUrl: null, bannerUrl: null, projects: [] });
     const entry = byAuthor.get(author.id);
     if (!entry.avatarUrl && typeof author.avatar_url === "string" && author.avatar_url.startsWith("https://")) {
       entry.avatarUrl = author.avatar_url;
+    }
+    if (!entry.bannerUrl && typeof author.banner_url === "string" && author.banner_url.startsWith("https://")) {
+      entry.bannerUrl = author.banner_url;
     }
     byAuthor.get(author.id).projects.push(project);
   });
 
   return [...byAuthor.values()]
-    .map(({ id, name, avatarUrl, projects: authored }) => ({
+    .map(({ id, name, avatarUrl, bannerUrl, projects: authored }) => ({
       id,
       name,
       avatarUrl,
+      bannerUrl,
       initials: getInitials(name),
       color: getCreatorColor(id),
       course: byFrequency(authored.map((project) => project.major))[0] || "",

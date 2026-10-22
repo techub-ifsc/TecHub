@@ -584,8 +584,11 @@ function ProjectForm({ draftId, user }) {
               placeholder="Digite o título do projeto" aria-invalid={Boolean(errors.title)}
               aria-describedby={errors.title ? "title-error" : "title-counter"} required
             />
-            <span id="title-counter" className="input-counter">{title.length}/100</span>
-            {errors.title && <span id="title-error" className="field-error" role="alert">{errors.title}</span>}
+            {/* Erro e contador na mesma linha, logo abaixo do campo. */}
+            <div className="field-footer">
+              {errors.title && <span id="title-error" className="field-error" role="alert">{errors.title}</span>}
+              <span id="title-counter" className="input-counter">{title.length}/100</span>
+            </div>
           </div>
 
           <div className="form-field">
@@ -627,8 +630,10 @@ function ProjectForm({ draftId, user }) {
                 suppressContentEditableWarning
               />
             </div>
-            <span className="description-counter">{descriptionText.length}/{MAX_DESCRIPTION_LENGTH}</span>
-            {errors.description && <span className="field-error" role="alert">{errors.description}</span>}
+            <div className="field-footer">
+              {errors.description && <span className="field-error" role="alert">{errors.description}</span>}
+              <span className="description-counter">{descriptionText.length}/{MAX_DESCRIPTION_LENGTH}</span>
+            </div>
           </div>
 
           <div className="project-classification">

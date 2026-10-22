@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { safeExternalUrl, safeImageUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
 import { fetchAllPublicProjects } from "../api/creators";
 import { fetchPublicProfile } from "../api/userProfile";
 import { byFrequency, findCreator, getCreatorColor, getInitials } from "../utils/creators";
@@ -30,15 +31,9 @@ export default function CreatorProfilePage() {
   // Estado para controlar a visibilidade da bolinha de notificação de reprovados
   const [hasSeenRejected, setHasSeenRejected] = useState(false);
 
-  // Recupera o usuário autenticado do localStorage
-  const loggedUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("techub_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  // Quem está logado vem do AuthContext, que se atualiza no login e no logout.
+  // (A cópia no localStorage podia estar ausente logo após o login.)
+  const { user: loggedUser } = useAuth();
 
   const isOwner = loggedUser?.id === id;
 

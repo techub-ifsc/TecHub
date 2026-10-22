@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
 import { safeExternalUrl } from "../utils/externalUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
 import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
@@ -37,15 +38,9 @@ export default function ProjectDetailsPage() {
   const [expanded, setExpanded] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(null);
 
-  // Recupera o usuário logado do localStorage para validar autoria/colaboração
-  const loggedUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("techub_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  // Quem está logado vem do AuthContext, que se atualiza no login e no logout.
+  // (A cópia no localStorage podia estar ausente logo após o login.)
+  const { user: loggedUser } = useAuth();
 
   useEffect(() => {
     async function loadProject() {

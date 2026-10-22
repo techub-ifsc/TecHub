@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
@@ -238,6 +239,11 @@ export default function EditProjectPage() {
   });
 
   // Carrega os dados existentes do projeto
+  // Quem está logado vem do AuthContext; a ref evita recarregar o projeto quando ele muda.
+  const { user: loggedUser } = useAuth();
+  const loggedUserRef = useRef(loggedUser);
+  loggedUserRef.current = loggedUser;
+
   useEffect(() => {
     async function loadProjectDetails() {
       try {
@@ -269,14 +275,7 @@ export default function EditProjectPage() {
           return;
         }
 
-        let storedUser = null;
-        try {
-          storedUser = JSON.parse(
-            localStorage.getItem("techub_user") || "null"
-          );
-        } catch {
-          storedUser = null;
-        }
+        const storedUser = loggedUserRef.current;
 
         const projectOwnerId =
           currentProject.ownerId || currentProject.owner_id;
@@ -935,15 +934,17 @@ export default function EditProjectPage() {
             required
           />
 
-          <span id="title-counter" className="input-counter">
-            {title.length}/100
-          </span>
-
-          {errors.title && (
-            <span id="title-error" className="field-error" role="alert">
-              {errors.title}
+          {/* Erro e contador na mesma linha, logo abaixo do campo. */}
+          <div className="field-footer">
+            {errors.title && (
+              <span id="title-error" className="field-error" role="alert">
+                {errors.title}
+              </span>
+            )}
+            <span id="title-counter" className="input-counter">
+              {title.length}/100
             </span>
-          )}
+          </div>
         </div>
 
         <div className="form-field">
@@ -1068,15 +1069,16 @@ export default function EditProjectPage() {
             />
           </div>
 
-          <span className="description-counter">
-            {descriptionText.length}/{MAX_DESCRIPTION_LENGTH}
-          </span>
-
-          {errors.description && (
-            <span className="field-error" role="alert">
-              {errors.description}
+          <div className="field-footer">
+            {errors.description && (
+              <span className="field-error" role="alert">
+                {errors.description}
+              </span>
+            )}
+            <span className="description-counter">
+              {descriptionText.length}/{MAX_DESCRIPTION_LENGTH}
             </span>
-          )}
+          </div>
         </div>
 
         <div className="project-classification">

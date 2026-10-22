@@ -45,3 +45,12 @@ test("usa a foto do autor quando ela é https e ignora as demais", () => {
   assert.equal(ana.avatarUrl, "https://res.cloudinary.com/x/a.webp");
   assert.equal(beto.avatarUrl, null);
 });
+
+test("usa a capa do autor quando ela é https", () => {
+  const [ana] = buildCreatorsFromProjects([
+    { id: "p1", author: { id: "a1", name: "Ana", banner_url: "https://res.cloudinary.com/x/b.webp" } },
+  ]);
+  assert.equal(ana.bannerUrl, "https://res.cloudinary.com/x/b.webp");
+  const [beto] = buildCreatorsFromProjects([{ id: "p2", author: { id: "b2", name: "Beto", banner_url: "javascript:alert(1)" } }]);
+  assert.equal(beto.bannerUrl, null);
+});

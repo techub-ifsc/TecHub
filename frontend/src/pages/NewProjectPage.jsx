@@ -574,7 +574,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field">
             <label className="form-label" htmlFor="project-title">
-              Título <span className="required" aria-hidden="true">*</span>
+              Título{errors.title && <span className="required" aria-hidden="true">*</span>}
             </label>
             <input
               id="project-title" type="text" maxLength={100} value={title} onChange={handleTitleChange}
@@ -588,7 +588,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field">
             <span id="description-label" className="form-label">
-              Descrição do projeto <span className="required" aria-hidden="true">*</span>
+              Descrição do projeto{errors.description && <span className="required" aria-hidden="true">*</span>}
             </span>
             <div className={errors.description ? "description-container is-invalid" : "description-container"}>
               <div className="project-toolbar" role="toolbar" aria-label="Formatação da descrição">
@@ -632,7 +632,7 @@ function ProjectForm({ draftId, user }) {
           <div className="project-classification">
             <div className="form-field">
               <label className="form-label" htmlFor="project-course">
-                Curso <span className="required" aria-hidden="true">*</span>
+                Curso{errors.course && <span className="required" aria-hidden="true">*</span>}
               </label>
               <CustomSelect
                 id="project-course" value={course} onChange={handleCourseChange}
@@ -648,7 +648,7 @@ function ProjectForm({ draftId, user }) {
 
             <div className="form-field">
               <label className="form-label" htmlFor="project-phase">
-                Fase <span className="required" aria-hidden="true">*</span>
+                Fase{errors.phase && <span className="required" aria-hidden="true">*</span>}
               </label>
               <CustomSelect
                 id="project-phase" value={phase} disabled={!course}
@@ -666,7 +666,7 @@ function ProjectForm({ draftId, user }) {
 
           <div className="form-field" ref={tagsContainerRef}>
             <label className="form-label" htmlFor="technology-input">
-              Tecnologias <span className="required" aria-hidden="true">*</span>
+              Tecnologias{errors.tags && <span className="required" aria-hidden="true">*</span>}
             </label>
             <div className={errors.tags ? "tags-container is-invalid" : "tags-container"}>
               <div className="tags-search">

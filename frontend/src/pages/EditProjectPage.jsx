@@ -924,9 +924,7 @@ export default function EditProjectPage() {
         <div className="form-field">
           <label className="form-label" htmlFor="project-title">
             Título
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.title && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <input
@@ -958,9 +956,7 @@ export default function EditProjectPage() {
         <div className="form-field">
           <span id="description-label" className="form-label">
             Descrição do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.description && <span className="required" aria-hidden="true">*</span>}
           </span>
 
           <div
@@ -1094,9 +1090,7 @@ export default function EditProjectPage() {
           <div className="form-field">
             <label className="form-label" htmlFor="project-course">
               Curso
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.course && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -1127,9 +1121,7 @@ export default function EditProjectPage() {
           <div className="form-field">
             <label className="form-label" htmlFor="project-phase">
               Fase
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.phase && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -1167,9 +1159,7 @@ export default function EditProjectPage() {
         <div className="form-field" ref={tagsContainerRef}>
           <label className="form-label" htmlFor="technology-input">
             Tecnologias
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.tags && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <div

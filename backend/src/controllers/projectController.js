@@ -16,7 +16,7 @@ const LIST_INCLUDE = [
   {
     model: User,
     as: 'author',
-    attributes: ['id', 'name', 'avatar_url'], // a listagem é pública: sem e-mail
+    attributes: ['id', 'name', 'avatar_url', 'banner_url'], // a listagem é pública: sem e-mail
   },
   {
     model: ProjectTechnology,

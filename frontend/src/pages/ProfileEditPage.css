@@ -202,17 +202,6 @@
   border-bottom: 1px solid #294259;
 }
 
-.profile-edit-banner::after {
-  content: "</>";
-  position: absolute;
-  top: 1rem;
-  left: 1.25rem;
-  color: rgb(255 255 255 / 14%);
-  font-family: monospace;
-  font-size: 3rem;
-  font-weight: 800;
-}
-
 .profile-edit-image-button input,
 .profile-edit-avatar > input,
 .profile-edit-file > input {
@@ -1672,4 +1661,12 @@
 .profile-edit-avatar-remove:hover {
   color: #ffffff;
   text-decoration: underline;
+}
+
+/* Textos longos sem espaço (ex.: "9999...") quebram dentro do card em vez de vazar. */
+.profile-edit-project__content,
+.profile-edit-project__content h3,
+.profile-edit-project__content p {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

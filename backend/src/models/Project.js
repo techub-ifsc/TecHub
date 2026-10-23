@@ -26,10 +26,12 @@ Project.init(
       type: DataTypes.ENUM(Object.values(MAJORS)),
       allowNull: true,
     },
+    // Sem fase escolhida fica null: o banco só aceita fases maiores que zero. O padrão
+    // explícito faz o INSERT gravar null em vez de cair no DEFAULT da coluna.
     semester: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      defaultValue: 0,
+      defaultValue: null,
     },
     githubURL: {
       type: DataTypes.STRING(100),

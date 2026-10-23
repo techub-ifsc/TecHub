@@ -37,9 +37,7 @@ export default function ProjectGallery({ gallery, error, onInputChange }) {
     <div className="form-field">
       <span className="form-label">
         Galeria do projeto
-        <span className="required" aria-hidden="true">
-          *
-        </span>
+        {error && <span className="required" aria-hidden="true">*</span>}
       </span>
 
       <label

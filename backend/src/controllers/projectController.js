@@ -1,6 +1,6 @@
 const { z } = require('zod');
 const { Op } = require('sequelize');
-const { createProjectSchema, updateProjectSchema } = require('../validators/projectValidators');
+const { createProjectSchema, updateProjectSchema, draftProjectSchema } = require('../validators/projectValidators');
 const ProjectTechnology = require('../models/ProjectTechnology');
 const ProjectCollaborator = require('../models/ProjectCollaborator');
 const ProjectMedia = require('../models/ProjectMedia');
@@ -12,12 +12,11 @@ const { APPROVAL_STATUS } = require('../constants/approvalStatus');
 const Project = require('../models/Project');
 const sequelize = require('../config/database');
 
-// Relações carregadas nos cards das listagens (pública e "meus projetos").
 const LIST_INCLUDE = [
   {
     model: User,
     as: 'author',
-    attributes: ['id', 'name', 'email'], // busca só os dados públicos do autor
+    attributes: ['id', 'name', 'avatar_url', 'banner_url'], // a listagem é pública: sem e-mail
   },
   {
     model: ProjectTechnology,
@@ -34,11 +33,19 @@ const LIST_INCLUDE = [
     as: 'media',
     attributes: ['url'],
     where: { isCover: true },
-    required: false, // projetos sem capa (ex.: só vídeo) continuam na lista
+    required: false,
   },
 ];
 
-// Formata o retorno: tecnologias como array de strings e a capa como coverUrl
+const MAX_PAGE_SIZE = 100;
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).catch(1),
+  limit: z.coerce.number().int().min(1).catch(10).transform((value) => Math.min(value, MAX_PAGE_SIZE)),
+  search: z.string().trim().max(100).optional().catch(undefined),
+  major: z.string().optional().catch(undefined),
+  status: z.string().optional().catch(undefined),
+});
+
 function formatListItem(project) {
   const { media, ...json } = project.toJSON();
   return {
@@ -48,21 +55,17 @@ function formatListItem(project) {
   };
 }
 
-// Dono, colaborador ou moderação: quem pode ver um projeto ainda não aprovado
-// e ler o parecer da análise.
 function isProjectInsider(project, user) {
   if (!user) return false;
   if (user.role === ROLES.SUPER_ADMIN || project.ownerId === user.id) return true;
   return (project.collaborators || []).some((item) => item.userId === user.id);
 }
 
-// Lista projetos com paginação, busca, categoria e total de favoritos.
 async function list(req, res, next) {
   try {
-    const { page = 1, limit = 10, search, major, status } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const { page, limit, search, major, status } = listQuerySchema.parse(req.query);
+    const offset = (page - 1) * limit;
 
-    // Somente projetos aprovados pela moderação aparecem publicamente.
     const where = { approvalStatus: APPROVAL_STATUS.APPROVED };
     if (major) where.major = major;
     if (status) where.status = status;
@@ -72,20 +75,20 @@ async function list(req, res, next) {
 
     const { count, rows: projects } = await Project.findAndCountAll({
       where,
-      attributes: { exclude: ['reviewNotes'] }, // parecer da moderação não é público
+      attributes: { exclude: ['reviewNotes'] },
       include: LIST_INCLUDE,
-      limit: Number(limit),
-      offset: Number(offset),
+      limit,
+      offset,
       order: [['created_at', 'DESC']],
-      distinct: true, // Garante que a contagem seja correta mesmo com includes
+      distinct: true,
     });
 
     const formattedProjects = projects.map(formatListItem);
 
     return res.status(200).json({
       total: count,
-      page: Number(page),
-      totalPages: Math.ceil(count / Number(limit)),
+      page,
+      totalPages: Math.ceil(count / limit),
       projects: formattedProjects,
     });
   } catch (err) {
@@ -94,8 +97,6 @@ async function list(req, res, next) {
   }
 }
 
-// Projetos do usuário autenticado (como autor ou colaborador) em qualquer situação,
-// para acompanhar a análise e ler a justificativa de uma rejeição.
 async function listMine(req, res, next) {
   try {
     const userId = req.user.id;
@@ -121,7 +122,6 @@ async function listMine(req, res, next) {
   }
 }
 
-// Busca um projeto por ID com tecnologias, colaboradores e mídias.
 async function getById(req, res, next) {
   try {
     if (!z.string().uuid().safeParse(req.params.id).success) {
@@ -130,12 +130,11 @@ async function getById(req, res, next) {
 
     const project = await Project.findByPk(req.params.id, {
       include: [
-        { model: User, as: 'author', attributes: ['id', 'name'] }, // sem e-mail na página pública
+        { model: User, as: 'author', attributes: ['id', 'name'] },
         { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
         { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
         { model: ProjectMedia, as: 'media', attributes: ['id', 'url', 'mediaType', 'isCover'] },
       ],
-      // A capa vem primeiro; as demais seguem a ordem de cadastro.
       order: [
         [{ model: ProjectMedia, as: 'media' }, 'is_cover', 'DESC'],
         [{ model: ProjectMedia, as: 'media' }, 'created_at', 'ASC'],
@@ -146,7 +145,7 @@ async function getById(req, res, next) {
     }
     const json = project.toJSON();
     const insider = isProjectInsider(json, req.user);
-    // Enquanto não for aprovado, o projeto não existe para o público.
+    
     if (json.approvalStatus !== APPROVAL_STATUS.APPROVED && !insider) {
       throw new ApiError(404, 'Projeto não encontrado.');
     }
@@ -171,43 +170,34 @@ async function getById(req, res, next) {
   }
 }
 
-// Valida e cadastra um novo projeto.
 async function create(req, res, next) {
   const transaction = await sequelize.transaction();
-
   try {
     if (req.body.status === 'Concluido') {
       req.body.status = 'Concluído';
     }
-
     const data = createProjectSchema.parse(req.body);
     const { technologies, collaborators, media = [], ...projectData } = data;
-
     const ownerId = req.user?.id || req.userId;
 
-    // 1. Cria o registro principal do projeto
     const project = await Project.create(
       {
         ...projectData,
         ownerId,
-        // Todo projeto novo entra na fila da moderação antes de ficar público.
         approvalStatus: APPROVAL_STATUS.PENDING,
       },
       { transaction }
     );
 
-    // 2. Insere as tecnologias
     if (Array.isArray(technologies) && technologies.length > 0) {
       const techRecords = technologies.map((techName) => ({
         projectId: project.id,
-        project_id: project.id, // Garante compatibilidade camelCase e snake_case
+        project_id: project.id,
         name: typeof techName === 'string' ? techName.trim() : techName,
       }));
-
       await ProjectTechnology.bulkCreate(techRecords, { transaction });
     }
 
-    // 3. Insere os colaboradores
     if (Array.isArray(collaborators) && collaborators.length > 0) {
       const collaboratorRecords = collaborators.map((item) => {
         const isObject = typeof item === 'object' && item !== null;
@@ -220,11 +210,9 @@ async function create(req, res, next) {
           contribution: isObject ? (item.contribution || null) : null,
         };
       });
-
       await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
     }
 
-    // 4. Insere as mídias (apenas se houver itens no array)
     let mediaRecords = [];
     if (Array.isArray(media) && media.length > 0) {
       const formattedMedia = media.map((item) => ({
@@ -232,13 +220,10 @@ async function create(req, res, next) {
         projectId: project.id,
         project_id: project.id,
       }));
-
       mediaRecords = await ProjectMedia.bulkCreate(formattedMedia, { transaction });
     }
 
-    // 5. Confirma todas as operações
     await transaction.commit();
-
     return res.status(201).json({
       project: {
         ...project.toJSON(),
@@ -254,11 +239,10 @@ async function create(req, res, next) {
     });
   } catch (err) {
     await transaction.rollback();
-    console.error('>>> ERRO DETALHADO NO CREATE PROJECT:', err);
     next(err);
   }
 }
-// Edita o projeto e as relações em uma transação única.
+
 async function update(req, res, next) {
   try {
     const { id } = req.params;
@@ -284,8 +268,7 @@ async function update(req, res, next) {
         throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
       }
 
-      // Editar um projeto rejeitado o reenvia à moderação e reinicia o prazo de análise.
-      if (project.approvalStatus === APPROVAL_STATUS.REJECTED) {
+      if (project.approvalStatus !== APPROVAL_STATUS.PENDING) {
         projectData.approvalStatus = APPROVAL_STATUS.PENDING;
         projectData.submittedAt = new Date();
       }
@@ -313,7 +296,7 @@ async function update(req, res, next) {
           );
         }
       }
-      // Campo ausente preserva a galeria; campo presente é a lista final desejada.
+      
       if (media !== undefined) {
         await ProjectMedia.destroy({ where: { projectId: id }, transaction });
         await ProjectMedia.bulkCreate(
@@ -346,7 +329,6 @@ async function update(req, res, next) {
   }
 }
 
-// Busca contas reais para o seletor de colaboradores.
 async function searchCollaborators(req, res, next) {
   try {
     const query = String(req.query.q || '').trim();
@@ -364,7 +346,6 @@ async function searchCollaborators(req, res, next) {
   }
 }
 
-// Exclusão definitiva nesta primeira entrega; lixeira e restauração são futuras features.
 async function destroy(req, res, next) {
   try {
     const { id } = req.params;
@@ -391,4 +372,161 @@ async function destroy(req, res, next) {
   }
 }
 
-module.exports = { list, listMine, getById, searchCollaborators, create, update, destroy };
+// =========================================================================
+// FUNÇÕES DE GERENCIAMENTO DE RASCUNHOS
+// =========================================================================
+
+async function createDraft(req, res, next) {
+  const transaction = await sequelize.transaction();
+  try {
+    const ownerId = req.user?.id || req.userId;
+    const { technologies, collaborators, media = [], ...projectData } = draftProjectSchema.parse(req.body);
+
+    // Se o título estiver vazio, define um padrão para o banco aceitar
+    if (!projectData.title || projectData.title.trim() === '') {
+      projectData.title = 'Projeto sem título';
+    }
+
+    const project = await Project.create({
+      ...projectData,
+      ownerId,
+      approvalStatus: APPROVAL_STATUS.DRAFT, // Força status como RASCUNHO
+    }, { transaction });
+
+    if (Array.isArray(technologies) && technologies.length > 0) {
+      const techRecords = technologies.map((tech) => ({ projectId: project.id, project_id: project.id, name: tech.trim() }));
+      await ProjectTechnology.bulkCreate(techRecords, { transaction });
+    }
+    if (Array.isArray(collaborators) && collaborators.length > 0) {
+      const colabRecords = collaborators.map((item) => ({
+        projectId: project.id,
+        project_id: project.id,
+        userId: typeof item === 'object' ? item.userId : item,
+        contribution: typeof item === 'object' ? (item.contribution || null) : null,
+      }));
+      await ProjectCollaborator.bulkCreate(colabRecords, { transaction });
+    }
+    if (Array.isArray(media) && media.length > 0) {
+      const mediaRecords = media.map((item) => ({ ...item, projectId: project.id, project_id: project.id }));
+      await ProjectMedia.bulkCreate(mediaRecords, { transaction });
+    }
+    
+    await transaction.commit();
+    return res.status(201).json({ message: 'Rascunho salvo', project });
+  } catch (err) {
+    await transaction.rollback();
+    next(err);
+  }
+}
+
+async function listDrafts(req, res, next) {
+  try {
+    const userId = req.user?.id || req.userId;
+    const projects = await Project.findAll({
+      where: { ownerId: userId, approvalStatus: APPROVAL_STATUS.DRAFT },
+      include: LIST_INCLUDE,
+      order: [['created_at', 'DESC']],
+    });
+    return res.status(200).json({ projects: projects.map(formatListItem) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateDraft(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || req.userId;
+    const result = await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Rascunho não encontrado.');
+      if (project.ownerId !== userId) throw new ApiError(403, 'Apenas o dono pode editar este rascunho.');
+      if (project.approvalStatus !== APPROVAL_STATUS.DRAFT) throw new ApiError(400, 'Este projeto não é mais um rascunho.');
+
+      const { technologies, collaborators, media, ...projectData } = draftProjectSchema.parse(req.body);
+      if (!projectData.title || projectData.title.trim() === '') {
+        projectData.title = 'Projeto sem título';
+      }
+
+      await project.update(projectData, { transaction });
+
+      if (technologies !== undefined) {
+        await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+        if (technologies.length) {
+          await ProjectTechnology.bulkCreate(technologies.map((name) => ({ projectId: id, project_id: id, name: name.trim() })), { transaction });
+        }
+      }
+      if (collaborators !== undefined) {
+        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+        if (collaborators.length) {
+          await ProjectCollaborator.bulkCreate(collaborators.map((item) => ({
+            projectId: id, project_id: id, userId: typeof item === 'string' ? item : item.userId, contribution: typeof item === 'string' ? null : (item.contribution || null),
+          })), { transaction });
+        }
+      }
+      if (media !== undefined) {
+        await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+        await ProjectMedia.bulkCreate(media.map((item) => ({ ...item, projectId: id, project_id: id })), { transaction });
+      }
+      return project;
+    });
+    return res.status(200).json({ message: 'Rascunho atualizado', project: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function submitDraft(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || req.userId;
+    const data = updateProjectSchema.parse(req.body); // Aqui roda a validação rígida final exigida
+    
+    const result = await sequelize.transaction(async (transaction) => {
+      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!project) throw new ApiError(404, 'Rascunho não encontrado.');
+      if (project.ownerId !== userId) throw new ApiError(403, 'Apenas o dono pode submeter este rascunho.');
+      if (project.approvalStatus !== APPROVAL_STATUS.DRAFT) throw new ApiError(400, 'Este projeto não é mais um rascunho.');
+      
+      const { technologies, collaborators, media, ...projectData } = data;
+      projectData.approvalStatus = APPROVAL_STATUS.PENDING; // Muda de Rascunho para Pendente
+      projectData.submittedAt = new Date();
+
+      await project.update(projectData, { transaction });
+      
+      if (technologies !== undefined) {
+        await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+        if (technologies.length) await ProjectTechnology.bulkCreate(technologies.map((name) => ({ projectId: id, project_id: id, name: name.trim() })), { transaction });
+      }
+      if (collaborators !== undefined) {
+        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
+        if (collaborators.length) await ProjectCollaborator.bulkCreate(collaborators.map((item) => ({
+          projectId: id, project_id: id, userId: typeof item === 'string' ? item : item.userId, contribution: typeof item === 'string' ? null : (item.contribution || null),
+        })), { transaction });
+      }
+      if (media !== undefined) {
+        await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+        await ProjectMedia.bulkCreate(media.map((item) => ({ ...item, projectId: id, project_id: id })), { transaction });
+      }
+      return project;
+    });
+    return res.status(200).json({ message: 'Rascunho submetido para moderação.', project: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Atualização das exportações
+module.exports = { 
+  list, 
+  listMine, 
+  getById, 
+  searchCollaborators, 
+  create, 
+  update, 
+  destroy,
+  createDraft,
+  listDrafts,
+  updateDraft,
+  submitDraft 
+};

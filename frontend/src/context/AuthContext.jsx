@@ -88,7 +88,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const updateProfile = useCallback(async (payload) => {
-    const updatedUser = await updateProfileApi(payload);
+    const { user: updatedUser, token } = await updateProfileApi(payload);
+    // Trocar a senha invalida o token anterior; guarda o novo para a sessão continuar.
+    if (token) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("techub_token", token);
+    }
     localStorage.setItem("techub_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
     return updatedUser;

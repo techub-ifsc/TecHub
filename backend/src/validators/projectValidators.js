@@ -7,6 +7,7 @@ const { STATUS } = require('../constants/status');
 const { MEDIA_TYPES, MAX_MEDIA_PER_PROJECT } = require('../constants/media');
 const { isManagedMediaUrl } = require('../services/mediaStorageService');
 const { normalizeYoutubeUrl } = require('../utils/youtube');
+const { sanitizeRichText, richTextToPlain } = require('../utils/richText');
 
 // Cada mídia precisa ter sido enviada ao Cloudinary com assinatura do POST /media/signature ou ser um link do YouTube.
 const mediaItemSchema = z
@@ -54,6 +55,32 @@ const mediaSchema = z
     return items.map((m, index) => ({ ...m, isCover: index === firstImage }));
   });
 
+// Textos do projeto são exibidos como texto puro: recusar < e > impede que HTML
+// gravado direto pela API vire código executado em alguma tela.
+const NO_HTML_MESSAGE = 'Não use os caracteres < ou >';
+const hasNoHtml = (value) => !/[<>]/.test(value);
+
+// Descrição com formatação: o HTML é limpo (só a formatação do editor sobrevive) e o
+// limite vale para o texto visível, sem contar as marcações.
+const MAX_DESCRIPTION_TEXT = 3000;
+const MAX_DESCRIPTION_HTML = 20000;
+function richDescription({ required }) {
+  return z.string().transform((value, ctx) => {
+    const html = sanitizeRichText(value);
+    const text = richTextToPlain(html);
+    if (required && !text) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A descrição não pode ser vazia' });
+    }
+    if (text.length > MAX_DESCRIPTION_TEXT) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `A descrição deve ter no máximo ${MAX_DESCRIPTION_TEXT} caracteres` });
+    }
+    if (html.length > MAX_DESCRIPTION_HTML) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'A descrição tem formatação demais' });
+    }
+    return html;
+  });
+}
+
 // Links externos exibidos na página do projeto: somente http(s), para impedir
 // URLs como "javascript:" que executariam código ao serem clicadas.
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
@@ -63,13 +90,10 @@ const createProjectSchema = z.object({
     .string({ required_error: 'O título é obrigatório' })
     .trim()
     .min(1, 'O título não pode ser vazio')
-    .max(100, 'O título deve ter no máximo 100 caracteres'),
+    .max(100, 'O título deve ter no máximo 100 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE),
 
-  description: z
-    .string({ required_error: 'A descrição é obrigatória' })
-    .trim()
-    .min(1, 'A descrição não pode ser vazia')
-    .max(500, 'A descrição deve ter no máximo 500 caracteres'),
+  description: z.string({ required_error: 'A descrição é obrigatória' }).pipe(richDescription({ required: true })),
 
   major: z
     .enum(Object.values(MAJORS), {
@@ -87,7 +111,7 @@ const createProjectSchema = z.object({
     .default(0),
 
   technologies: z
-    .array(z.string().trim().min(1, 'O nome da tecnologia não pode ser vazio'))
+    .array(z.string().trim().min(1, 'O nome da tecnologia não pode ser vazio').refine(hasNoHtml, NO_HTML_MESSAGE))
     .optional()
     .nullable()
     .default([]),
@@ -98,7 +122,7 @@ const createProjectSchema = z.object({
         // Opção 1: Objeto completo com userId e contribution
         z.object({
           userId: z.string().uuid('ID de usuário inválido'),
-          contribution: z.string().max(100).optional(),
+          contribution: z.string().max(100).refine(hasNoHtml, NO_HTML_MESSAGE).optional(),
         }),
         // Opção 2: Apenas o UUID do usuário diretamente como string
         z.string().uuid('ID de usuário inválido'),
@@ -138,6 +162,18 @@ const createProjectSchema = z.object({
 
 const updateProjectSchema = createProjectSchema.partial();
 
+// Rascunho: tudo opcional e incompleto é aceito, mas o que vier segue as mesmas regras
+// do projeto. Campos fora da lista (approvalStatus, ownerId, reviewNotes, datas) são
+// descartados: o cliente nunca escolhe a situação na moderação nem o dono.
+const draftProjectSchema = createProjectSchema.extend({
+  title: z.string().trim().max(100, 'O título deve ter no máximo 100 caracteres')
+    .refine(hasNoHtml, NO_HTML_MESSAGE).optional().nullable(),
+  description: richDescription({ required: false }).optional().nullable(),
+  media: z.array(mediaItemSchema)
+    .max(MAX_MEDIA_PER_PROJECT, `O limite é de ${MAX_MEDIA_PER_PROJECT} mídias por projeto`)
+    .optional(),
+}).partial();
+
 const MAX_REVIEW_NOTES_LENGTH = 1000;
 const REVIEW_NOTES_REQUIRED = 'Informe a justificativa da rejeição';
 
@@ -163,6 +199,7 @@ const rejectProjectSchema = z.object({
 module.exports = {
   createProjectSchema,
   updateProjectSchema,
+  draftProjectSchema,
   approveProjectSchema,
   rejectProjectSchema,
 };

@@ -20,6 +20,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import ProjectValidationPage from "./pages/ProjectValidationPage";
 import SignUpPage from "./pages/SignUpPage";
 import EditProjectPage from "./pages/EditProjectPage";
+import ProjectDraftsPage from "./pages/ProjectDraftsPage";
 
 export default function App() {
   return (
@@ -39,6 +40,8 @@ export default function App() {
           <Route path="/criadores" element={<CreatorsPage />} />
 
           <Route element={<CreatorRoute />}>
+            <Route path="/meus-rascunhos" element={<ProjectDraftsPage />} />
+            <Route path="/meus-rascunhos/:draftId/editar" element={<NewProjectPage />} />
             <Route
               path="/projeto/novo"
               element={<NewProjectPage />}
@@ -55,11 +58,6 @@ export default function App() {
               element={<ProfileEditPage />}
             />
           </Route>
-
-          <Route
-            path="/criadores/:id/editar"
-            element={<ProfileEditPage />}
-          />
 
           <Route
             path="/criadores/:id"

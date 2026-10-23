@@ -31,8 +31,11 @@ function errorHandler(err, req, res, next) {
     console.error(err);
   }
 
+  // Mensagens de ApiError são escritas por nós e podem ir ao cliente mesmo com status 5xx
+  // (ex.: serviço indisponível). Erros inesperados continuam com a mensagem genérica.
+  const exposeMessage = err instanceof ApiError || status < 500;
   res.status(status).json({
-    message: status >= 500 ? 'Erro interno do servidor.' : err.message,
+    message: exposeMessage ? err.message : 'Erro interno do servidor.',
   });
 }
 

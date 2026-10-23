@@ -652,3 +652,66 @@
   color: #a0a4ab;
   font-size: 0.78rem;
 }
+
+/* Descrição formatada: listas, alinhamento e textos longos sem espaço. */
+.project-details-description.is-expanded {
+  max-height: 20000px;
+}
+
+.project-details-description__content {
+  overflow-wrap: anywhere;
+}
+
+.project-details-description__content ul,
+.project-details-description__content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.project-details-description__content ul {
+  list-style: disc;
+}
+
+.project-details-description__content ol {
+  list-style: decimal;
+}
+
+/* Título e textos longos sem espaço (ex.: "9999...") quebram em vez de passar da tela. */
+.project-details-hero__content {
+  min-width: 0;
+}
+
+.project-details-hero h1,
+.project-details-hero p {
+  overflow-wrap: anywhere;
+}
+
+/* Colaborador e autor levam ao perfil da pessoa. */
+a.project-collaborator {
+  margin: -0.4rem;
+  padding: 0.4rem;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+a.project-collaborator:hover,
+a.project-collaborator:focus-visible {
+  background-color: rgb(255 255 255 / 6%);
+}
+
+a.project-collaborator:hover strong {
+  color: var(--tc-green, #78dc50);
+}
+
+.project-details-author {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.project-details-author:hover {
+  color: var(--tc-green, #78dc50);
+}

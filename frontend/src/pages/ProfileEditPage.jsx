@@ -1,10 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 import ConfirmationModal from "../components/ConfirmationModal";
+import { fetchEditableProfile, saveEditableProfile } from "../api/userProfile";
+import { deleteProject, fetchMyProjects } from "../api/projects";
+import { safeImageUrl } from "../utils/externalUrl";
 import { useAuth } from "../context/AuthContext";
 
 import "./ProfileEditPage.css";
+import { descriptionToPlainText } from "../utils/richText";
 
 const INITIAL_BIO = "";
 
@@ -92,11 +96,6 @@ const COURSE_OPTIONS = [
   "Técnico em Desenvolvimento de Sistemas",
 ];
 
-const COURSE_PHASES = {
-  "Ciência da Computação": 8,
-  "Técnico em Informática para Internet": 4,
-  "Técnico em Desenvolvimento de Sistemas": 3,
-};
 
 const INITIAL_FORM = {
   name: "",
@@ -106,38 +105,60 @@ const INITIAL_FORM = {
   linkedin: "",
   campus: "IFSC Câmpus Lages",
   course: "",
-  phase: "",
+  graduation: "",
 };
 
-const INITIAL_PROFILE_PROJECTS = [
-  {
-    id: 1,
-    title: "Sistema de Monitoramento Ambiental",
-    description:
-      "Plataforma para acompanhar sensores ambientais em tempo real.",
-    status: "Em desenvolvimento",
-    technologies: ["React", "Node.js", "PostgreSQL"],
-    updatedAt: "Atualizado hoje",
-  },
-  {
-    id: 2,
-    title: "Biblioteca Digital IFSC",
-    description:
-      "Aplicação para organizar e disponibilizar materiais acadêmicos.",
-    status: "Em design",
-    technologies: ["React", "Express", "Sequelize"],
-    updatedAt: "Atualizado ontem",
-  },
-  {
-    id: 3,
-    title: "Controle Inteligente de Laboratórios",
-    description:
-      "Sistema para reservas e acompanhamento dos laboratórios.",
-    status: "Concluído",
-    technologies: ["JavaScript", "Vite", "PostgreSQL"],
-    updatedAt: "Atualizado em 7 de outubro",
-  },
-];
+// Semestres oferecidos na previsão de término: do semestre atual até seis anos depois.
+function graduationOptions(now = new Date()) {
+  const options = [];
+  let year = now.getFullYear();
+  let semester = now.getMonth() < 6 ? 1 : 2;
+  for (let i = 0; i < 13; i += 1) {
+    options.push(`${year}/${semester}`);
+    if (semester === 2) year += 1;
+    semester = semester === 1 ? 2 : 1;
+  }
+  return options;
+}
+
+// Mesmas regras do backend para foto (até 3 MB) e capa (até 5 MB).
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_LIMITS = {
+  profile: { bytes: 3 * 1024 * 1024, label: "A foto de perfil", size: "3 MB" },
+  banner: { bytes: 5 * 1024 * 1024, label: "A foto de capa", size: "5 MB" },
+};
+
+const GRADUATION_PATTERN = /^\d{4}\/[12]$/;
+
+// "2027/1" → "1º semestre de 2027"
+function graduationLabel(value) {
+  const [year, semester] = value.split("/");
+  return `${semester}º semestre de ${year}`;
+}
+
+const APPROVAL_LABELS = {
+  pending: "Em análise",
+  approved: "Publicado",
+  rejected: "Reprovado",
+};
+
+// Formato usado nos cards a partir do retorno de GET /projects/mine.
+function toProfileProject(project, userId) {
+  const updatedAt = project.updatedAt ? new Date(project.updatedAt) : null;
+  const updatedLabel = updatedAt && !Number.isNaN(updatedAt.getTime())
+    ? `Atualizado em ${updatedAt.toLocaleDateString("pt-BR")}`
+    : "";
+
+  return {
+    id: project.id,
+    title: project.title,
+    description: descriptionToPlainText(project.description),
+    status: project.status || "Sem status",
+    technologies: Array.isArray(project.technologies) ? project.technologies : [],
+    isOwner: project.ownerId === userId,
+    updatedAt: [APPROVAL_LABELS[project.approvalStatus], updatedLabel].filter(Boolean).join(" · "),
+  };
+}
 
 const PROJECT_STATUS_OPTIONS = [
   "Em design",
@@ -172,7 +193,7 @@ function isValidUrl(value) {
   try {
     const url = new URL(value);
 
-    return url.protocol === "http:" || url.protocol === "https:";
+    return url.protocol === "https:" && !url.username && !url.password;
   } catch {
     return false;
   }
@@ -216,12 +237,22 @@ export default function ProfileEditPage() {
   const [bannerImage, setBannerImage] = useState(null);
   const [bannerPreview, setBannerPreview] = useState("");
 
+  // Imagens já salvas no perfil e pedidos de remoção ainda não salvos.
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState(null);
+  const [savedBannerUrl, setSavedBannerUrl] = useState(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [removeBanner, setRemoveBanner] = useState(false);
+
   const [portfolioFile, setPortfolioFile] = useState(null);
+  const [savedResumeUrl, setSavedResumeUrl] = useState(null);
+  const [removeResume, setRemoveResume] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const portfolioInputRef = useRef(null);
 
-  const [profileProjects, setProfileProjects] = useState(
-    INITIAL_PROFILE_PROJECTS,
-  );
+  const [profileProjects, setProfileProjects] = useState([]);
+  const [projectsStatus, setProjectsStatus] = useState("loading");
+  const [deletingProject, setDeletingProject] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [projectEditForm, setProjectEditForm] = useState({
     title: "",
@@ -234,6 +265,49 @@ export default function ProfileEditPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackType, setFeedbackType] = useState("");
 
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return () => { active = false; };
+    fetchEditableProfile().then(data => {
+      if (!active) return;
+      setForm(current => ({ ...current,
+        name: data.name || '',
+        bio: data.bio || '',
+        github: data.github_url || '',
+        linkedin: data.linkedin_url || '',
+        course: data.major || '',
+        graduation: data.expected_graduation || '',
+      }));
+      setSavedResumeUrl(data.resume_url || null);
+      setSavedAvatarUrl(safeImageUrl(data.avatar_url));
+      setSavedBannerUrl(safeImageUrl(data.banner_url));
+    }).catch(error => {
+      if (!active) return;
+      setFeedbackType('error');
+      setFeedbackMessage(error.response?.data?.message || 'Não foi possível carregar o perfil do servidor.');
+    });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  // Projetos reais da pessoa (como autor ou colaborador).
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) return () => { active = false; };
+    setProjectsStatus("loading");
+    fetchMyProjects()
+      .then((projects) => {
+        if (!active) return;
+        setProfileProjects(projects.map((project) => toProfileProject(project, user.id)));
+        setProjectsStatus("ready");
+      })
+      .catch(() => active && setProjectsStatus("error"));
+    return () => { active = false; };
+  }, [user?.id]);
+
+  // Imagem exibida: a escolhida agora; se não houver, a salva (a menos que vá ser removida).
+  const avatarUrlShown = profilePhotoPreview || (!removeAvatar && savedAvatarUrl) || "";
+  const bannerUrlShown = bannerPreview || (!removeBanner && savedBannerUrl) || "";
+
   const profileInitials =
     form.name
       .trim()
@@ -244,15 +318,6 @@ export default function ProfileEditPage() {
       .join("")
       .toUpperCase() || "U";
 
-  const phaseOptions = form.course
-    ? [
-        ...Array.from(
-          { length: COURSE_PHASES[form.course] || 0 },
-          (_, index) => `${index + 1}ª fase`,
-        ),
-        "Curso concluído",
-      ]
-    : [];
 
   const filteredTechnologies = useMemo(() => {
     const search = interestInput.trim().toLowerCase();
@@ -280,7 +345,6 @@ export default function ProfileEditPage() {
     setForm((currentForm) => ({
       ...currentForm,
       [name]: name === "slug" ? normalizeSlug(value) : value,
-      ...(name === "course" ? { phase: "" } : {}),
     }));
 
     setErrors((currentErrors) => ({
@@ -298,9 +362,10 @@ export default function ProfileEditPage() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    const limit = IMAGE_LIMITS[type];
+    if (!IMAGE_TYPES.includes(file.type) || file.size > limit.bytes) {
       setFeedbackType("error");
-      setFeedbackMessage("Selecione um arquivo de imagem válido.");
+      setFeedbackMessage(`${limit.label} deve ser JPG, PNG ou WEBP de até ${limit.size}.`);
       event.target.value = "";
       return;
     }
@@ -314,6 +379,7 @@ export default function ProfileEditPage() {
 
       setProfilePhoto(file);
       setProfilePhotoPreview(previewUrl);
+      setRemoveAvatar(false);
     } else {
       if (bannerPreview) {
         URL.revokeObjectURL(bannerPreview);
@@ -321,8 +387,33 @@ export default function ProfileEditPage() {
 
       setBannerImage(file);
       setBannerPreview(previewUrl);
+      setRemoveBanner(false);
     }
 
+    clearFeedback();
+  }
+
+  // Descarta a imagem escolhida e ainda não salva.
+  function clearImageSelection(type) {
+    if (type === "profile") {
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview);
+      setProfilePhoto(null);
+      setProfilePhotoPreview("");
+    } else {
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+      setBannerImage(null);
+      setBannerPreview("");
+    }
+  }
+
+  // Remove a imagem escolhida agora ou, se não houver, marca a salva para remoção.
+  function handleRemoveImage(type) {
+    const hasSelection = type === "profile" ? profilePhoto : bannerImage;
+    clearImageSelection(type);
+    if (!hasSelection) {
+      if (type === "profile") setRemoveAvatar(true);
+      else setRemoveBanner(true);
+    }
     clearFeedback();
   }
 
@@ -392,7 +483,7 @@ export default function ProfileEditPage() {
 
     if (!form.name.trim()) {
       validationErrors.name = "Informe o nome do criador.";
-    } else if (form.name.trim().length < 3) {
+    } else if (form.name.trim().length < 3 || form.name.trim().length > 100) {
       validationErrors.name =
         "O nome deve possuir pelo menos 3 caracteres.";
     }
@@ -412,14 +503,11 @@ export default function ProfileEditPage() {
         "Informe uma URL válida para o LinkedIn.";
     }
 
-    if (!form.course) {
-      validationErrors.course = "Selecione o curso.";
-    }
-
-    if (!form.phase) {
-      validationErrors.phase =
-        "Selecione a fase ou informe que o curso foi concluído.";
-    }
+    if (form.bio.length > 500) validationErrors.bio = 'A bio deve ter até 500 caracteres.';
+    const limits = { 'Ciência da Computação': 8, 'Técnico em Informática para Internet': 4, 'Técnico em Desenvolvimento de Sistemas': 4 };
+    if (form.course && !Object.prototype.hasOwnProperty.call(limits, form.course)) validationErrors.course = 'Selecione um curso válido.';
+    if (form.graduation && !GRADUATION_PATTERN.test(form.graduation)) validationErrors.graduation = 'Selecione uma previsão de término válida.';
+    if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > 5 * 1024 * 1024 || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 5 MB.';
 
     return validationErrors;
   }
@@ -484,81 +572,74 @@ export default function ProfileEditPage() {
     clearFeedback();
   }
 
-  function confirmProjectDeletion() {
-    if (!projectToDelete) {
+  async function confirmProjectDeletion() {
+    if (!projectToDelete || deletingProject) {
       return;
     }
 
-    setProfileProjects((currentProjects) =>
-      currentProjects.filter(
-        (project) => project.id !== projectToDelete.id,
-      ),
-    );
-
-    setProjectToDelete(null);
-    setEditingProjectId(null);
-    setFeedbackType("success");
-    setFeedbackMessage("Projeto excluído com sucesso.");
-  }
-  function handleSubmit(event) {
-    event.preventDefault();
-
-    const validationErrors = validateForm();
-
-    setErrors(validationErrors);
-
-    if (Object.keys(validationErrors).length > 0) {
+    setDeletingProject(true);
+    try {
+      await deleteProject(projectToDelete.id);
+      setProfileProjects((currentProjects) =>
+        currentProjects.filter(
+          (project) => project.id !== projectToDelete.id,
+        ),
+      );
+      setEditingProjectId(null);
+      setFeedbackType("success");
+      setFeedbackMessage("Projeto excluído com sucesso.");
+    } catch (error) {
       setFeedbackType("error");
-      setFeedbackMessage("Revise os campos destacados antes de salvar.");
-
-      window.setTimeout(() => {
-        document.querySelector(".profile-edit-error")?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 0);
-
+      setFeedbackMessage(error.response?.data?.message || "Não foi possível excluir o projeto.");
+    } finally {
+      setDeletingProject(false);
+      setProjectToDelete(null);
+    }
+  }
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (saving) return;
+    const validationErrors = validateForm();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length) {
+      setFeedbackType('error');
+      setFeedbackMessage('Revise os campos destacados antes de salvar.');
       return;
     }
-
-    const profileData = {
-      ...form,
-      name: form.name.trim(),
-      slug: form.slug.trim(),
-      bio: form.bio.trim(),
-      github: form.github.trim(),
-      linkedin: form.linkedin.trim(),
-      campus: form.campus.trim(),
-      interests,
-      profilePhoto,
-      bannerImage,
-      portfolioFile,
-    };
-
-    localStorage.setItem(
-      profileStorageKey,
-      JSON.stringify({
-        form: {
-          name: profileData.name,
-          slug: profileData.slug,
-          bio: profileData.bio,
-          github: profileData.github,
-          linkedin: profileData.linkedin,
-          campus: profileData.campus,
-          course: profileData.course,
-          phase: profileData.phase,
-        },
-        interests,
-        savedAt: new Date().toISOString(),
-      }),
-    );
-
-    console.log("Perfil pronto para atualização:", profileData);
-
-    setFeedbackType("success");
-    setFeedbackMessage(
-      "Perfil validado com sucesso! A integração com o backend será realizada em uma próxima etapa.",
-    );
+    setSaving(true);
+    setUploadProgress(0);
+    clearFeedback();
+    try {
+      const saved = await saveEditableProfile({
+        name: form.name.trim(), github_url: form.github.trim(),
+        linkedin_url: form.linkedin.trim(), bio: form.bio.trim(),
+        major: form.course,
+        expected_graduation: form.graduation,
+      }, portfolioFile, removeResume, setUploadProgress,
+        { avatar: profilePhoto, banner: bannerImage },
+        { avatar: removeAvatar, banner: removeBanner });
+      setForm(current => ({ ...current, name: saved.name, github: saved.github_url || '',
+        linkedin: saved.linkedin_url || '', bio: saved.bio || '',
+        course: saved.major || '', graduation: saved.expected_graduation || '' }));
+      setSavedResumeUrl(saved.resume_url || null);
+      setSavedAvatarUrl(safeImageUrl(saved.avatar_url));
+      setSavedBannerUrl(safeImageUrl(saved.banner_url));
+      clearImageSelection("profile");
+      clearImageSelection("banner");
+      setRemoveAvatar(false);
+      setRemoveBanner(false);
+      setPortfolioFile(null);
+      setRemoveResume(false);
+      if (portfolioInputRef.current) portfolioInputRef.current.value = '';
+      setFeedbackType('success');
+      setFeedbackMessage('Perfil atualizado com sucesso!');
+    } catch (error) {
+      setFeedbackType('error');
+      setFeedbackMessage(error.response?.data?.errors?.[0]?.message || error.response?.data?.message || 'Falha ao salvar o perfil. Verifique a conexão com a API.');
+    } finally {
+      setSaving(false);
+      setUploadProgress(null);
+    }
   }
 
   function handleCancel() {
@@ -593,41 +674,58 @@ export default function ProfileEditPage() {
                 <div
                   className="profile-edit-banner"
                   style={
-                    bannerPreview
+                    bannerUrlShown
                       ? {
-                          backgroundImage: `url("${bannerPreview}")`,
+                          backgroundImage: `url("${bannerUrlShown}")`,
                         }
                       : undefined
                   }
                 >
-                  <label
-                    className="profile-edit-image-button profile-edit-banner__button"
-                    title="Alterar imagem de capa"
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => handleImageChange(event, "banner")}
-                    />
+                  <div className="profile-edit-banner__button profile-edit-banner__actions">
+                    {bannerUrlShown && (
+                      <button
+                        type="button"
+                        className="profile-edit-image-button"
+                        onClick={() => handleRemoveImage("banner")}
+                      >
+                        <i className="fa-regular fa-trash-can" aria-hidden="true" />
+                        <span>Remover capa</span>
+                      </button>
+                    )}
 
-                    <i className="fa-solid fa-camera" aria-hidden="true" />
+                    <label
+                      className="profile-edit-image-button"
+                      title="Alterar imagem de capa (JPG, PNG ou WEBP, até 5 MB)"
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => handleImageChange(event, "banner")}
+                      />
 
-                    <span>Alterar capa</span>
-                  </label>
+                      <i className="fa-solid fa-camera" aria-hidden="true" />
+
+                      <span>Alterar capa</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="profile-edit-identity__content">
-                  <label className="profile-edit-avatar">
+                  <div className="profile-edit-avatar-column">
+                  <label
+                    className="profile-edit-avatar"
+                    title="Alterar foto de perfil (JPG, PNG ou WEBP, até 3 MB)"
+                  >
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={(event) => handleImageChange(event, "profile")}
                     />
 
-                    {profilePhotoPreview ? (
+                    {avatarUrlShown ? (
                       <img
-                        src={profilePhotoPreview}
-                        alt="Prévia da nova foto de perfil"
+                        src={avatarUrlShown}
+                        alt={profilePhotoPreview ? "Prévia da nova foto de perfil" : "Foto de perfil atual"}
                       />
                     ) : (
                       <span aria-hidden="true">
@@ -639,6 +737,17 @@ export default function ProfileEditPage() {
                       <i className="fa-solid fa-camera" aria-hidden="true" />
                     </span>
                   </label>
+
+                  {avatarUrlShown && (
+                    <button
+                      type="button"
+                      className="profile-edit-avatar-remove"
+                      onClick={() => handleRemoveImage("profile")}
+                    >
+                      Remover foto
+                    </button>
+                  )}
+                  </div>
 
                   <div className="profile-edit-identity__fields">
                     <div className="profile-edit-field">
@@ -655,7 +764,7 @@ export default function ProfileEditPage() {
                         onChange={handleChange}
                         className={errors.name ? "is-invalid" : ""}
                         aria-invalid={Boolean(errors.name)}
-                        maxLength={80}
+                        maxLength={100}
                       />
 
                       {errors.name && (
@@ -910,12 +1019,16 @@ export default function ProfileEditPage() {
                         <input
                           ref={portfolioInputRef}
                           type="file"
-                          accept=".pdf,.doc,.docx,.zip"
-                          onChange={(event) =>
-                            setPortfolioFile(
-                              event.target.files?.[0] || null,
-                            )
-                          }
+                          accept=".pdf,application/pdf"
+                          onChange={(event) => {
+                            const f = event.target.files?.[0] || null;
+                            if (f && (f.type !== 'application/pdf' || !f.size || f.size > 5 * 1024 * 1024)) {
+                              setFeedbackType('error'); setFeedbackMessage('Selecione um arquivo PDF de até 5 MB.');
+                              event.target.value = ''; return;
+                            }
+                            setPortfolioFile(f);
+                            if (f) setRemoveResume(false);
+                          }}
                         />
 
                         <i
@@ -963,6 +1076,43 @@ export default function ProfileEditPage() {
                           </button>
                         </div>
                       )}
+                      {savedResumeUrl && !removeResume && (
+                        <div className="profile-edit-portfolio-file">
+                          <i className="fa-solid fa-file-pdf" aria-hidden="true" />
+
+                          <div>
+                            <strong>Currículo atual</strong>
+                            <a
+                              className="profile-edit-resume-link"
+                              href={savedResumeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                            >
+                              Baixar PDF
+                            </a>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setRemoveResume(true)}
+                            aria-label="Remover currículo"
+                            title="Remover currículo"
+                          >
+                            <i className="fa-regular fa-trash-can" aria-hidden="true" />
+                          </button>
+                        </div>
+                      )}
+                      {removeResume && (
+                        <div className="profile-edit-resume-removed" role="status">
+                          <span>O currículo será removido ao salvar.</span>
+                          <button type="button" onClick={() => setRemoveResume(false)}>
+                            Desfazer
+                          </button>
+                        </div>
+                      )}
+                      {errors.resume && <span role="alert" className="profile-edit-error">{errors.resume}</span>}
+                      {saving && portfolioFile && <p role="status">Enviando: {uploadProgress ?? 0}%</p>}
                     </div>
                   </div>
                 </div>
@@ -1021,40 +1171,34 @@ export default function ProfileEditPage() {
                   </div>
 
                   <div className="profile-edit-field">
-                    <label htmlFor="profile-phase">
-                      Fase
-                      <span aria-hidden="true">*</span>
+                    <label htmlFor="profile-graduation">
+                      Previsão de término
                     </label>
 
                     <CustomSelect
-                      id="profile-phase"
-                      name="phase"
-                      value={form.phase}
+                      id="profile-graduation"
+                      name="graduation"
+                      value={form.graduation}
                       onChange={handleChange}
-                      disabled={!form.course}
-                      invalid={Boolean(errors.phase)}
-                      placeholder={
-                        form.course
-                          ? "Selecione a fase"
-                          : "Selecione primeiro o curso"
-                      }
+                      invalid={Boolean(errors.graduation)}
+                      placeholder="Selecione o semestre"
                       options={[
-                        {
-                          value: "",
-                          label: form.course
-                            ? "Selecione a fase"
-                            : "Selecione primeiro o curso",
-                        },
-                        ...phaseOptions.map((phase) => ({
-                          value: phase,
-                          label: phase,
-                        })),
-                      ]}
+                        { value: "", label: "Não informar" },
+                        // Mantém um valor salvo antes que já tenha saído da lista.
+                        ...(form.graduation && !graduationOptions().includes(form.graduation)
+                          ? [form.graduation]
+                          : []),
+                        ...graduationOptions(),
+                      ].map((option) =>
+                        typeof option === "string"
+                          ? { value: option, label: graduationLabel(option) }
+                          : option,
+                      )}
                     />
 
-                    {errors.phase && (
+                    {errors.graduation && (
                       <span className="profile-edit-error" role="alert">
-                        {errors.phase}
+                        {errors.graduation}
                       </span>
                     )}
                   </div>
@@ -1082,7 +1226,18 @@ export default function ProfileEditPage() {
               </button>
             </div>
 
-            {profileProjects.length > 0 ? (
+            {projectsStatus === "loading" ? (
+              <div className="profile-edit-projects__empty">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+                <strong>Carregando seus projetos...</strong>
+              </div>
+            ) : projectsStatus === "error" ? (
+              <div className="profile-edit-projects__empty" role="alert">
+                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                <strong>Não foi possível carregar seus projetos</strong>
+                <p>Verifique sua conexão e recarregue a página.</p>
+              </div>
+            ) : profileProjects.length > 0 ? (
               <div className="profile-edit-projects__list">
                 {profileProjects.map((project) => {
                   const isEditing = editingProjectId === project.id;
@@ -1226,17 +1381,20 @@ export default function ProfileEditPage() {
                               Editar
                             </button>
 
-                            <button
-                              type="button"
-                              className="profile-edit-project__delete"
-                              onClick={() => setProjectToDelete(project)}
-                            >
-                              <i
-                                className="fa-regular fa-trash-can"
-                                aria-hidden="true"
-                              />
-                              Excluir
-                            </button>
+                            {/* Só o dono exclui; colaboradores apenas editam. */}
+                            {project.isOwner && (
+                              <button
+                                type="button"
+                                className="profile-edit-project__delete"
+                                onClick={() => setProjectToDelete(project)}
+                              >
+                                <i
+                                  className="fa-regular fa-trash-can"
+                                  aria-hidden="true"
+                                />
+                                Excluir
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -1247,7 +1405,7 @@ export default function ProfileEditPage() {
             ) : (
               <div className="profile-edit-projects__empty">
                 <i className="fa-regular fa-folder-open" aria-hidden="true" />
-                <strong>Nenhum projeto publicado</strong>
+                <strong>Nenhum projeto ainda</strong>
                 <p>
                   Crie seu primeiro projeto para exibi-lo no perfil.
                 </p>
@@ -1272,8 +1430,8 @@ export default function ProfileEditPage() {
               Cancelar
             </button>
 
-            <button type="submit" className="profile-edit-actions__save">
-              Salvar alterações
+            <button type="submit" className="profile-edit-actions__save" disabled={saving}>
+              {saving ? "Salvando..." : "Salvar alterações"}
             </button>
           </div>
         </form>
@@ -1284,10 +1442,10 @@ export default function ProfileEditPage() {
         title="Excluir projeto?"
         description={
           projectToDelete
-            ? `O projeto "${projectToDelete.title}" será removido do seu perfil. Esta ação não poderá ser desfeita.`
+            ? `O projeto "${projectToDelete.title}" será excluído permanentemente, para você e para os colaboradores. Esta ação não poderá ser desfeita.`
             : ""
         }
-        confirmLabel="Sim, excluir"
+        confirmLabel={deletingProject ? "Excluindo..." : "Sim, excluir"}
         cancelLabel="Cancelar"
         onCancel={() => setProjectToDelete(null)}
         onConfirm={confirmProjectDeletion}

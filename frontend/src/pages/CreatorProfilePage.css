@@ -22,32 +22,6 @@
   margin: 0 auto;
 }
 
-.creator-profile-page__back {
-  width: fit-content;
-  margin-bottom: 1.25rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--profile-text-secondary);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.creator-profile-page__back:hover {
-  color: var(--profile-green);
-  transform: translateX(-3px);
-}
-
-.creator-profile-page__back:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
-  outline-offset: 4px;
-  border-radius: 4px;
-}
-
 .creator-profile-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 330px;
@@ -97,18 +71,7 @@
   background:
     radial-gradient(circle at 50% 0%, rgb(68 158 222 / 24%), transparent 56%),
     linear-gradient(145deg, #0a192f 0%, #0f2d4f 48%, #0f4c81 100%);
-  border-bottom: 1px solid #294259;
-}
-
-.creator-profile-hero__cover::after {
-  content: "</>";
-  position: absolute;
-  top: 1rem;
-  left: 1.25rem;
-  color: rgb(255 255 255 / 14%);
-  font-family: monospace;
-  font-size: 3rem;
-  font-weight: 800;
+  border-bottom: 1px solid var(--profile-border);
 }
 
 .creator-profile-page .creator-profile-hero__edit {
@@ -163,8 +126,8 @@
 
 .creator-profile-avatar {
   position: relative;
-  width: 144px;
-  height: 144px;
+  width: 190px;
+  height: 190px;
   margin-top: -72px;
   overflow: hidden;
   display: grid;
@@ -790,4 +753,55 @@
   display: block;
   color: #92979f;
   font-size: 0.7rem;
+}
+
+/* Contador e botão "Novo projeto" no cabeçalho da seção de projetos */
+.creator-profile-section-heading__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Mesmo padrão do botão equivalente da página de edição de perfil */
+button.creator-profile-projects__create {
+  min-height: 42px;
+  padding: 0.65rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  color: #111111;
+  background: var(--tc-green);
+  border: 1px solid var(--tc-green);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button.creator-profile-projects__create:hover {
+  background: var(--tc-green-hover);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .creator-profile-section-heading__actions,
+  button.creator-profile-projects__create {
+    width: 100%;
+  }
+}
+
+.creator-profile-card__empty {
+  margin: 0;
+  color: #9ca1a7;
+  font-size: 0.88rem;
+}
+
+/* Textos longos sem espaço quebram dentro do card em vez de vazar. */
+.creator-profile-project__content > p {
+  overflow-wrap: anywhere;
 }

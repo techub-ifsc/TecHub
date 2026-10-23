@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
 import { safeExternalUrl } from "../utils/externalUrl";
 import { getYoutubeVideoId } from "../utils/youtube";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
 import "./ProjectDetailsPage.css";
 
 const LONG_DESCRIPTION_LENGTH = 400;
@@ -36,6 +38,10 @@ export default function ProjectDetailsPage() {
   const [expanded, setExpanded] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(null);
 
+  // Quem está logado vem do AuthContext, que se atualiza no login e no logout.
+  // (A cópia no localStorage podia estar ausente logo após o login.)
+  const { user: loggedUser } = useAuth();
+
   useEffect(() => {
     async function loadProject() {
       try {
@@ -65,7 +71,9 @@ export default function ProjectDetailsPage() {
         setProject(data.project);
       } catch (err) {
         console.error("Falha ao carregar projeto:", err);
-        setError("Não foi possível carregar o projeto. Verifique se o servidor está ativo.");
+        setError(
+          "Não foi possível carregar o projeto. Verifique se o servidor está ativo."
+        );
       } finally {
         setLoading(false);
       }
@@ -135,13 +143,33 @@ export default function ProjectDetailsPage() {
   const demoUrl = safeExternalUrl(project.liveURL);
   const githubUrl = safeExternalUrl(project.githubURL);
   const updatedAt = formatUpdatedAt(project.updatedAt);
-  const description = project.description || "";
-  const paragraphs = description.split(/\n+/).filter((text) => text.trim());
-  const isLongDescription = description.length > LONG_DESCRIPTION_LENGTH;
+  // Formatação do editor, limpa antes de exibir (a API também limpa ao salvar).
+  const descriptionHtml = descriptionToSafeHtml(project.description);
+  const isLongDescription = descriptionToPlainText(project.description).length > LONG_DESCRIPTION_LENGTH;
   const technologies = project.technologies || [];
   const collaborators = project.collaborators || [];
   const isRejected = project.approvalStatus === "rejected";
   const isUnderReview = project.approvalStatus === "pending";
+  const isApproved = project.approvalStatus === "approved";
+
+  // Identifica se o usuário atual é dono, colaborador ou admin
+  const isOwner =
+    loggedUser &&
+    (project.ownerId === loggedUser.id ||
+      project.owner_id === loggedUser.id ||
+      project.author?.id === loggedUser.id);
+
+  const isCollaborator =
+    loggedUser &&
+    Array.isArray(collaborators) &&
+    collaborators.some(
+      (c) => c.userId === loggedUser.id || c.id === loggedUser.id
+    );
+
+  const isAdmin = loggedUser?.role === "super_admin";
+
+  // Autor, colaboradores e administradores têm permissão para ler o parecer institucional
+  const canViewReviewNotes = isOwner || isCollaborator || isAdmin;
 
   return (
     <main className="project-details-page">
@@ -151,7 +179,7 @@ export default function ProjectDetailsPage() {
           Voltar para projetos
         </Link>
 
-        {/* Só chega aqui quem pode ver o projeto antes da aprovação. */}
+        {/* Banner para projetos Pendentes ou Rejeitados */}
         {(isRejected || isUnderReview) && (
           <section
             className={`project-details-moderation${
@@ -190,6 +218,106 @@ export default function ProjectDetailsPage() {
           </section>
         )}
 
+        {/* Banner de Aprovação com Parecer da Moderação */}
+        {isApproved && canViewReviewNotes && project.reviewNotes && (
+          <section
+            style={{
+              marginBottom: "1.5rem",
+              padding: "1.15rem 1.35rem",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderLeft: "4px solid #10b981",
+            }}
+            role="status"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.55rem",
+                color: "#f8fafc",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                marginBottom: "0.3rem",
+              }}
+            >
+              <i
+                className="fa-solid fa-circle-check"
+                style={{ color: "#10b981" }}
+                aria-hidden="true"
+              />
+              <span>Projeto Aprovado pela Moderação</span>
+            </div>
+
+            {project.reviewedAt && (
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "0.78rem",
+                  color: "#94a3b8",
+                  marginBottom: "0.65rem",
+                }}
+              >
+                Avaliado em:{" "}
+                {new Date(project.reviewedAt).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+
+            <div
+              style={{
+                padding: "0.75rem 0.9rem",
+                borderRadius: "6px",
+                background: "rgba(0, 0, 0, 0.25)",
+                border: "1px solid rgba(255, 255, 255, 0.05)",
+                color: "#cbd5e1",
+                fontSize: "0.9rem",
+                lineHeight: "1.5",
+                marginBottom: "0.65rem",
+              }}
+            >
+              <strong
+                style={{
+                  color: "#e2e8f0",
+                  display: "block",
+                  marginBottom: "0.2rem",
+                  fontSize: "0.85rem",
+                }}
+              >
+                Parecer do avaliador:
+              </strong>
+              {project.reviewNotes}
+            </div>
+
+            {/* Aviso de visibilidade restrita aos participantes */}
+            <p
+              style={{
+                margin: 0,
+                fontSize: "0.8rem",
+                color: "#94a3b8",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+              }}
+            >
+              <i
+                className="fa-solid fa-circle-exclamation"
+                style={{ fontSize: "0.8rem", color: "#64748b" }}
+                aria-hidden="true"
+              />
+              <span>
+                Este parecer é visível apenas para os autores, colaboradores do projeto e moderadores.
+              </span>
+            </p>
+          </section>
+        )}
+
         <header className="project-details-hero">
           <div className="project-details-hero__content">
             <div className="project-details-hero__meta">
@@ -206,7 +334,18 @@ export default function ProjectDetailsPage() {
 
             <h1>{project.title}</h1>
 
-            {project.author?.name && <p>Por {project.author.name}</p>}
+            {project.author?.name && (
+              <p>
+                Por{" "}
+                {project.author.id ? (
+                  <Link to={`/criadores/${project.author.id}`} className="project-details-author">
+                    {project.author.name}
+                  </Link>
+                ) : (
+                  project.author.name
+                )}
+              </p>
+            )}
 
             {updatedAt && <small>{updatedAt}</small>}
           </div>
@@ -258,9 +397,10 @@ export default function ProjectDetailsPage() {
                   expanded || !isLongDescription ? " is-expanded" : ""
                 }`}
               >
-                {paragraphs.map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
+                <div
+                  className="project-details-description__content"
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                />
               </div>
 
               {isLongDescription && (
@@ -337,11 +477,18 @@ export default function ProjectDetailsPage() {
                 <div className="project-collaborators">
                   {collaborators.map((person) => {
                     const name = person.name || "Colaborador";
+                    const profileId = person.userId || person.id;
+                    // O card leva ao perfil do colaborador.
+                    const Card = profileId ? Link : "div";
 
                     return (
-                      <div
+                      <Card
                         className="project-collaborator"
-                        key={person.userId || person.id}
+                        key={profileId}
+                        {...(profileId && {
+                          to: `/criadores/${profileId}`,
+                          "aria-label": `Ver perfil de ${name}`,
+                        })}
                       >
                         <span aria-hidden="true">
                           {getInitials(name)}
@@ -349,9 +496,11 @@ export default function ProjectDetailsPage() {
 
                         <div>
                           <strong>{name}</strong>
-                          {person.contribution && <small>{person.contribution}</small>}
+                          {person.contribution && (
+                            <small>{person.contribution}</small>
+                          )}
                         </div>
-                      </div>
+                      </Card>
                     );
                   })}
                 </div>

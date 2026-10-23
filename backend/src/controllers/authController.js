@@ -1,7 +1,7 @@
 const { User } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
-const { signToken } = require('../utils/jwt');
+const { signSessionToken } = require('../utils/jwt');
 const {
   registerSchema, loginSchema, updateProfileSchema, resendVerificationSchema,
   verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema,
@@ -155,9 +155,7 @@ async function login(req, res, next) {
         user.lockedUntil = null;
         await user.save({ transaction, silent: true });
       }
-      const token = signToken({
-        sub: user.id, role: user.role, authVersion: Number(user.authVersion || 0),
-      });
+      const token = signSessionToken(user);
       return { status: 200, body: { user: user.toSafeJSON(), token } };
     });
 
@@ -354,7 +352,8 @@ async function updateProfile(req, res, next) {
       }
     }
 
-    res.json({ user: user.toSafeJSON() });
+    // Trocar a senha invalida os tokens anteriores; a sessão atual recebe um token novo.
+    res.json({ user: user.toSafeJSON(), ...(data.password && { token: signSessionToken(user) }) });
   } catch (err) {
     next(err);
   }

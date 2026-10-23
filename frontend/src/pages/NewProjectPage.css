@@ -1,3 +1,12 @@
+.draft-form-nav { max-width: 680px; margin: 0 auto 24px; font-size: .85rem; }
+.draft-form-nav a, .draft-form-back { color: var(--tc-green); }
+.draft-form-nav a:hover, .draft-form-back:hover { color: var(--tc-green-hover); }
+.draft-form-notice { padding: 16px; border: 1px solid #42573a; border-radius: 10px; background: #242d20; }
+.draft-form-notice p { margin: 10px 0 0; color: #bdc8b7; font-size: .8rem; line-height: 1.65; }
+.draft-form-notice small { display: block; margin-top: 10px; color: #a8b29f; font-size: .7rem; }
+.draft-form-badge { color: #c5e9b7; font-size: .75rem; font-weight: 700; }
+.draft-form-fields { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; border: 0; margin: 0; padding: 0; }
+.draft-form-fields:disabled { opacity: .7; pointer-events: none; }
 .new-project-page {
   --new-project-bg: #18191a;
   --new-project-card: #222426;
@@ -61,7 +70,7 @@
   padding: 0;
   display: inline-flex;
   align-items: baseline;
-  gap: 0.25rem;
+  gap: 0;
   color: var(--new-project-muted);
   font-size: 0.875rem;
   font-weight: 600;
@@ -1060,7 +1069,7 @@
   flex-direction: row !important;
   align-items: baseline !important;
   align-self: flex-start;
-  gap: 0.25rem !important;
+  gap: 0 !important;
 }
 
 .new-project-card .form-label .required {
@@ -1348,7 +1357,7 @@
 .technology-suggestions,
 .collaborator-suggestions {
   scrollbar-width: thin;
-  scrollbar-color: #62676f #181a1c;
+  scrollbar-color: var(--tc-scrollbar-thumb) var(--tc-scrollbar-track);
 }
 
 .technology-suggestions::-webkit-scrollbar,
@@ -1358,20 +1367,20 @@
 
 .technology-suggestions::-webkit-scrollbar-track,
 .collaborator-suggestions::-webkit-scrollbar-track {
-  background: #181a1c;
-  border-radius: 8px;
+  background: var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .technology-suggestions::-webkit-scrollbar-thumb,
 .collaborator-suggestions::-webkit-scrollbar-thumb {
-  background: #555a61;
-  border: 2px solid #181a1c;
-  border-radius: 8px;
+  background: var(--tc-scrollbar-thumb);
+  border: 2px solid var(--tc-scrollbar-track);
+  border-radius: var(--tc-scrollbar-radius);
 }
 
 .technology-suggestions::-webkit-scrollbar-thumb:hover,
 .collaborator-suggestions::-webkit-scrollbar-thumb:hover {
-  background: var(--new-project-green);
+  background: var(--tc-scrollbar-thumb-hover);
 }
 /* Prévia das mídias no formulário de edição */
 .upload-file-preview {
@@ -1416,4 +1425,19 @@
   background: rgb(0 0 0 / 70%);
   border-radius: 50%;
   font-size: 0.65rem;
+}
+
+/* Linha abaixo do campo: erro à esquerda e contador à direita, colados ao campo. */
+.field-footer {
+  margin-top: -0.25rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.field-footer .input-counter,
+.field-footer .description-counter {
+  margin-left: auto;
+  flex-shrink: 0;
 }

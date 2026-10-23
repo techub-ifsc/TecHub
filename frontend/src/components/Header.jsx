@@ -92,6 +92,7 @@ export default function Header() {
 
             <NavLink
               to="/projetos"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${isActive ? " is-active" : ""}`
               }
@@ -102,6 +103,7 @@ export default function Header() {
 
             <NavLink
               to="/criadores"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${isActive ? " is-active" : ""}`
               }

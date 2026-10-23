@@ -3,10 +3,6 @@ const sequelize = require('../config/database');
 const { MAJORS } = require('../constants/majors');
 const { STATUS } = require('../constants/status');
 const { APPROVAL_STATUS } = require('../constants/approvalStatus');
-const ProjectTechnology = require('./ProjectTechnology');
-const ProjectCollaborator = require('./ProjectCollaborator');
-const ProjectMedia = require('./ProjectMedia');
-const User = require('./User');
 
 class Project extends Model {}
 
@@ -89,26 +85,5 @@ Project.init(
     underscored: true,
   }
 );
-
-// Associações
-Project.hasMany(ProjectTechnology, {
-  foreignKey: 'project_id',
-  as: 'technologies',
-});
-
-Project.hasMany(ProjectCollaborator, {
-  foreignKey: 'project_id',
-  as: 'collaborators',
-});
-
-Project.hasMany(ProjectMedia, {
-  foreignKey: 'project_id',
-  as: 'media',
-});
-
-Project.belongsTo(User, {
-  foreignKey: 'owner_id',
-  as: 'author',
-});
 
 module.exports = Project;

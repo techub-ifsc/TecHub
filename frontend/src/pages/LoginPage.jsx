@@ -80,9 +80,6 @@ export default function LoginPage() {
         password: form.password,
       });
 
-      localStorage.removeItem("techub_token");
-      localStorage.removeItem("techub_user");
-
       setSuccessMessage(
         "Login efetuado com sucesso! Redirecionando...",
       );

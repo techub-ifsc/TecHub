@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
 import CollaboratorAvatar from "../components/CollaboratorAvatar";
 import ProjectGallery from "../components/ProjectGallery";
 import { useProjectMedia } from "../hooks/useProjectMedia";
+import { descriptionToPlainText, descriptionToSafeHtml } from "../utils/richText";
+import { useUnsavedChangesGuard } from "../hooks/useUnsavedChangesGuard";
 import "./NewProjectPage.css";
 
 const MAX_DESCRIPTION_LENGTH = 3000;
@@ -135,6 +138,8 @@ function validateForm({
     errors.title = "O título é obrigatório.";
   } else if (title.trim().length < 3) {
     errors.title = "Informe pelo menos 3 caracteres.";
+  } else if (/[<>]/.test(title)) {
+    errors.title = "Não use os caracteres < ou >.";
   }
 
   if (!descriptionText.trim()) {
@@ -212,6 +217,11 @@ export default function EditProjectPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
 
+  // Estados de moderação e feedback da avaliação
+  const [approvalStatus, setApprovalStatus] = useState("approved");
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewedAt, setReviewedAt] = useState(null);
+
   const [github, setGithub] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
   const [status, setStatus] = useState("Em desenvolvimento");
@@ -229,7 +239,27 @@ export default function EditProjectPage() {
         : clearFieldError("files"),
   });
 
+  // "Foto" do formulário: comparada com a tirada ao abrir ou salvar para saber se há
+  // alterações não salvas (aviso antes de sair da tela).
+  const formSnapshot = JSON.stringify({
+    title, descriptionText, course, phase, tags, github, liveUrl, status,
+    collaborators: collaborators.map((c) => c.id || c.userId),
+    media: gallery.media.map((m) => m.url || m.videoId || m.id),
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState(null);
+  const confirmLeave = useUnsavedChangesGuard(savedSnapshot !== null && formSnapshot !== savedSnapshot);
+
+  // A foto de referência é tirada quando o projeto termina de carregar.
+  useEffect(() => {
+    if (!isLoading && savedSnapshot === null) setSavedSnapshot(formSnapshot);
+  }, [isLoading, savedSnapshot, formSnapshot]);
+
   // Carrega os dados existentes do projeto
+  // Quem está logado vem do AuthContext; a ref evita recarregar o projeto quando ele muda.
+  const { user: loggedUser } = useAuth();
+  const loggedUserRef = useRef(loggedUser);
+  loggedUserRef.current = loggedUser;
+
   useEffect(() => {
     async function loadProjectDetails() {
       try {
@@ -261,14 +291,7 @@ export default function EditProjectPage() {
           return;
         }
 
-        let storedUser = null;
-        try {
-          storedUser = JSON.parse(
-            localStorage.getItem("techub_user") || "null"
-          );
-        } catch {
-          storedUser = null;
-        }
+        const storedUser = loggedUserRef.current;
 
         const projectOwnerId =
           currentProject.ownerId || currentProject.owner_id;
@@ -280,15 +303,30 @@ export default function EditProjectPage() {
         setIsOwner(Boolean(owner));
         setCanEdit(Boolean(owner || collaborator));
 
+        // Guarda dados da moderação
+        setApprovalStatus(
+          currentProject.approvalStatus ||
+            currentProject.approval_status ||
+            "approved"
+        );
+        setReviewNotes(
+          currentProject.reviewNotes || currentProject.review_notes || ""
+        );
+        setReviewedAt(
+          currentProject.reviewedAt || currentProject.reviewed_at || null
+        );
+
         // Popula os campos do formulário
         setTitle(currentProject.title || "");
 
         const initialDesc = currentProject.description || "";
-        setDescriptionHtml(initialDesc);
-        setDescriptionText(initialDesc);
+        // A formatação volta para o editor, limpa; descrições antigas (texto puro) também funcionam.
+        const initialHtml = descriptionToSafeHtml(initialDesc);
+        setDescriptionHtml(initialHtml);
+        setDescriptionText(descriptionToPlainText(initialDesc));
 
         if (editorRef.current) {
-          editorRef.current.innerHTML = initialDesc;
+          editorRef.current.innerHTML = initialHtml;
         }
 
         if (currentProject.major) {
@@ -680,7 +718,8 @@ export default function EditProjectPage() {
 
       const payload = {
         title: title.trim(),
-        description: descriptionText.trim(),
+        // HTML do editor, limpo: a API limpa de novo antes de salvar.
+        description: descriptionToSafeHtml(descriptionHtml),
         major: course || null,
         semester: isNaN(semesterNumber) ? 0 : semesterNumber,
         technologies: tags,
@@ -743,8 +782,15 @@ export default function EditProjectPage() {
       }
 
       saved = true;
+      setSavedSnapshot(formSnapshot);
       setFeedbackType("success");
-      setFeedbackMessage("Projeto atualizado com sucesso!");
+      setFeedbackMessage(
+        approvalStatus === "rejected"
+          ? "Projeto corrigido e reenviado para moderação com sucesso!"
+          : approvalStatus === "approved"
+            ? "Projeto atualizado e reenviado para moderação!"
+            : "Projeto atualizado com sucesso!"
+      );
 
       setTimeout(() => navigate(`/projetos/${id}`), 1200);
     } catch (err) {
@@ -757,6 +803,8 @@ export default function EditProjectPage() {
       if (!saved) setIsSubmitting(false);
     }
   }
+
+  const isRejected = approvalStatus === "rejected";
 
   if (isLoading) {
     return (
@@ -791,12 +839,101 @@ export default function EditProjectPage() {
       <h1 className="new-project-title">Editar projeto</h1>
 
       <form className="new-project-card" onSubmit={handleSubmit} noValidate>
+        {/* Editar um projeto aprovado o devolve à fila da moderação */}
+        {approvalStatus === "approved" && (
+          <div
+            style={{
+              marginBottom: "2rem",
+              padding: "1rem 1.25rem",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderLeft: "4px solid #f59e0b",
+              color: "#cbd5e1",
+              lineHeight: 1.5,
+            }}
+            role="note"
+          >
+            <i className="fa-solid fa-circle-info" style={{ color: "#f59e0b", marginRight: "0.5rem" }} aria-hidden="true" />
+            Este projeto já foi aprovado. Ao salvar as alterações, ele volta para a análise da moderação e
+            sai da listagem pública até ser aprovado novamente.
+          </div>
+        )}
+
+        {/* Banner com parecer da moderação quando o projeto for reprovado */}
+        {isRejected && (
+          <div
+            style={{
+              marginBottom: "2rem",
+              padding: "1.25rem 1.5rem",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderLeft: "4px solid #e11d48",
+            }}
+            role="alert"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                color: "#f8fafc",
+                fontWeight: 600,
+                fontSize: "1rem",
+                marginBottom: "0.35rem",
+              }}
+            >
+              <i className="fa-solid fa-triangle-exclamation" style={{ color: "#e11d48" }} aria-hidden="true" />
+              <span>Este projeto precisa de correções</span>
+            </div>
+
+            {reviewedAt && (
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "0.8rem",
+                  color: "#94a3b8",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Avaliado em:{" "}
+                {new Date(reviewedAt).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+
+            {reviewNotes && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  borderRadius: "6px",
+                  background: "rgba(0, 0, 0, 0.25)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  color: "#cbd5e1",
+                  fontSize: "0.95rem",
+                  lineHeight: "1.5",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <strong style={{ color: "#e2e8f0", display: "block", marginBottom: "0.25rem" }}>
+                  Motivo apontado pelo avaliador:
+                </strong>
+                {reviewNotes}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="form-field">
           <label className="form-label" htmlFor="project-title">
             Título
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.title && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <input
@@ -814,23 +951,23 @@ export default function EditProjectPage() {
             required
           />
 
-          <span id="title-counter" className="input-counter">
-            {title.length}/100
-          </span>
-
-          {errors.title && (
-            <span id="title-error" className="field-error" role="alert">
-              {errors.title}
+          {/* Erro e contador na mesma linha, logo abaixo do campo. */}
+          <div className="field-footer">
+            {errors.title && (
+              <span id="title-error" className="field-error" role="alert">
+                {errors.title}
+              </span>
+            )}
+            <span id="title-counter" className="input-counter">
+              {title.length}/100
             </span>
-          )}
+          </div>
         </div>
 
         <div className="form-field">
           <span id="description-label" className="form-label">
             Descrição do projeto
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.description && <span className="required" aria-hidden="true">*</span>}
           </span>
 
           <div
@@ -949,24 +1086,23 @@ export default function EditProjectPage() {
             />
           </div>
 
-          <span className="description-counter">
-            {descriptionText.length}/{MAX_DESCRIPTION_LENGTH}
-          </span>
-
-          {errors.description && (
-            <span className="field-error" role="alert">
-              {errors.description}
+          <div className="field-footer">
+            {errors.description && (
+              <span className="field-error" role="alert">
+                {errors.description}
+              </span>
+            )}
+            <span className="description-counter">
+              {descriptionText.length}/{MAX_DESCRIPTION_LENGTH}
             </span>
-          )}
+          </div>
         </div>
 
         <div className="project-classification">
           <div className="form-field">
             <label className="form-label" htmlFor="project-course">
               Curso
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.course && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -997,9 +1133,7 @@ export default function EditProjectPage() {
           <div className="form-field">
             <label className="form-label" htmlFor="project-phase">
               Fase
-              <span className="required" aria-hidden="true">
-                *
-              </span>
+              {errors.phase && <span className="required" aria-hidden="true">*</span>}
             </label>
 
             <select
@@ -1037,9 +1171,7 @@ export default function EditProjectPage() {
         <div className="form-field" ref={tagsContainerRef}>
           <label className="form-label" htmlFor="technology-input">
             Tecnologias
-            <span className="required" aria-hidden="true">
-              *
-            </span>
+            {errors.tags && <span className="required" aria-hidden="true">*</span>}
           </label>
 
           <div
@@ -1333,14 +1465,16 @@ export default function EditProjectPage() {
             className="action-button submit-review"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Salvando..." : "Salvar alterações"}
+            Salvar alterações
           </button>
         </div>
 
         <button
           type="button"
           className="cancel-project-button"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (confirmLeave()) navigate(-1);
+          }}
         >
           Cancelar e voltar
         </button>

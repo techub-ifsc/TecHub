@@ -1,39 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { safeExternalUrl, safeImageUrl } from "../utils/externalUrl";
 
 import { API_URL } from "../api/apiUrl";
+import { useAuth } from "../context/AuthContext";
+import { fetchAllPublicProjects } from "../api/creators";
+import { fetchPublicProfile } from "../api/userProfile";
+import { byFrequency, findCreator, getCreatorColor, getInitials } from "../utils/creators";
+import { descriptionToPlainText } from "../utils/richText";
 import "./CreatorProfilePage.css";
 
-const PROFILE_PHOTO =
-  "https://images.unsplash.com/photo-1565120130276-dfbd9a7a3ad7?crop=faces&fit=crop&fm=jpg&q=85&w=640&h=640";
-
-const FILTER_TABS = [
-  { id: "todos", label: "Todos" },
-  { id: "autor", label: "Como autor" },
-  { id: "colaborador", label: "Como colaborador" },
-];
-
-const DEFAULT_PROFILE = {
-  name: "Estudante IFSC",
-  initials: "IF",
-  campus: "IFSC Câmpus Lages",
-  course: "Ciência da Computação",
-  phase: "Fase acadêmica",
-  conclusion: "2026/2",
-  status: "Em formação",
-  bio: [
-    "Estudante e entusiasta de tecnologia desenvolvendo soluções e projetos acadêmicos no IFSC Câmpus Lages.",
-  ],
-  interests: ["React", "Node.js", "PostgreSQL", "Git"],
-  links: [
-    {
-      id: "github",
-      label: "GitHub",
-      url: "https://github.com",
-      icon: "fa-brands fa-github",
-    },
-  ],
-};
+// Todo o IFSC do TecHub é o Câmpus Lages; o perfil ainda não guarda o câmpus.
+const CAMPUS = "IFSC Câmpus Lages";
+const MAX_INTERESTS = 8;
 
 export default function CreatorProfilePage() {
   const { id } = useParams();
@@ -44,97 +23,159 @@ export default function CreatorProfilePage() {
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
+  const [publicCreator, setPublicCreator] = useState(null);
+  // Perfil salvo pela tela de edição (nome, bio, curso, links e currículo).
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Recupera o usuário autenticado do localStorage
-  const loggedUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem("techub_user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  // Estado para controlar a visibilidade da bolinha de notificação de reprovados
+  const [hasSeenRejected, setHasSeenRejected] = useState(false);
+
+  // Quem está logado vem do AuthContext, que se atualiza no login e no logout.
+  // (A cópia no localStorage podia estar ausente logo após o login.)
+  const { user: loggedUser } = useAuth();
 
   const isOwner = loggedUser?.id === id;
 
-  // Monta as informações visuais mesclando o que temos do usuário logado
-  const profileInfo = useMemo(() => {
-    if (isOwner && loggedUser) {
-      const names = (loggedUser.name || "Usuário").trim().split(" ");
-      const initials =
-        names.length > 1
-          ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
-          : names[0].slice(0, 2).toUpperCase();
+  // Monta as abas de filtro dinamicamente (adicionando a aba de reprovados se for o dono)
+  const filterTabs = useMemo(() => {
+    const tabs = [
+      { id: "todos", label: "Todos" },
+      { id: "autor", label: "Como autor" },
+      { id: "colaborador", label: "Como colaborador" },
+    ];
 
-      return {
-        ...DEFAULT_PROFILE,
-        name: loggedUser.name,
-        initials,
-        email: loggedUser.email,
-        profileSlug: `/criadores/${loggedUser.id.slice(0, 8)}`,
-      };
+    if (isOwner) {
+      tabs.push({ id: "reprovados", label: "Reprovados" });
     }
 
+    return tabs;
+  }, [isOwner]);
+
+  // Contagem de projetos com status rejected
+  const rejectedCount = useMemo(() => {
+    return projects.filter(
+      (p) => p.approvalStatus === "rejected" || p.status === "rejected"
+    ).length;
+  }, [projects]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingProfile(true);
+    setProfile(null);
+
+    fetchPublicProfile(id)
+      .then((data) => active && setProfile(data))
+      .catch((err) => console.error("Falha ao carregar o perfil:", err))
+      .finally(() => active && setLoadingProfile(false));
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  // Dados exibidos: o perfil salvo pela pessoa; sem ele, o que dá para tirar dos projetos.
+  // Nada é inventado: o que não foi informado aparece como tal.
+  const profileInfo = useMemo(() => {
+    const name = profile?.name || publicCreator?.name || (isOwner && loggedUser?.name) || "";
+
+    const links = [
+      { id: "github", label: "GitHub", url: safeExternalUrl(profile?.github_url), icon: "fa-brands fa-github" },
+      { id: "linkedin", label: "LinkedIn", url: safeExternalUrl(profile?.linkedin_url), icon: "fa-brands fa-linkedin" },
+      { id: "resume", label: "Currículo (PDF)", url: safeExternalUrl(profile?.resume_url), icon: "fa-solid fa-file-pdf" },
+    ].filter((link) => link.url);
+
+    const bio = (profile?.bio || "")
+      .split(/\n+/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
+
     return {
-      ...DEFAULT_PROFILE,
+      name: name || (loadingProfile ? "" : "Criador"),
+      initials: name ? getInitials(name) : "",
+      color: getCreatorColor(id),
+      course: profile?.major || publicCreator?.course || "Curso não informado",
+      avatarUrl: safeImageUrl(profile?.avatar_url),
+      bannerUrl: safeImageUrl(profile?.banner_url),
+      campus: CAMPUS,
+      // "2027/1" → "1º semestre de 2027"
+      graduation: profile?.expected_graduation
+        ? profile.expected_graduation.replace(/^(\d{4})\/([12])$/, "$2º semestre de $1")
+        : "Não informada",
+      bio,
+      interests: byFrequency(projects.flatMap((project) => project.tags)).slice(0, MAX_INTERESTS),
+      links,
       profileSlug: `/criadores/${id?.slice(0, 8) || ""}`,
     };
-  }, [id, isOwner, loggedUser]);
+  }, [id, isOwner, loggedUser, profile, publicCreator, projects, loadingProfile]);
 
   // Carrega e filtra os projetos reais do banco
   useEffect(() => {
     async function loadUserProjects() {
       try {
         setLoadingProjects(true);
-        const response = await fetch(`${API_URL}/projects?limit=100`);
+        const token =
+          localStorage.getItem("techub_token") || localStorage.getItem("token");
 
-        if (!response.ok) {
-          throw new Error("Erro ao buscar projetos");
+        // Se o usuário logado estiver vendo o próprio perfil, busca também por /projects/mine
+        // para obter rascunhos e projetos reprovados com suas justificativas (reviewNotes)
+        let allProjects;
+        setPublicCreator(null);
+
+        if (isOwner && token) {
+          const response = await fetch(`${API_URL}/projects/mine`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+            throw new Error("Erro ao buscar projetos");
+          }
+
+          const data = await response.json();
+          allProjects = Array.isArray(data.projects)
+            ? data.projects
+            : Array.isArray(data)
+              ? data
+              : [];
+        } else {
+          allProjects = await fetchAllPublicProjects();
+          setPublicCreator(findCreator(allProjects, id));
         }
 
-        const data = await response.json();
-        const allProjects = Array.isArray(data.projects)
-          ? data.projects
-          : Array.isArray(data)
-          ? data
-          : [];
-
-        // Filtra projetos onde o usuário atual é autor ou colaborador
+        // Filtra e normaliza projetos onde o usuário atual é autor ou colaborador
         const userProjects = [];
 
         allProjects.forEach((p) => {
           const isAuthor =
             p.ownerId === id ||
             p.owner_id === id ||
-            p.author?.id === id;
+            p.author?.id === id ||
+            p.userId === id;
 
           const isCollaborator = Array.isArray(p.collaborators)
             ? p.collaborators.some(
-                (c) => c.userId === id || c.user_id === id || c.id === id
-              )
+              (c) => c.userId === id || c.user_id === id || c.id === id
+            )
             : false;
 
-          if (isAuthor) {
+          // Se a requisição veio de /projects/mine, o usuário já é dono ou colaborador
+          const role = isAuthor ? "autor" : isCollaborator ? "colaborador" : "autor";
+
+          if (isAuthor || isCollaborator || isOwner) {
             userProjects.push({
               id: p.id,
               title: p.title,
-              description: p.description,
+              description: descriptionToPlainText(p.description),
               tags: Array.isArray(p.technologies) ? p.technologies : [],
-              role: "autor",
+              role,
+              approvalStatus: p.approvalStatus || p.approval_status || "approved",
+              reviewNotes: p.reviewNotes || p.review_notes || "",
               image:
                 p.coverUrl ||
-                "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480",
-            });
-          } else if (isCollaborator) {
-            userProjects.push({
-              id: p.id,
-              title: p.title,
-              description: p.description,
-              tags: Array.isArray(p.technologies) ? p.technologies : [],
-              role: "colaborador",
-              image:
-                p.coverUrl ||
-                "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480",
+                p.cover_url ||
+                (role === "autor"
+                  ? "https://images.unsplash.com/photo-1540397106260-e24a507a08ea?fit=crop&fm=jpg&q=80&w=800&h=480"
+                  : "https://images.unsplash.com/photo-1630332458839-5ece43363621?fit=crop&fm=jpg&q=80&w=800&h=480"),
             });
           }
         });
@@ -150,12 +191,22 @@ export default function CreatorProfilePage() {
     if (id) {
       loadUserProjects();
     }
-  }, [id]);
+  }, [id, isOwner]);
 
+  // Filtragem considerando abas normais e aba de reprovados
   const filteredProjects = projects.filter((project) => {
     if (activeTab === "todos") return true;
+    if (activeTab === "reprovados") return project.approvalStatus === "rejected";
     return project.role === activeTab;
   });
+
+  function handleTabClick(tabId) {
+    setActiveTab(tabId);
+    // Remove a notificação assim que a aba de reprovados for aberta
+    if (tabId === "reprovados") {
+      setHasSeenRejected(true);
+    }
+  }
 
   async function handleDeleteProject(event, projectId) {
     event.preventDefault();
@@ -208,15 +259,22 @@ export default function CreatorProfilePage() {
   return (
     <main className="creator-profile-page">
       <div className="creator-profile-page__container">
-        <Link to="/projetos" className="creator-profile-page__back">
-          <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-          Voltar para projetos
-        </Link>
-
         <div className="creator-profile-layout">
           <div className="creator-profile-main">
             <section className="creator-profile-hero">
-              <div className="creator-profile-hero__cover" />
+              {/* Sem foto de capa, fica o gradiente padrão do tema. */}
+              <div
+                className="creator-profile-hero__cover"
+                style={
+                  profileInfo.bannerUrl
+                    ? {
+                        backgroundImage: `url("${profileInfo.bannerUrl}")`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+              />
 
               {isOwner && (
                 <Link
@@ -230,10 +288,19 @@ export default function CreatorProfilePage() {
 
               <div className="creator-profile-hero__information">
                 <div className="creator-profile-avatar">
-                  <img src={PROFILE_PHOTO} alt={profileInfo.name} />
-
+                  {profileInfo.avatarUrl && (
+                    <img
+                      src={profileInfo.avatarUrl}
+                      alt={`Foto de ${profileInfo.name}`}
+                      // Se a imagem não carregar, aparecem as iniciais que estão por baixo.
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )}
                   <span
                     className="creator-profile-avatar__fallback"
+                    style={{ backgroundColor: profileInfo.color }}
                     aria-hidden="true"
                   >
                     {profileInfo.initials}
@@ -244,10 +311,6 @@ export default function CreatorProfilePage() {
 
                 <p className="creator-profile-hero__course">
                   {profileInfo.course}
-                </p>
-
-                <p className="creator-profile-hero__phase">
-                  {profileInfo.phase}
                 </p>
 
                 <button
@@ -277,6 +340,11 @@ export default function CreatorProfilePage() {
                 {profileInfo.bio.map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))}
+                {!loadingProfile && profileInfo.bio.length === 0 && (
+                  <p className="creator-profile-card__empty">
+                    {isOwner ? "Você ainda não escreveu sua bio. Use \"Editar perfil\" para contar um pouco sobre você." : "Nenhuma bio informada."}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -289,20 +357,36 @@ export default function CreatorProfilePage() {
                     colaboração.
                   </p>
                 </div>
+                <div className="creator-profile-section-heading__actions">
+                  <span>
+                    {filteredProjects.length}{" "}
+                    {filteredProjects.length === 1 ? "projeto" : "projetos"}
+                  </span>
 
-                <span>
-                  {filteredProjects.length}{" "}
-                  {filteredProjects.length === 1 ? "projeto" : "projetos"}
-                </span>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="creator-profile-projects__create"
+                      onClick={() => navigate("/projeto/novo")}
+                    >
+                      <i className="fa-solid fa-plus" aria-hidden="true" />
+                      Novo projeto
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Barra de abas de filtro */}
               <div
                 className="creator-profile-tabs"
                 role="tablist"
                 aria-label="Filtrar projetos pela participação"
               >
-                {FILTER_TABS.map((tab) => {
+                {filterTabs.map((tab) => {
                   const isActive = activeTab === tab.id;
+                  const isRejectedTab = tab.id === "reprovados";
+                  const showBadge =
+                    isRejectedTab && rejectedCount > 0 && !hasSeenRejected;
 
                   return (
                     <button
@@ -311,9 +395,36 @@ export default function CreatorProfilePage() {
                       role="tab"
                       aria-selected={isActive}
                       className={isActive ? "is-active" : ""}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => handleTabClick(tab.id)}
+                      style={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                      }}
                     >
                       {tab.label}
+                      {/* Badge / Bolinha de notificação de reprovados */}
+                      {showBadge && (
+                        <span
+                          title={`${rejectedCount} projeto(s) precisam de correção`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "#ef4444",
+                            color: "#fff",
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {rejectedCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -335,101 +446,133 @@ export default function CreatorProfilePage() {
                 </p>
               ) : (
                 <div className="creator-profile-project-grid">
-                  {filteredProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      className="creator-profile-project"
-                      style={{ position: "relative" }}
-                    >
-                      <Link
-                        to={`/projetos/${project.id}`}
-                        style={{
-                          textDecoration: "none",
-                          color: "inherit",
-                          display: "block",
-                        }}
+                  {filteredProjects.map((project) => {
+                    const isRejected = project.approvalStatus === "rejected";
+
+                    return (
+                      <div
+                        key={project.id}
+                        className="creator-profile-project"
+                        style={{ position: "relative" }}
                       >
-                        <div className="creator-profile-project__image">
-                          <img
-                            src={project.image}
-                            alt=""
-                            loading="lazy"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-
-                          <span className="creator-profile-project__role">
-                            {project.role === "autor"
-                              ? "Autor"
-                              : "Colaborador"}
-                          </span>
-                        </div>
-
-                        <div className="creator-profile-project__content">
-                          <h3>{project.title}</h3>
-                          <p>{project.description}</p>
-
-                          <div
-                            className="creator-profile-project__tags"
-                            aria-label="Tecnologias utilizadas"
-                          >
-                            {project.tags.map((tag) => (
-                              <span key={tag}>{tag}</span>
-                            ))}
-                          </div>
-                        </div>
-                      </Link>
-
-                      {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
-                      {isOwner && (
-                        <div
+                        <Link
+                          to={`/projetos/${project.id}`}
                           style={{
+                            // Ocupa a altura que sobra no card: assim as tecnologias e os
+                            // botões ficam no fundo, alinhados entre cards de textos diferentes.
+                            textDecoration: "none",
+                            color: "inherit",
                             display: "flex",
-                            gap: "0.5rem",
-                            padding: "0.5rem 1rem 1rem",
+                            flexDirection: "column",
+                            flex: 1,
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/projetos/${project.id}/editar`)}
+                          <div className="creator-profile-project__image">
+                            <img
+                              src={project.image}
+                              alt=""
+                              loading="lazy"
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+
+                            <span className="creator-profile-project__role">
+                              {project.role === "autor"
+                                ? "Autor"
+                                : "Colaborador"}
+                            </span>
+
+                            {/* Tag visual de Reprovado */}
+                            {isRejected && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: "0.5rem",
+                                  right: "0.5rem",
+                                  background: "#ef4444",
+                                  color: "#ffffff",
+                                  padding: "0.2rem 0.5rem",
+                                  borderRadius: "4px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Reprovado
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="creator-profile-project__content">
+                            <h3>{project.title}</h3>
+                            <p>{project.description}</p>
+
+                            {/* Caixa com o motivo da reprovação deixado pelo moderador */}
+                            {isRejected && project.reviewNotes && (
+                              <div
+                                style={{
+                                  marginTop: "0.6rem",
+                                  padding: "0.5rem 0.65rem",
+                                  borderRadius: "6px",
+                                  background: "rgba(239, 68, 68, 0.1)",
+                                  borderLeft: "3px solid #ef4444",
+                                  fontSize: "0.8rem",
+                                  color: "#fca5a5",
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    display: "block",
+                                    marginBottom: "0.2rem",
+                                    color: "#f87171",
+                                  }}
+                                >
+                                  <i
+                                    className="fa-solid fa-triangle-exclamation"
+                                    style={{ marginRight: "0.3rem" }}
+                                  />
+                                  Ajuste necessário:
+                                </strong>
+                                <span
+                                  style={{
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {project.reviewNotes}
+                                </span>
+                              </div>
+                            )}
+
+                            <div
+                              className="creator-profile-project__tags"
+                              aria-label="Tecnologias utilizadas"
+                            >
+                              {project.tags.map((tag) => (
+                                <span key={tag}>{tag}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </Link>
+
+                        {/* Colaboradores editam conteúdo; somente o dono pode excluir. */}
+                        {isOwner && (
+                          <div
                             style={{
-                              flex: "1 1 0",
-                              width: 0,
-                              boxSizing: "border-box",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "0.4rem",
-                              padding: "0.45rem 0.5rem",
-                              borderRadius: "6px",
-                              background: "#f8fafc",
-                              color: "#334155",
-                              cursor: "pointer",
-                              fontSize: "0.85rem",
-                              fontWeight: 600,
-                              transition: "all 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "#e2e8f0";
-                              e.currentTarget.style.borderColor = "#94a3b8";
-                              e.currentTarget.style.color = "#0f172a";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "#f8fafc";
-                              e.currentTarget.style.borderColor = "#cbd5e1";
-                              e.currentTarget.style.color = "#334155";
+                              display: "flex",
+                              gap: "0.5rem",
+                              padding: "0.5rem 1rem 1rem",
                             }}
                           >
-                            <i className="fa-solid fa-pen" aria-hidden="true" />
-                            Editar
-                          </button>
-
-                          {project.role === "autor" && (
                             <button
                               type="button"
-                              onClick={(e) => handleDeleteProject(e, project.id)}
-                              disabled={deletingProjectId === project.id}
+                              onClick={() =>
+                                navigate(`/projetos/${project.id}/editar`)
+                              }
                               style={{
                                 flex: "1 1 0",
                                 width: 0,
@@ -440,31 +583,82 @@ export default function CreatorProfilePage() {
                                 gap: "0.4rem",
                                 padding: "0.45rem 0.5rem",
                                 borderRadius: "6px",
-                                border: "1px solid #dc3545",
-                                background: "#dc3545",
-                                color: "#fff",
+                                background: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                color: "#334155",
                                 cursor: "pointer",
                                 fontSize: "0.85rem",
                                 fontWeight: 600,
                                 transition: "all 0.15s ease",
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "#b02a37";
-                                e.currentTarget.style.borderColor = "#b02a37";
+                                e.currentTarget.style.background = "#f1f5f9";
+                                e.currentTarget.style.borderColor = "#94a3b8";
+                                e.currentTarget.style.color = "#0f172a";
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "#dc3545";
-                                e.currentTarget.style.borderColor = "#dc3545";
+                                e.currentTarget.style.background = "#ffffff";
+                                e.currentTarget.style.borderColor = "#cbd5e1";
+                                e.currentTarget.style.color = "#334155";
                               }}
                             >
-                              <i className="fa-solid fa-trash" aria-hidden="true" />
-                              Excluir
+                              <i
+                                className={
+                                  isRejected
+                                    ? "fa-solid fa-wrench"
+                                    : "fa-solid fa-pen"
+                                }
+                                aria-hidden="true"
+                              />
+                              {isRejected ? "Corrigir" : "Editar"}
                             </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+
+                            {project.role === "autor" && (
+                              <button
+                                type="button"
+                                onClick={(e) =>
+                                  handleDeleteProject(e, project.id)
+                                }
+                                disabled={deletingProjectId === project.id}
+                                style={{
+                                  flex: "1 1 0",
+                                  width: 0,
+                                  boxSizing: "border-box",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: "0.4rem",
+                                  padding: "0.45rem 0.5rem",
+                                  borderRadius: "6px",
+                                  border: "1px solid #dc3545",
+                                  background: "#dc3545",
+                                  color: "#fff",
+                                  cursor: "pointer",
+                                  fontSize: "0.85rem",
+                                  fontWeight: 600,
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#b02a37";
+                                  e.currentTarget.style.borderColor = "#b02a37";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "#dc3545";
+                                  e.currentTarget.style.borderColor = "#dc3545";
+                                }}
+                              >
+                                <i
+                                  className="fa-solid fa-trash"
+                                  aria-hidden="true"
+                                />
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -477,12 +671,18 @@ export default function CreatorProfilePage() {
                 {profileInfo.interests.map((interest) => (
                   <span key={interest}>{interest}</span>
                 ))}
+                {profileInfo.interests.length === 0 && (
+                  <p className="creator-profile-card__empty">Nenhuma tecnologia informada.</p>
+                )}
               </div>
             </section>
 
             <section className="creator-profile-card">
               <h2>Links e contato</h2>
               <div className="creator-profile-links">
+                {profileInfo.links.length === 0 && (
+                  <p className="creator-profile-card__empty">Nenhum link informado.</p>
+                )}
                 {profileInfo.links.map((link) => (
                   <a
                     key={link.id}
@@ -516,17 +716,7 @@ export default function CreatorProfilePage() {
 
                 <div className="creator-profile-academic__field">
                   <dt>Previsão de término</dt>
-                  <dd>{profileInfo.conclusion}</dd>
-                </div>
-
-                <div className="creator-profile-academic__field">
-                  <dt>Status</dt>
-                  <dd>
-                    <span className="creator-profile-status">
-                      <span aria-hidden="true" />
-                      {profileInfo.status}
-                    </span>
-                  </dd>
+                  <dd>{profileInfo.graduation}</dd>
                 </div>
               </dl>
             </section>

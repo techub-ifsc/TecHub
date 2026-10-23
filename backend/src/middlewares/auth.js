@@ -1,4 +1,4 @@
-const { verifyToken } = require('../utils/jwt');
+const { verifyToken, isTokenForCurrentPassword } = require('../utils/jwt');
 const { User } = require('../models');
 const { ROLES } = require('../constants/roles');
 
@@ -34,7 +34,7 @@ async function authenticate(req, res, next) {
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
     }
-    if (!sessionIsCurrent(payload, user)) {
+    if (!sessionIsCurrent(payload, user) || !isTokenForCurrentPassword(payload, user)) {
       return res.status(401).json({ message: 'Sessão inválida. Entre novamente.' });
     }
     if (!user.emailVerifiedAt) {
@@ -67,7 +67,9 @@ async function optionalAuthenticate(req, res, next) {
 
     const userId = payload.sub || payload.id;
     const user = userId ? await User.findByPk(userId) : null;
-    if (user && user.emailVerifiedAt && sessionIsCurrent(payload, user)) {
+    if (user && user.emailVerifiedAt
+      && sessionIsCurrent(payload, user)
+      && isTokenForCurrentPassword(payload, user)) {
       req.user = user;
       req.userId = user.id;
     }

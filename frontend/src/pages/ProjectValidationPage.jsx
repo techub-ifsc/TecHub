@@ -11,6 +11,7 @@ import { getSlaStatus } from "../utils/moderationSla";
 import { getYoutubeVideoId } from "../utils/youtube";
 
 import "./ProjectValidationPage.css";
+import { descriptionToSafeHtml } from "../utils/richText";
 
 const STATUS_LABELS = {
   pending: "Pendente",
@@ -199,7 +200,15 @@ export default function ProjectValidationPage() {
   const githubUrl = safeExternalUrl(selectedProject?.githubURL);
   const liveUrl = safeExternalUrl(selectedProject?.liveURL);
   const technologies = selectedProject?.technologies || [];
-  const collaborators = selectedProject?.collaborators || [];
+  // O criador aparece primeiro na lista de colaboradores, sem repetir caso
+  // ele também esteja cadastrado como colaborador.
+  const author = selectedProject?.author;
+  const collaborators = [
+    ...(author ? [{ userId: author.id, name: author.name, isAuthor: true }] : []),
+    ...(selectedProject?.collaborators || []).filter(
+      (collaborator) => collaborator.userId !== author?.id,
+    ),
+  ];
   const media = selectedProject?.media || [];
   const isRejecting = decision === "rejected";
 
@@ -449,7 +458,11 @@ export default function ProjectValidationPage() {
 
                 <div className="validation-details__section">
                   <h3>Descrição do projeto</h3>
-                  <p>{selectedProject.description}</p>
+                  {/* Mesma formatação que o público verá, limpa antes de exibir. */}
+                  <div
+                    className="validation-details__rich-text"
+                    dangerouslySetInnerHTML={{ __html: descriptionToSafeHtml(selectedProject.description) }}
+                  />
                 </div>
 
                 <div className="validation-details__metadata">
@@ -516,6 +529,7 @@ export default function ProjectValidationPage() {
                           </span>
 
                           <strong>{collaborator.name}</strong>
+                            {collaborator.isAuthor && <small>Criador</small>}
                         </div>
                       ))}
                     </div>

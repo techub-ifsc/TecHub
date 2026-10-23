@@ -15,8 +15,7 @@ const ROLE_LABELS = {
 export default function LoggedHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [logoutConfirmationOpen, setLogoutConfirmationOpen] =
-    useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
   const accountMenuRef = useRef(null);
 
   const { user, logout } = useAuth();
@@ -25,8 +24,7 @@ export default function LoggedHeader() {
   const isCreator = user?.role === "creator";
   const isAdmin = user?.role === "super_admin";
 
-  const userInitial =
-    user?.name?.trim().charAt(0).toUpperCase() || "U";
+  const userInitial = user?.name?.trim().charAt(0).toUpperCase() || "U";
 
   function closeMenu() {
     setMenuOpen(false);
@@ -125,6 +123,7 @@ export default function LoggedHeader() {
 
             <NavLink
               to="/projetos"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${
                   isActive ? " is-active" : ""
@@ -137,6 +136,7 @@ export default function LoggedHeader() {
 
             <NavLink
               to="/criadores"
+              end
               className={({ isActive }) =>
                 `site-header__nav-item${
                   isActive ? " is-active" : ""
@@ -223,6 +223,19 @@ export default function LoggedHeader() {
                   {isCreator && (
                     <>
                       <Link
+                        to={`/criadores/${user?.id}`}
+                        className="logged-header__profile-edit"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          closeMenu();
+                        }}
+                        role="menuitem"
+                      >
+                        <i className="fa-solid fa-user" aria-hidden="true" />
+                        Ver perfil
+                      </Link>
+
+                      <Link
                         to={`/criadores/${user?.id}/editar`}
                         className="logged-header__profile-edit"
                         onClick={() => {
@@ -266,7 +279,7 @@ export default function LoggedHeader() {
           </div>
         </div>
       </div>
-    <ConfirmationModal
+      <ConfirmationModal
         open={logoutConfirmationOpen}
         tone="danger"
         title="Sair da conta?"
@@ -279,6 +292,6 @@ export default function LoggedHeader() {
           handleLogout();
         }}
       />
-      </header>
+    </header>
   );
 }

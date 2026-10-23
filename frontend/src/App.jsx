@@ -13,6 +13,7 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import NewProjectPage from "./pages/NewProjectPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           <Route element={<AdminRoute />}>
             <Route

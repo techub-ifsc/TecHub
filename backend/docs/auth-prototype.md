@@ -17,7 +17,7 @@ Decisões temporárias registradas:
 - os domínios de criador vêm de `CREATOR_ALLOWED_DOMAINS` e, nesta etapa, são `@ifsc.edu.br` e `@aluno.ifsc.edu.br`;
 - cada domínio é conferido como sufixo exato; outros subdomínios não são aceitos automaticamente;
 - o cadastro grava o usuário e responde sem token; o login só é liberado após confirmar o e-mail;
-- a confirmação por e-mail e o reenvio foram implementados no backend; a migração, o SMTP real e a página do frontend ainda precisam ser integrados;
+- a confirmação e o reenvio estão no backend; o frontend agora tem a página `/verify-email` e um formulário de reenvio. O SMTP e as URLs públicas ainda precisam ser configurados em cada ambiente publicado;
 - o frontend envia `accountType` com `visitor` ou `creator`; a API não aceita o campo `role`;
 - `super_admin` é criado apenas pela equipe usando um script interno e variáveis de ambiente;
 - o super-admin já ignora restrições de perfil. Fluxos administrativos específicos, como aprovação de projetos, ainda não foram criados.

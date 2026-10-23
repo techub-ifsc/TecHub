@@ -194,3 +194,24 @@ Na pasta `backend`, com dependências instaladas e variáveis de ambiente de tes
 ## Feature 4 — Redefinição de senha
 
 A recuperação de acesso acrescenta `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`, link de 1 hora com token de uso único armazenado como hash, reaproveitamento da política de senha do cadastro e invalidação dos JWTs anteriores após o sucesso. O e-mail de confirmação de cadastro também ganhou um layout HTML mais agradável, com versão em texto simples; a marca exibida no backend passou a ser **TecHub**. O passo a passo, os arquivos, o contrato com o frontend, a migration e as limitações estão em [redefinicao-senha.md](redefinicao-senha.md).
+
+## Feature 5 — Página de confirmação e identidade visual dos e-mails
+
+Esta atualização completa no frontend o fluxo iniciado na Feature 2. A página pública `/verify-email?token=...` lê o token do link e chama `POST /api/auth/verify-email` com `{ "token": "..." }`. Enquanto espera, mostra um estado de validação. Após resposta `200`, mostra “E-mail confirmado!” e leva a pessoa a `/login` após três segundos, com opção de ir imediatamente. O login informa que ela já pode entrar com sua senha; a confirmação **não** emite JWT nem inicia uma sessão.
+
+Token ausente ou malformado não é enviado à API. Para token expirado, usado ou substituído, a página mostra o erro e permite solicitar outro link pelo e-mail do cadastro. Esse formulário chama `POST /api/auth/resend-verification` com `{ "email": "..." }` e preserva a resposta genérica da API: não revela se uma conta existe. Se houver falha temporária de rede/servidor, a página oferece tentar a confirmação novamente. O efeito de confirmação evita uma segunda requisição automática no modo de desenvolvimento do React, pois o token só pode ser usado uma vez.
+
+Os e-mails de confirmação, redefinição e aviso de senha alterada usam agora o mesmo fundo grafite e verde `#78dc50` definidos no frontend. Como clientes de e-mail não leem as variáveis CSS do site, os valores correspondentes ficam em `EMAIL_PALETTE` dentro de `src/services/mailService.js`, aplicados como estilos inline. O conteúdo, os links e a versão em texto simples não mudaram.
+
+Arquivos principais:
+
+| Caminho a partir da raiz do projeto | Papel |
+| --- | --- |
+| `frontend/src/pages/VerifyEmailPage.jsx` e `.css` | Estados de validação, sucesso, erro e reenvio no visual das páginas de login. |
+| `frontend/src/App.jsx` | Registra a rota pública `/verify-email`. |
+| `frontend/src/api/auth.js` | Chama as duas rotas de confirmação já existentes no backend. |
+| `frontend/src/utils/emailVerification.js` | Valida o formato do token antes da requisição. |
+| `frontend/test/emailVerification.test.js` | Confere o formato aceito; o script `npm test` inclui este teste. |
+| `backend/src/services/mailService.js` e `backend/test/mail.test.js` | Alinham e conferem a paleta de todos os e-mails. |
+
+Para testar a navegação local, configure `EMAIL_VERIFICATION_URL` no backend com a origem e a porta reais do frontend (por exemplo, `http://localhost:5173/verify-email`) e faça um cadastro de teste. O link recebido deve abrir a página, confirmar a conta e ir ao login; um segundo uso deve oferecer reenvio. Em produção, a URL precisa ser pública e HTTPS. Os testes automatizados simulam SMTP e banco; o teste manual com e-mail real continua necessário no ambiente publicado.

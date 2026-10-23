@@ -12,6 +12,18 @@ export async function loginUser({ email, password }) {
   return data;
 }
 
+// Consome o token recebido no e-mail; confirmar a conta não inicia uma sessão.
+export async function verifyEmail(token) {
+  const { data } = await axiosClient.post('/auth/verify-email', { token });
+  return data;
+}
+
+// Resposta genérica: não informa se o endereço pertence a uma conta.
+export async function resendVerification(email) {
+  const { data } = await axiosClient.post('/auth/resend-verification', { email });
+  return data;
+}
+
 // Solicita um link sem revelar se o e-mail possui uma conta.
 export async function requestPasswordReset(email) {
   const { data } = await axiosClient.post('/auth/forgot-password', { email });

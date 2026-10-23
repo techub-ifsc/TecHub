@@ -50,16 +50,54 @@ function escapeHtml(value) {
   })[character]);
 }
 
+// Corresponde aos tons de frontend/src/index.css e frontend/src/pages/LoginPage.css.
+// E-mails usam valores inline, pois clientes de e-mail não leem variáveis CSS do site.
+const EMAIL_PALETTE = Object.freeze({
+  canvas: '#18191a',
+  surface: '#222426',
+  header: '#1e2022',
+  border: '#33363a',
+  green: '#78dc50',
+  text: '#ffffff',
+  muted: '#b6b9bd',
+  buttonText: '#101010',
+});
+
 // Tabelas e estilos inline têm suporte amplo em clientes de e-mail.
 // O texto simples continua disponível para acessibilidade e clientes sem HTML.
 function emailHtml({ preview, title, message, action, link, detail }) {
   const button = link
-    ? `<tr><td style="padding:28px 0 24px;"><a href="${escapeHtml(link)}" style="display:inline-block;background:#00b89c;color:#06251f;text-decoration:none;font-size:15px;font-weight:700;line-height:20px;padding:15px 24px;border-radius:8px;">${escapeHtml(action)}</a></td></tr>`
+    ? `<tr><td style="padding:28px 0 24px;"><a href="${escapeHtml(link)}" style="display:inline-block;background-color:${EMAIL_PALETTE.green};color:${EMAIL_PALETTE.buttonText};text-decoration:none;font-size:15px;font-weight:700;line-height:20px;padding:15px 24px;border-radius:8px;">${escapeHtml(action)}</a></td></tr>`
     : '';
   const fallback = link
-    ? `<tr><td style="color:#52636b;font-size:13px;line-height:20px;padding:0 0 18px;">Se o botão não funcionar, copie este endereço no navegador:<br><a href="${escapeHtml(link)}" style="color:#087f70;word-break:break-all;">${escapeHtml(link)}</a></td></tr>`
+    ? `<tr><td style="color:${EMAIL_PALETTE.muted};font-size:13px;line-height:20px;padding:0 0 18px;">Se o botão não funcionar, copie este endereço no navegador:<br><a href="${escapeHtml(link)}" style="color:${EMAIL_PALETTE.green};word-break:break-all;">${escapeHtml(link)}</a></td></tr>`
     : '';
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#eef3f2;font-family:Arial,Helvetica,sans-serif;color:#18333a;"><span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;">${escapeHtml(preview)}</span><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#eef3f2;padding:32px 12px;"><tr><td align="center"><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;"><tr><td style="background:#0c2730;padding:28px 36px;"><span style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-1px;">Tec<span style="color:#39d5b8;">Hub</span></span><div style="color:#a8d8d0;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;padding-top:8px;">Seu espaço para criar e compartilhar</div></td></tr><tr><td style="padding:36px;"><table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td style="color:#102e35;font-size:24px;font-weight:700;line-height:31px;padding-bottom:16px;">${escapeHtml(title)}</td></tr><tr><td style="color:#425960;font-size:15px;line-height:24px;">${escapeHtml(message)}</td></tr>${button}${fallback}<tr><td style="border-top:1px solid #e4ecea;padding-top:20px;color:#687e83;font-size:13px;line-height:21px;">${escapeHtml(detail)}</td></tr></table></td></tr></table><div style="max-width:560px;color:#73898d;font-size:12px;line-height:18px;padding:20px 12px;text-align:center;">Mensagem automática do TecHub. Não responda a este e-mail.</div></td></tr></table></body></html>`;
+  return `<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:${EMAIL_PALETTE.canvas};font-family:Arial,Helvetica,sans-serif;color:${EMAIL_PALETTE.text};">
+  <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;">${escapeHtml(preview)}</span>
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="${EMAIL_PALETTE.canvas}" style="background-color:${EMAIL_PALETTE.canvas};padding:32px 12px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="${EMAIL_PALETTE.surface}" style="max-width:560px;background-color:${EMAIL_PALETTE.surface};border:1px solid ${EMAIL_PALETTE.border};border-radius:12px;overflow:hidden;">
+        <tr><td bgcolor="${EMAIL_PALETTE.header}" style="background-color:${EMAIL_PALETTE.header};padding:28px 36px;border-bottom:1px solid ${EMAIL_PALETTE.border};">
+          <span style="color:${EMAIL_PALETTE.text};font-size:26px;font-weight:800;letter-spacing:-1px;">Tec<span style="color:${EMAIL_PALETTE.green};">Hub</span></span>
+          <div style="color:${EMAIL_PALETTE.muted};font-size:12px;letter-spacing:1.4px;text-transform:uppercase;padding-top:8px;">Seu espaço para criar e compartilhar</div>
+        </td></tr>
+        <tr><td style="padding:36px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+            <tr><td style="color:${EMAIL_PALETTE.text};font-size:24px;font-weight:700;line-height:31px;padding-bottom:16px;">${escapeHtml(title)}</td></tr>
+            <tr><td style="color:${EMAIL_PALETTE.muted};font-size:15px;line-height:24px;">${escapeHtml(message)}</td></tr>
+            ${button}${fallback}
+            <tr><td style="border-top:1px solid ${EMAIL_PALETTE.border};padding-top:20px;color:${EMAIL_PALETTE.muted};font-size:13px;line-height:21px;">${escapeHtml(detail)}</td></tr>
+          </table>
+        </td></tr>
+      </table>
+      <div style="max-width:560px;color:${EMAIL_PALETTE.muted};font-size:12px;line-height:18px;padding:20px 12px;text-align:center;">Mensagem automática do TecHub. Não responda a este e-mail.</div>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 async function sendMessage(toEmail, message) {

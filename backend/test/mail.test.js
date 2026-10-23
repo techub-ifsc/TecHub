@@ -55,6 +55,9 @@ test('e-mail contém link da página de confirmação e token, sem envio de rede
   assert.match(message.html, /<table/);
   assert.match(message.html, /TecHub/);
   assert.doesNotMatch(message.html, /Tech\sHub/);
+  assert.match(message.html, /background-color:#78dc50/);
+  assert.match(message.html, /background-color:#18191a/);
+  assert.doesNotMatch(message.html, /#00b89c|#39d5b8/i);
 });
 
 test('link de produção precisa usar HTTPS', () => {
@@ -81,6 +84,8 @@ test('redefinição envia link de 1 hora e aviso de senha alterada, sem senha no
   assert.match(messages[0].text, /https:\/\/techub\.example\/reset-password\?token=b{64}/);
   assert.match(messages[0].text, /1 hora/);
   assert.match(messages[0].html, /Criar nova senha/);
+  assert.match(messages[0].html, /background-color:#78dc50/);
+  assert.match(messages[1].html, /color:#78dc50/);
   assert.equal(messages[1].subject, 'TecHub | Sua senha foi alterada');
   assert.doesNotMatch(messages[1].text, /b{64}/);
   assert.doesNotMatch(messages[1].html, /b{64}/);

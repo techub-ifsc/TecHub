@@ -334,7 +334,18 @@ export default function ProjectDetailsPage() {
 
             <h1>{project.title}</h1>
 
-            {project.author?.name && <p>Por {project.author.name}</p>}
+            {project.author?.name && (
+              <p>
+                Por{" "}
+                {project.author.id ? (
+                  <Link to={`/criadores/${project.author.id}`} className="project-details-author">
+                    {project.author.name}
+                  </Link>
+                ) : (
+                  project.author.name
+                )}
+              </p>
+            )}
 
             {updatedAt && <small>{updatedAt}</small>}
           </div>
@@ -466,11 +477,18 @@ export default function ProjectDetailsPage() {
                 <div className="project-collaborators">
                   {collaborators.map((person) => {
                     const name = person.name || "Colaborador";
+                    const profileId = person.userId || person.id;
+                    // O card leva ao perfil do colaborador.
+                    const Card = profileId ? Link : "div";
 
                     return (
-                      <div
+                      <Card
                         className="project-collaborator"
-                        key={person.userId || person.id}
+                        key={profileId}
+                        {...(profileId && {
+                          to: `/criadores/${profileId}`,
+                          "aria-label": `Ver perfil de ${name}`,
+                        })}
                       >
                         <span aria-hidden="true">
                           {getInitials(name)}
@@ -482,7 +500,7 @@ export default function ProjectDetailsPage() {
                             <small>{person.contribution}</small>
                           )}
                         </div>
-                      </div>
+                      </Card>
                     );
                   })}
                 </div>

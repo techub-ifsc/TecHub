@@ -91,8 +91,10 @@ function uploadProfileFile(kind, file, userId) {
   });
 }
 
+// invalidate: também limpa as cópias em cache na CDN; sem isso, a imagem apagada
+// continua abrindo pelo link antigo por um tempo.
 function deleteProfileFile(kind, publicId) {
-  return cloudinary.uploader.destroy(publicId, { resource_type: PROFILE_FILES[kind].resourceType });
+  return cloudinary.uploader.destroy(publicId, { resource_type: PROFILE_FILES[kind].resourceType, invalidate: true });
 }
 
 // Perfil público de um criador. Visitantes e administradores não têm perfil público.

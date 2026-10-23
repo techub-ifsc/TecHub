@@ -4,6 +4,7 @@ import CustomSelect from "../components/CustomSelect";
 
 import { API_URL } from "../api/apiUrl";
 import { descriptionToPlainText } from "../utils/richText";
+import { readSessionState, writeSessionState } from "../utils/sessionState";
 import "./ProjectsPage.css";
 
 const COURSES = {
@@ -62,18 +63,35 @@ const CARD_COLORS = [
 
 const ITEMS_PER_PAGE = 8;
 
+// Filtros e página ficam guardados na aba: ao abrir um projeto e voltar, a busca continua igual.
+const FILTERS_KEY = "techub:projetos:filtros";
+const DEFAULT_FILTERS = { search: "", course: "", phase: "", tags: [], page: 1 };
+
+function readSavedFilters() {
+  const saved = readSessionState(FILTERS_KEY, DEFAULT_FILTERS);
+  return {
+    search: typeof saved.search === "string" ? saved.search : "",
+    course: typeof saved.course === "string" ? saved.course : "",
+    phase: typeof saved.phase === "string" ? saved.phase : "",
+    tags: Array.isArray(saved.tags) ? saved.tags.filter((tag) => typeof tag === "string") : [],
+    page: Number.isInteger(saved.page) && saved.page > 0 ? saved.page : 1,
+  };
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [search, setSearch] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [selectedPhase, setSelectedPhase] = useState("");
-  const [selectedTags, setSelectedTags] = useState([]);
+  const [savedFilters] = useState(readSavedFilters);
+  const [search, setSearch] = useState(savedFilters.search);
+  const [selectedCourse, setSelectedCourse] = useState(savedFilters.course);
+  const [selectedPhase, setSelectedPhase] = useState(savedFilters.phase);
+  const [selectedTags, setSelectedTags] = useState(savedFilters.tags);
   const [tagSearch, setTagSearch] = useState("");
   const [tagsOpen, setTagsOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(savedFilters.page);
+  const previousFiltersRef = useRef(null);
 
   const tagsContainerRef = useRef(null);
 
@@ -178,9 +196,24 @@ export default function ProjectsPage() {
     return filteredProjects.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredProjects, currentPage]);
 
+  // Mudar um filtro volta para a primeira página; ao montar (filtros restaurados) mantém a página guardada.
   useEffect(() => {
-    setCurrentPage(1);
+    const filtersKey = JSON.stringify([search, selectedCourse, selectedPhase, selectedTags]);
+    if (previousFiltersRef.current !== null && previousFiltersRef.current !== filtersKey) {
+      setCurrentPage(1);
+    }
+    previousFiltersRef.current = filtersKey;
   }, [search, selectedCourse, selectedPhase, selectedTags]);
+
+  useEffect(() => {
+    writeSessionState(FILTERS_KEY, {
+      search,
+      course: selectedCourse,
+      phase: selectedPhase,
+      tags: selectedTags,
+      page: currentPage,
+    });
+  }, [search, selectedCourse, selectedPhase, selectedTags, currentPage]);
 
   useEffect(() => {
     function handleOutsideClick(event) {

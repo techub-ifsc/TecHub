@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
@@ -14,6 +15,16 @@ const { isCreatorEmailAllowed, getCreatorAllowedDomains } = require('../config/c
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
+
+// Resposta única para e-mail inexistente, senha errada e conta bloqueada: nenhuma delas
+// pode revelar se o e-mail tem conta. O aviso do bloqueio vale para todas.
+const LOGIN_FAILED = {
+  message: 'E-mail ou senha inválidos. Após 5 tentativas erradas, o acesso fica bloqueado por 15 minutos.',
+};
+
+// Hash bcrypt (custo 12, o mesmo das senhas) de um valor aleatório descartado. Comparar
+// contra ele quando não há senha a conferir faz o login levar o mesmo tempo em todos os casos.
+const DUMMY_PASSWORD_HASH = '$2a$12$eebuUR6KfLKcK1dORmwuh.JHjRByE7m96sEH/e4wAhwx2ubum8ju.';
 
 // Mantém o formato de erro existente sem registrar SQL ou valores de credenciais.
 function handleAuthError(err, res, next) {
@@ -100,7 +111,7 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const data = loginSchema.parse(req.body);
-    const genericError = { message: 'E-mail ou senha inválidos.' };
+    const genericError = LOGIN_FAILED;
 
     // A linha da conta fica bloqueada enquanto lemos e atualizamos o contador.
     // Assim, tentativas simultâneas não perdem incrementos umas das outras.
@@ -110,21 +121,18 @@ async function login(req, res, next) {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      if (!user) return { status: 401, body: genericError };
+      if (!user) {
+        await bcrypt.compare(data.password, DUMMY_PASSWORD_HASH);
+        return { status: 401, body: genericError };
+      }
 
+      // Bloqueada: a senha não é conferida (nem a certa libera) e a resposta é a mesma
+      // de uma senha errada, para o bloqueio não confirmar que o e-mail existe.
       const now = new Date();
       const lockedUntil = user.lockedUntil && new Date(user.lockedUntil);
       if (lockedUntil && lockedUntil > now) {
-        const retryAfterSeconds = Math.max(1, Math.ceil((lockedUntil - now) / 1000));
-        const minutes = Math.ceil(retryAfterSeconds / 60);
-        return {
-          status: 429,
-          retryAfterSeconds,
-          body: {
-            message: `Conta temporariamente bloqueada. Tente novamente em ${minutes} minuto${minutes === 1 ? '' : 's'}.`,
-            retryAfterSeconds,
-          },
-        };
+        await bcrypt.compare(data.password, DUMMY_PASSWORD_HASH);
+        return { status: 401, body: genericError };
       }
 
       // Quando os 15 minutos terminam, a próxima tentativa inicia uma nova contagem.
@@ -159,9 +167,6 @@ async function login(req, res, next) {
       return { status: 200, body: { user: user.toSafeJSON(), token } };
     });
 
-    if (result.retryAfterSeconds) {
-      res.set('Retry-After', String(result.retryAfterSeconds));
-    }
     return res.status(result.status).json(result.body);
   } catch (err) {
     handleAuthError(err, res, next);

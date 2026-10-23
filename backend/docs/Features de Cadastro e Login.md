@@ -140,10 +140,10 @@ Por decisão desta entrega, o bloqueio impede **somente novos logins**. Uma sess
 
 1. O limitador por IP é executado pela rota. Depois, o Zod valida `email` e `password`; e-mail malformado ou senha ausente devolve `400` sem contar tentativa de uma conta.
 2. O controller abre uma transação no PostgreSQL e consulta o usuário pelo e-mail normalizado com bloqueio da linha (`SELECT ... FOR UPDATE`). Enquanto uma tentativa atualiza o contador, outra tentativa da mesma conta espera; isso evita perder incrementos em requisições simultâneas.
-3. E-mail sem conta retorna o mesmo `401` genérico usado para senha errada. Nenhum contador é criado para endereços inexistentes.
-4. Se `lockedUntil` ainda estiver no futuro, a senha nem é comparada. A API devolve `429`, `Retry-After` em segundos e uma mensagem com os minutos restantes, arredondados para cima. Isso também acontece se a sexta tentativa trouxer a senha correta.
+3. E-mail sem conta retorna o mesmo `401` genérico usado para senha errada, depois de um bcrypt contra um hash fixo, para levar o mesmo tempo. Nenhum contador é criado para endereços inexistentes.
+4. Se `lockedUntil` ainda estiver no futuro, a senha da conta não é comparada (nem a correta libera). A API devolve o mesmo `401` genérico de uma senha errada, também depois do bcrypt contra o hash fixo: uma resposta diferente para conta bloqueada revelaria que o e-mail tem conta.
 5. Se o prazo de bloqueio já terminou, `failedLoginAttempts` volta a zero e `lockedUntil` é limpo antes de avaliar a nova tentativa.
-6. O bcrypt compara a senha enviada com o hash salvo. Uma senha errada aumenta `failedLoginAttempts` dentro da mesma transação. A quinta falha grava `lockedUntil = agora + 15 minutos`, mas ainda responde com o `401` genérico. A próxima tentativa recebe `429`.
+6. O bcrypt compara a senha enviada com o hash salvo. Uma senha errada aumenta `failedLoginAttempts` dentro da mesma transação. A quinta falha grava `lockedUntil = agora + 15 minutos`. Todas as respostas continuam sendo o `401` genérico.
 7. Com senha correta e e-mail ainda não confirmado, a regra anterior da Feature 2 continua: resposta `403`, sem JWT. Isso não é um login bem-sucedido e, portanto, não zera falhas anteriores; um bloqueio expirado, porém, é limpo.
 8. Com senha correta, conta confirmada e sem bloqueio, o contador é zerado e a API retorna `200` com usuário seguro e JWT. `failedLoginAttempts` e `lockedUntil` nunca entram no JSON público nem no JWT.
 
@@ -156,17 +156,16 @@ Content-Type: application/json
 {"email":"maria@example.com","password":"SenhaTeste123"}
 ```
 
-Nas primeiras cinco senhas erradas, a resposta é `401` com `{"message":"E-mail ou senha inválidos."}`. Depois da quinta falha, mesmo usando a senha correta, a tentativa dentro dos 15 minutos recebe algo como:
+Senha errada, e-mail sem conta e conta bloqueada recebem a mesma resposta:
 
 ```http
-HTTP/1.1 429 Too Many Requests
-Retry-After: 900
+HTTP/1.1 401 Unauthorized
 Content-Type: application/json
 
-{"message":"Conta temporariamente bloqueada. Tente novamente em 15 minutos.","retryAfterSeconds":900}
+{"message":"E-mail ou senha inválidos. Após 5 tentativas erradas, o acesso fica bloqueado por 15 minutos."}
 ```
 
-`900` é apenas o valor inicial aproximado: o backend calcula os segundos restantes em cada resposta, e a mensagem arredonda os minutos para cima. Ao terminar o prazo, uma senha errada passa a contar como primeira falha de uma nova sequência; uma senha correta faz login e mantém o contador zerado. O frontend atual já apresenta a propriedade `message` dos erros de login, mas pode usar `retryAfterSeconds` para mostrar uma contagem regressiva se a equipe desejar.
+O aviso do bloqueio vai em toda resposta de falha, para quem foi bloqueado entender o motivo sem que a API confirme qual conta existe. Ao terminar o prazo, uma senha errada passa a contar como primeira falha de uma nova sequência; uma senha correta faz login e mantém o contador zerado.
 
 ### Estado no banco e ordem de implantação
 
@@ -183,13 +182,13 @@ Na entrega original, a migration ainda aguardava aplicação. Em 22/10/2026, uma
 | `src/models/User.js` | Declara os dois campos persistidos e mantém os dados de bloqueio fora de `toSafeJSON()`. |
 | `src/migrations/20261013000003-add-login-lockout.js` | Prepara as colunas no PostgreSQL para revisão da equipe de banco. |
 | `src/controllers/authController.js` | Conta falhas, aplica e expira o bloqueio numa transação e conserva as respostas anteriores de credencial inválida e e-mail pendente. |
-| `src/routes/authRoutes.js` | Documenta o novo `429`, o cabeçalho `Retry-After` e `retryAfterSeconds` no Swagger da rota de login. |
+| `src/routes/authRoutes.js` | Documenta no Swagger que a conta bloqueada responde o mesmo `401` da senha errada. |
 | `test/auth.test.js` | Verifica cinco falhas, sexta tentativa correta bloqueada, tempo restante, reset, independência entre contas, criador, super-admin, JWT anterior ainda válido e regressões do login existente. |
 | `docs/auth-prototype.md` e este documento | Atualizam o resumo da autenticação e explicam a implementação completa. |
 
 ### Como verificar sem alterar o banco real
 
-Na pasta `backend`, com dependências instaladas e variáveis de ambiente de teste definidas, execute `npm.cmd test` no PowerShell. Os testes de autenticação simulam o armazenamento e o envio de e-mail: **não enviam SMTP real nem aplicam migrations no Neon**. Para testar com PostgreSQL real, primeiro peça à equipe de banco a revisão das migrations e use um banco de teste separado. Depois, cadastre e confirme uma conta de teste, envie cinco senhas erradas a `POST /api/auth/login`, tente a senha correta uma sexta vez e confira `429` e `Retry-After`. Não use contas reais para esse experimento, pois elas seriam bloqueadas por 15 minutos.
+Na pasta `backend`, com dependências instaladas e variáveis de ambiente de teste definidas, execute `npm.cmd test` no PowerShell. Os testes de autenticação simulam o armazenamento e o envio de e-mail: **não enviam SMTP real nem aplicam migrations no Neon**. Para testar com PostgreSQL real, primeiro peça à equipe de banco a revisão das migrations e use um banco de teste separado. Depois, cadastre e confirme uma conta de teste, envie cinco senhas erradas a `POST /api/auth/login`, tente a senha correta uma sexta vez e confira que a resposta é o mesmo `401` genérico. Não use contas reais para esse experimento, pois elas seriam bloqueadas por 15 minutos.
 
 ## Feature 4 — Redefinição de senha
 

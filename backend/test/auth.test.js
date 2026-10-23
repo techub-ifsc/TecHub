@@ -2,6 +2,8 @@ const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { randomBytes } = require('node:crypto');
 
+const LOGIN_FAILED_MESSAGE = 'E-mail ou senha inválidos. Após 5 tentativas erradas, o acesso fica bloqueado por 15 minutos.';
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = randomBytes(48).toString('hex');
 process.env.JWT_EXPIRES_IN = '1d';
@@ -309,10 +311,10 @@ test('login responde o mesmo 401 para usuario inexistente e senha errada', async
   assert.equal(wrong.status, 401);
   assert.equal(absent.status, 401);
   assert.deepEqual(wrong.body, absent.body);
-  assert.equal(wrong.body.message, 'E-mail ou senha inválidos.');
+  assert.equal(wrong.body.message, LOGIN_FAILED_MESSAGE);
 });
 
-test('apos 5 senhas erradas a conta bloqueia por 15 minutos, inclusive para senha correta', async () => {
+test('apos 5 senhas erradas a conta bloqueia por 15 minutos, inclusive para senha correta, sem revelar o bloqueio', async () => {
   const registered = await request('/register', account());
   await confirmLatestEmail();
   const activeSession = await request('/login', {
@@ -325,7 +327,7 @@ test('apos 5 senhas erradas a conta bloqueia por 15 minutos, inclusive para senh
   for (let attempt = 1; attempt <= 5; attempt++) {
     const result = await request('/login', loginBody);
     assert.equal(result.status, 401);
-    assert.deepEqual(result.body, { message: 'E-mail ou senha inválidos.' });
+    assert.deepEqual(result.body, { message: LOGIN_FAILED_MESSAGE });
     assert.equal(stored.failedLoginAttempts, attempt);
     if (attempt < 5) assert.equal(stored.lockedUntil, null);
   }
@@ -333,11 +335,12 @@ test('apos 5 senhas erradas a conta bloqueia por 15 minutos, inclusive para senh
   const lockDuration = stored.lockedUntil.getTime() - Date.now();
   assert.ok(lockDuration > 14 * 60 * 1000 && lockDuration <= 15 * 60 * 1000);
 
+  // A conta bloqueada responde igual a um e-mail que não existe: o bloqueio não confirma a conta.
   const blocked = await request('/login', { email: account().email, password: account().password });
-  assert.equal(blocked.status, 429);
-  assert.match(blocked.body.message, /15 minutos/);
-  assert.ok(blocked.body.retryAfterSeconds > 0);
-  assert.equal(Number(blocked.headers.get('retry-after')), blocked.body.retryAfterSeconds);
+  const absent = await request('/login', { email: 'ninguem@example.com', password: account().password });
+  assert.equal(blocked.status, 401);
+  assert.deepEqual(blocked.body, absent.body);
+  assert.equal(blocked.headers.get('retry-after'), null);
   assert.equal(Object.hasOwn(blocked.body, 'token'), false);
   assert.equal(stored.failedLoginAttempts, 5);
   assert.equal((await request('/me', undefined, activeSession.body.token)).status, 200);
@@ -386,7 +389,7 @@ test('a mesma regra de bloqueio protege creator e super_admin', async () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       assert.equal((await request('/login', { email: user.email, password: 'SenhaErrada123' })).status, 401);
     }
-    assert.equal((await request('/login', { email: user.email, password: account().password })).status, 429);
+    assert.equal((await request('/login', { email: user.email, password: account().password })).status, 401);
   }
 });
 
@@ -568,7 +571,7 @@ test('falha SMTP na solicitação não revela se a conta existe; bloqueio perman
     token, password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
   })).status, 200);
   assert.ok(rows.get(registered.body.user.id).lockedUntil > new Date());
-  assert.equal((await request('/login', { email: account().email, password: 'NovaSenha123' })).status, 429);
+  assert.equal((await request('/login', { email: account().email, password: 'NovaSenha123' })).status, 401);
 });
 
 test('recuperação exige configuração e limita solicitação e uso do link por IP', async (t) => {

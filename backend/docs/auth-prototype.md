@@ -1,8 +1,10 @@
-# Tech Hub — autenticação e perfis de usuário
+# TecHub — autenticação e perfis de usuário
+
+> Este guia registra o protótipo inicial. Para o estado atual, inclusive confirmação de e-mail, bloqueio de login e redefinição de senha, consulte [Features de Cadastro e Login.md](Features%20de%20Cadastro%20e%20Login.md) e [redefinicao-senha.md](redefinicao-senha.md).
 
 ## Resultado desta etapa
 
-O backend usa agora os perfis próprios do Tech Hub:
+O backend usa agora os perfis próprios do TecHub:
 
 - `visitor`: conta comum cadastrada; visitantes anônimos continuam podendo acessar rotas públicas.
 - `creator`: conta que pode publicar/administrar conteúdo; no cadastro público exige e-mail institucional.
@@ -161,7 +163,7 @@ O `.env.example` contém apenas nomes e exemplos seguros para orientar a equipe.
 - `src/routes/categoryRoutes.js`, `productRoutes.js`, `orderRoutes.js` e `favoriteRoutes.js`: substituem as referências herdadas a `seller/customer` por `creator/visitor`.
 - `src/controllers/orderController.js`: trata `creator` e `super_admin` como perfis que podem consultar todos os registros no fluxo herdado.
 - `src/routes/authRoutes.js` e `src/config/swagger.js`: documentam o novo contrato de cadastro e seus erros.
-- `src/app.js`: ajusta apenas o título da documentação para Tech Hub.
+- `src/app.js`: ajusta apenas o título da documentação para TecHub.
 - `scripts/check-db.cjs`: verifica o novo ENUM.
 - `package.json`: adiciona o comando `admin:create`.
 - `.env.example`: documenta domínio e variáveis temporárias do script administrativo.
@@ -201,7 +203,8 @@ A interface não deve enviar `role`, nem oferecer `super_admin`. Deve tratar `er
 - confirmar se a lista temporária de domínios continuará fixa ou será administrável no sistema;
 - integrar SMTP, frontend e migração da confirmação de e-mail; definir fila durável e monitoramento;
 - definir ações administrativas específicas do super-admin e auditoria dessas ações;
-- confirmar se outras rotas herdadas do e-commerce permanecerão no Tech Hub;
-- implementar recuperação de senha, bloqueio por tentativas, logout com revogação e demais histórias futuras do PRD.
+- confirmar se outras rotas herdadas do e-commerce permanecerão no TecHub;
+- integrar as telas de confirmação e redefinição com o frontend; recuperação de senha e bloqueio por tentativas já estão implementados nas branches de autenticação;
+- implementar logout com revogação e demais histórias futuras do PRD.
 
 Esta etapa altera somente o backend de autenticação/perfis e a consistência das autorizações herdadas. Ela não cria os fluxos administrativos completos.

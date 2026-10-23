@@ -11,6 +11,8 @@ import CreatorProfilePage from "./pages/CreatorProfilePage";
 import CreatorsPage from "./pages/CreatorsPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NewProjectPage from "./pages/NewProjectPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
@@ -67,6 +69,8 @@ export default function App() {
           <Route path="/cadastro" element={<SignUpPage />} />
 
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route element={<AdminRoute />}>
             <Route

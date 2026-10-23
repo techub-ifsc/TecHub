@@ -43,6 +43,15 @@ const resendVerificationSchema = z.object({ email: emailSchema }).strict();
 const verifyEmailSchema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/i, 'Link de confirmação inválido.'),
 }).strict();
+const forgotPasswordSchema = z.object({ email: emailSchema }).strict();
+const resetPasswordSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/i, 'Link de redefinição inválido.'),
+  password: passwordSchema,
+  confirmPassword: z.string(),
+}).strict().refine((data) => data.password === data.confirmPassword, {
+  message: 'A confirmação da senha não corresponde à nova senha.',
+  path: ['confirmPassword'],
+});
 
 const updateProfileSchema = z
   .object({
@@ -63,5 +72,7 @@ module.exports = {
   loginSchema,
   resendVerificationSchema,
   verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   updateProfileSchema,
 };

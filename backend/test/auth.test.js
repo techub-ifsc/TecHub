@@ -21,12 +21,16 @@ let server;
 let baseUrl;
 let rows;
 let sentEmails;
+let sentResetEmails;
+let passwordChangeNotices;
 
 // Banco simulado somente nos testes. A aplicação continua usando Sequelize.
 // O model, o hook bcrypt, os controllers, os validadores e o middleware são reais.
 beforeEach(async (t) => {
   rows = new Map();
   sentEmails = [];
+  sentResetEmails = [];
+  passwordChangeNotices = [];
   // A transação real usa SELECT ... FOR UPDATE no PostgreSQL. Aqui simulamos
   // apenas seu contrato; a migration e a concorrência real dependem do banco.
   t.mock.method(sequelize, 'transaction', async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }));
@@ -34,8 +38,21 @@ beforeEach(async (t) => {
   t.mock.method(mailService, 'sendVerificationEmail', async (email, token) => {
     sentEmails.push({ email, token });
   });
-  t.mock.method(User, 'findOne', async ({ where }) =>
-    [...rows.values()].find((user) => user.email === where.email) || null);
+  t.mock.method(mailService, 'assertPasswordResetConfigured', () => {});
+  t.mock.method(mailService, 'sendPasswordResetEmail', async (email, token) => {
+    sentResetEmails.push({ email, token });
+  });
+  t.mock.method(mailService, 'sendPasswordChangedEmail', async (email) => {
+    passwordChangeNotices.push(email);
+  });
+  t.mock.method(User, 'findOne', async ({ where }) => {
+    if (where.passwordResetTokenHash) {
+      return [...rows.values()].find((user) =>
+        user.passwordResetTokenHash === where.passwordResetTokenHash
+        && user.passwordResetExpiresAt > new Date()) || null;
+    }
+    return [...rows.values()].find((user) => user.email === where.email) || null;
+  });
   t.mock.method(User, 'findByPk', async (id) => rows.get(id) || null);
   t.mock.method(User, 'update', async (values, { where }) => {
     const user = [...rows.values()].find((item) =>
@@ -360,7 +377,7 @@ test('login correto zera as falhas; depois do prazo uma senha errada inicia cont
 test('a mesma regra de bloqueio protege creator e super_admin', async () => {
   for (const role of [ROLES.CREATOR, ROLES.SUPER_ADMIN]) {
     const user = await User.create({
-      name: 'Usuário Tech Hub',
+      name: 'Usuário TecHub',
       email: `${role}@ifsc.edu.br`,
       password: account().password,
       role,
@@ -449,6 +466,129 @@ test('troca de e-mail requer nova confirmação e invalida o JWT anterior', asyn
   assert.equal((await request('/me', undefined, login.body.token)).status, 403);
   assert.equal((await confirmLatestEmail()).status, 200);
   assert.equal((await request('/login', { email: 'nova@example.com', password: account().password })).status, 200);
+});
+
+test('recuperação usa resposta genérica, token com hash e prazo de 1 hora', async () => {
+  const registered = await request('/register', account());
+  const absent = await request('/forgot-password', { email: 'ausente@example.com' });
+  const existing = await request('/forgot-password', { email: ' MARIA@EXAMPLE.COM ' });
+  assert.equal(absent.status, 200);
+  assert.equal(existing.status, 200);
+  assert.deepEqual(existing.body, absent.body);
+  assert.equal(sentResetEmails.length, 1);
+  assert.equal(sentResetEmails[0].email, account().email);
+  assert.equal(Object.hasOwn(existing.body, 'token'), false);
+  const stored = rows.get(registered.body.user.id);
+  assert.notEqual(stored.passwordResetTokenHash, sentResetEmails[0].token);
+  assert.equal(stored.passwordResetTokenHash.length, 64);
+  const expiresIn = stored.passwordResetExpiresAt.getTime() - Date.now();
+  assert.ok(expiresIn > 59 * 60 * 1000 && expiresIn <= 60 * 60 * 1000);
+  assert.equal(Object.hasOwn(registered.body.user, 'passwordResetTokenHash'), false);
+
+  const oldToken = sentResetEmails[0].token;
+  assert.equal((await request('/forgot-password', { email: account().email })).status, 200);
+  assert.equal(sentResetEmails.length, 2);
+  assert.notEqual(sentResetEmails[1].token, oldToken);
+  assert.equal((await request('/reset-password', {
+    token: oldToken, password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  })).status, 400);
+});
+
+test('redefinição troca hash, invalida link e JWT antigo e exige novo login', async () => {
+  const registered = await request('/register', account());
+  await confirmLatestEmail();
+  const oldLogin = await request('/login', { email: account().email, password: account().password });
+  assert.equal(oldLogin.status, 200);
+  assert.equal((await request('/forgot-password', { email: account().email })).status, 200);
+  const token = sentResetEmails[0].token;
+  const result = await request('/reset-password', {
+    token, password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  });
+  assert.equal(result.status, 200);
+  assert.equal(Object.hasOwn(result.body, 'token'), false);
+  assert.equal(passwordChangeNotices.length, 1);
+  const stored = rows.get(registered.body.user.id);
+  assert.equal(stored.authVersion, 1);
+  assert.equal(stored.passwordResetTokenHash, null);
+  assert.equal(stored.passwordResetExpiresAt, null);
+  assert.equal(await bcrypt.compare('NovaSenha123', stored.password), true);
+  assert.equal(await bcrypt.compare(account().password, stored.password), false);
+  assert.equal((await request('/reset-password', {
+    token, password: 'OutraSenha123', confirmPassword: 'OutraSenha123',
+  })).status, 400);
+  assert.equal((await request('/me', undefined, oldLogin.body.token)).status, 401);
+  assert.equal((await request('/login', { email: account().email, password: account().password })).status, 401);
+  const login = await request('/login', { email: account().email, password: 'NovaSenha123' });
+  assert.equal(login.status, 200);
+  assert.equal(jwt.verify(login.body.token, process.env.JWT_SECRET).authVersion, 1);
+  assert.equal((await request('/me', undefined, login.body.token)).status, 200);
+});
+
+test('redefinição rejeita senha fora da política, confirmação diferente e link expirado', async () => {
+  const registered = await request('/register', account());
+  await request('/forgot-password', { email: account().email });
+  const token = sentResetEmails[0].token;
+  assert.equal((await request('/reset-password', {
+    token: 'x', password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  })).status, 400);
+  assert.equal((await request('/reset-password', {
+    token, password: 'curta1', confirmPassword: 'curta1',
+  })).status, 400);
+  assert.equal((await request('/reset-password', {
+    token, password: 'NovaSenha123', confirmPassword: 'OutraSenha123',
+  })).status, 400);
+  rows.get(registered.body.user.id).passwordResetExpiresAt = new Date(Date.now() - 1000);
+  assert.equal((await request('/reset-password', {
+    token, password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  })).status, 400);
+  assert.equal(await bcrypt.compare(account().password, rows.get(registered.body.user.id).password), true);
+});
+
+test('falha SMTP na solicitação não revela se a conta existe; bloqueio permanece após reset', async (t) => {
+  const registered = await request('/register', account());
+  await confirmLatestEmail();
+  t.mock.method(mailService, 'sendPasswordResetEmail', async () => {
+    const error = new Error('falha simulada');
+    error.code = 'SMTP_TEST_ERROR';
+    throw error;
+  });
+  const absent = await request('/forgot-password', { email: 'ausente@example.com' });
+  const existing = await request('/forgot-password', { email: account().email });
+  assert.deepEqual(absent.body, existing.body);
+  assert.equal(existing.status, 200);
+  t.mock.method(mailService, 'sendPasswordResetEmail', async (email, token) => {
+    sentResetEmails.push({ email, token });
+  });
+  await request('/forgot-password', { email: account().email });
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await request('/login', { email: account().email, password: 'SenhaErrada123' })).status, 401);
+  }
+  const token = sentResetEmails.at(-1).token;
+  assert.equal((await request('/reset-password', {
+    token, password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  })).status, 200);
+  assert.ok(rows.get(registered.body.user.id).lockedUntil > new Date());
+  assert.equal((await request('/login', { email: account().email, password: 'NovaSenha123' })).status, 429);
+});
+
+test('recuperação exige configuração e limita solicitação e uso do link por IP', async (t) => {
+  t.mock.method(mailService, 'assertPasswordResetConfigured', () => {
+    throw new Error('configuração ausente');
+  });
+  assert.equal((await request('/forgot-password', { email: 'ausente@example.com' })).status, 503);
+  t.mock.method(mailService, 'assertPasswordResetConfigured', () => {});
+  for (let i = 0; i < 4; i++) {
+    assert.equal((await request('/forgot-password', { email: 'ausente@example.com' })).status, 200);
+  }
+  assert.equal((await request('/forgot-password', { email: 'ausente@example.com' })).status, 429);
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await request('/reset-password', {
+      token: 'x', password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+    })).status, 400);
+  }
+  assert.equal((await request('/reset-password', {
+    token: 'x', password: 'NovaSenha123', confirmPassword: 'NovaSenha123',
+  })).status, 429);
 });
 
 test('banco indisponivel ou tabela ausente retorna 503 sem detalhes internos', async (t) => {

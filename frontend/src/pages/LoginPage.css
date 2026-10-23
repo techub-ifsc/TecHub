@@ -188,7 +188,7 @@
   justify-content: flex-end;
 }
 
-.login-form .login-form__forgot-password button {
+.login-form .login-form__forgot-password a {
   width: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
@@ -206,17 +206,19 @@
   font-weight: 400;
   text-decoration: none;
 
-  cursor: not-allowed;
-  opacity: 0.75;
+  cursor: pointer;
 
   transition:
-    color 160ms ease,
-    opacity 160ms ease;
+    color 160ms ease;
 }
 
-.login-form .login-form__forgot-password button:hover {
-  color: #9a9ea4 !important;
-  opacity: 1;
+.login-form .login-form__forgot-password a:hover {
+  color: var(--tc-green) !important;
+}
+
+.login-form .login-form__forgot-password a:focus-visible {
+  outline: 2px solid var(--tc-green);
+  outline-offset: 3px;
 }
 
 /* Mensagem de sucesso */

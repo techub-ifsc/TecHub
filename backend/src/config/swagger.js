@@ -3,10 +3,10 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const definition = {
   openapi: '3.0.3',
   info: {
-    title: 'Tech Hub API',
+    title: 'TecHub API',
     version: '1.0.0',
     description:
-      'API REST do Tech Hub (Node.js, Express, Sequelize, PostgreSQL). ' +
+      'API REST do TecHub (Node.js, Express, Sequelize, PostgreSQL). ' +
       'Autenticação via JWT (`Authorization: Bearer <token>`).',
   },
   servers: [{ url: '/api', description: 'Servidor atual' }],
@@ -80,6 +80,24 @@ const definition = {
         properties: {
           email: { type: 'string', format: 'email' },
           password: { type: 'string', format: 'password' },
+        },
+      },
+      ForgotPasswordInput: {
+        type: 'object',
+        required: ['email'],
+        additionalProperties: false,
+        properties: {
+          email: { type: 'string', format: 'email', example: 'maria@example.com' },
+        },
+      },
+      ResetPasswordInput: {
+        type: 'object',
+        required: ['token', 'password', 'confirmPassword'],
+        additionalProperties: false,
+        properties: {
+          token: { type: 'string', description: 'Token de 64 caracteres recebido no link de e-mail.' },
+          password: { type: 'string', format: 'password', minLength: 8, maxLength: 72, description: 'Mesma política do cadastro: letra, número e até 72 bytes UTF-8.' },
+          confirmPassword: { type: 'string', format: 'password', description: 'Repita a nova senha exatamente.' },
         },
       },
       UpdateProfileInput: {

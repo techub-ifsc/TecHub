@@ -1,37 +1,69 @@
 const nodemailer = require('nodemailer');
 
-// O PRD não escolhe um provedor. As credenciais ficam somente no .env local.
-function mailConfig() {
+// O provedor SMTP e as URLs públicas vêm do ambiente, nunca do Host da requisição.
+function smtpConfig() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const from = process.env.SMTP_FROM;
-  const verificationPage = process.env.EMAIL_VERIFICATION_URL;
-  if (!host || !from || !verificationPage || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('Configure SMTP_HOST, SMTP_PORT, SMTP_FROM e EMAIL_VERIFICATION_URL.');
-  }
-  const url = new URL(verificationPage);
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('EMAIL_VERIFICATION_URL deve ser uma URL HTTP(S).');
-  }
-  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
-    throw new Error('EMAIL_VERIFICATION_URL deve usar HTTPS em produção.');
+  if (!host || !from || !Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Configure SMTP_HOST, SMTP_PORT e SMTP_FROM.');
   }
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
   if (Boolean(user) !== Boolean(pass)) {
     throw new Error('Configure SMTP_USER e SMTP_PASSWORD juntos.');
   }
-  return { host, port, from, url, auth: user ? { user, pass } : undefined };
+  return { host, port, from, auth: user ? { user, pass } : undefined };
+}
+
+function pageUrl(variable) {
+  const value = process.env[variable];
+  if (!value) throw new Error(`Configure ${variable}.`);
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${variable} deve ser uma URL HTTP(S).`);
+  }
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error(`${variable} deve ser uma URL HTTP(S).`);
+  }
+  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+    throw new Error(`${variable} deve usar HTTPS em produção.`);
+  }
+  return url;
 }
 
 function assertMailConfigured() {
-  mailConfig();
+  smtpConfig();
+  pageUrl('EMAIL_VERIFICATION_URL');
 }
 
-async function sendVerificationEmail(toEmail, token) {
-  const config = mailConfig();
-  const link = new URL(config.url);
-  link.searchParams.set('token', token);
+function assertPasswordResetConfigured() {
+  smtpConfig();
+  pageUrl('PASSWORD_RESET_URL');
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}
+
+// Tabelas e estilos inline têm suporte amplo em clientes de e-mail.
+// O texto simples continua disponível para acessibilidade e clientes sem HTML.
+function emailHtml({ preview, title, message, action, link, detail }) {
+  const button = link
+    ? `<tr><td style="padding:28px 0 24px;"><a href="${escapeHtml(link)}" style="display:inline-block;background:#00b89c;color:#06251f;text-decoration:none;font-size:15px;font-weight:700;line-height:20px;padding:15px 24px;border-radius:8px;">${escapeHtml(action)}</a></td></tr>`
+    : '';
+  const fallback = link
+    ? `<tr><td style="color:#52636b;font-size:13px;line-height:20px;padding:0 0 18px;">Se o botão não funcionar, copie este endereço no navegador:<br><a href="${escapeHtml(link)}" style="color:#087f70;word-break:break-all;">${escapeHtml(link)}</a></td></tr>`
+    : '';
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#eef3f2;font-family:Arial,Helvetica,sans-serif;color:#18333a;"><span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;">${escapeHtml(preview)}</span><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#eef3f2;padding:32px 12px;"><tr><td align="center"><table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;"><tr><td style="background:#0c2730;padding:28px 36px;"><span style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-1px;">Tec<span style="color:#39d5b8;">Hub</span></span><div style="color:#a8d8d0;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;padding-top:8px;">Seu espaço para criar e compartilhar</div></td></tr><tr><td style="padding:36px;"><table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td style="color:#102e35;font-size:24px;font-weight:700;line-height:31px;padding-bottom:16px;">${escapeHtml(title)}</td></tr><tr><td style="color:#425960;font-size:15px;line-height:24px;">${escapeHtml(message)}</td></tr>${button}${fallback}<tr><td style="border-top:1px solid #e4ecea;padding-top:20px;color:#687e83;font-size:13px;line-height:21px;">${escapeHtml(detail)}</td></tr></table></td></tr></table><div style="max-width:560px;color:#73898d;font-size:12px;line-height:18px;padding:20px 12px;text-align:center;">Mensagem automática do TecHub. Não responda a este e-mail.</div></td></tr></table></body></html>`;
+}
+
+async function sendMessage(toEmail, message) {
+  const config = smtpConfig();
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -41,13 +73,62 @@ async function sendVerificationEmail(toEmail, token) {
     greetingTimeout: 10000,
     socketTimeout: 10000,
   });
-  await transporter.sendMail({
-    from: config.from,
-    to: toEmail,
-    subject: 'Tech Hub - confirme seu e-mail',
-    text: `Confirme seu e-mail no Tech Hub: ${link.toString()}\nO link expira em 24 horas.`,
-    html: `<p>Confirme seu e-mail no Tech Hub.</p><p><a href="${link.toString()}">Confirmar e-mail</a></p><p>O link expira em 24 horas.</p>`,
+  await transporter.sendMail({ from: config.from, to: toEmail, ...message });
+}
+
+async function sendVerificationEmail(toEmail, token) {
+  const link = pageUrl('EMAIL_VERIFICATION_URL');
+  link.searchParams.set('token', token);
+  const address = link.toString();
+  await sendMessage(toEmail, {
+    subject: 'TecHub | Confirme seu e-mail',
+    text: `Olá!\n\nConfirme seu e-mail para ativar sua conta no TecHub:\n${address}\n\nEste link é válido por 24 horas e pode ser usado uma única vez. Se você não criou esta conta, ignore esta mensagem.\n\nEquipe TecHub`,
+    html: emailHtml({
+      preview: 'Confirme seu e-mail para começar a usar o TecHub.',
+      title: 'Falta só confirmar seu e-mail',
+      message: 'Sua conta está quase pronta. Confirme seu endereço para entrar no TecHub e acompanhar seus projetos.',
+      action: 'Confirmar meu e-mail',
+      link: address,
+      detail: 'Este link vale por 24 horas e pode ser usado uma vez. Se você não criou a conta, ignore esta mensagem.',
+    }),
   });
 }
 
-module.exports = { assertMailConfigured, sendVerificationEmail };
+async function sendPasswordResetEmail(toEmail, token) {
+  const link = pageUrl('PASSWORD_RESET_URL');
+  link.searchParams.set('token', token);
+  const address = link.toString();
+  await sendMessage(toEmail, {
+    subject: 'TecHub | Redefina sua senha',
+    text: `Olá!\n\nRecebemos um pedido para redefinir a senha da sua conta TecHub. Crie uma nova senha aqui:\n${address}\n\nEste link é válido por 1 hora e pode ser usado uma única vez. Se você não pediu a redefinição, ignore esta mensagem; sua senha atual continua válida.\n\nEquipe TecHub`,
+    html: emailHtml({
+      preview: 'Use este link para criar uma nova senha no TecHub.',
+      title: 'Vamos redefinir sua senha?',
+      message: 'Recebemos um pedido para criar uma nova senha para sua conta. Use o botão abaixo para continuar com segurança.',
+      action: 'Criar nova senha',
+      link: address,
+      detail: 'O link vale por 1 hora e pode ser usado uma vez. Não foi você? Ignore esta mensagem; sua senha não muda.',
+    }),
+  });
+}
+
+async function sendPasswordChangedEmail(toEmail) {
+  await sendMessage(toEmail, {
+    subject: 'TecHub | Sua senha foi alterada',
+    text: 'Olá!\n\nA senha da sua conta TecHub foi alterada. Se não foi você, entre em contato com a equipe responsável imediatamente.\n\nEquipe TecHub',
+    html: emailHtml({
+      preview: 'A senha da sua conta TecHub foi alterada.',
+      title: 'Sua senha foi alterada',
+      message: 'A nova senha já está ativa. Entre normalmente pela página de login.',
+      detail: 'Não reconhece esta alteração? Entre em contato com a equipe responsável imediatamente.',
+    }),
+  });
+}
+
+module.exports = {
+  assertMailConfigured,
+  assertPasswordResetConfigured,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendPasswordChangedEmail,
+};

@@ -2,7 +2,10 @@ const { User } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { signToken } = require('../utils/jwt');
-const { registerSchema, loginSchema, updateProfileSchema, resendVerificationSchema, verifyEmailSchema } = require('../validators/authValidators');
+const {
+  registerSchema, loginSchema, updateProfileSchema, resendVerificationSchema,
+  verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema,
+} = require('../validators/authValidators');
 const { ApiError } = require('../middlewares/errorHandler');
 const crypto = require('crypto');
 const mailService = require('../services/mailService');
@@ -25,14 +28,17 @@ function handleAuthError(err, res, next) {
   return next(err);
 }
 
-function newVerification() {
+function newOneTimeToken(ttlMs) {
   const token = crypto.randomBytes(32).toString('hex');
   return {
     token,
     tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + ttlMs),
   };
 }
+
+const newVerification = () => newOneTimeToken(24 * 60 * 60 * 1000);
+const newPasswordReset = () => newOneTimeToken(60 * 60 * 1000);
 
 function mailUnavailable(res) {
   return res.status(503).json({ message: 'Envio de e-mail indisponível. Tente novamente mais tarde.' });
@@ -149,7 +155,9 @@ async function login(req, res, next) {
         user.lockedUntil = null;
         await user.save({ transaction, silent: true });
       }
-      const token = signToken({ sub: user.id, role: user.role });
+      const token = signToken({
+        sub: user.id, role: user.role, authVersion: Number(user.authVersion || 0),
+      });
       return { status: 200, body: { user: user.toSafeJSON(), token } };
     });
 
@@ -209,6 +217,76 @@ async function resendVerification(req, res, next) {
       return res.json(response);
     }
     return res.json(response);
+  } catch (err) {
+    return handleAuthError(err, res, next);
+  }
+}
+
+// Resposta igual para e-mail cadastrado ou ausente: não revela a existência da conta.
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    try {
+      mailService.assertPasswordResetConfigured();
+    } catch {
+      return mailUnavailable(res);
+    }
+    const response = {
+      message: 'Se existir uma conta para este e-mail, enviaremos um link para redefinir a senha.',
+    };
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.json(response);
+
+    const reset = newPasswordReset();
+    user.passwordResetTokenHash = reset.tokenHash;
+    user.passwordResetExpiresAt = reset.expiresAt;
+    await user.save({ silent: true });
+    try {
+      await mailService.sendPasswordResetEmail(user.email, reset.token);
+    } catch (error) {
+      // Não expor a existência da conta nem o token em mensagens ou logs.
+      console.error('Falha no envio de redefinição de senha:', error.code || 'erro SMTP');
+    }
+    return res.json(response);
+  } catch (err) {
+    return handleAuthError(err, res, next);
+  }
+}
+
+// A transação com bloqueio de linha impede que o mesmo link seja usado duas vezes.
+async function resetPassword(req, res, next) {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+    const tokenHash = crypto.createHash('sha256').update(data.token.toLowerCase()).digest('hex');
+    const changedEmail = await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: {
+          passwordResetTokenHash: tokenHash,
+          passwordResetExpiresAt: { [Op.gt]: new Date() },
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user) return null;
+
+      user.password = data.password;
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+      user.authVersion = Number(user.authVersion || 0) + 1;
+      await user.save({ transaction });
+      return user.email;
+    });
+    if (!changedEmail) {
+      return res.status(400).json({ message: 'Link inválido, expirado ou já utilizado.' });
+    }
+
+    // A alteração já foi confirmada no banco. Falha na notificação não a desfaz.
+    try {
+      await mailService.sendPasswordChangedEmail(changedEmail);
+    } catch (error) {
+      console.error('Falha no aviso de senha alterada:', error.code || 'erro SMTP');
+    }
+    return res.json({ message: 'Senha redefinida. Entre novamente com a nova senha.' });
   } catch (err) {
     return handleAuthError(err, res, next);
   }
@@ -282,4 +360,7 @@ async function updateProfile(req, res, next) {
   }
 }
 
-module.exports = { register, login, verifyEmail, resendVerification, me, updateProfile };
+module.exports = {
+  register, login, verifyEmail, resendVerification,
+  forgotPassword, resetPassword, me, updateProfile,
+};

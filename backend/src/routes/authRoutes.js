@@ -13,12 +13,22 @@ const authLimiter = rateLimit({
   message: { message: 'Muitas tentativas. Tente novamente mais tarde.' },
 });
 
+const passwordResetLimiterOptions = {
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Muitas tentativas. Tente novamente mais tarde.' },
+};
+const forgotPasswordLimiter = rateLimit(passwordResetLimiterOptions);
+const resetPasswordLimiter = rateLimit(passwordResetLimiterOptions);
+
 /**
  * @openapi
  * /auth/register:
  *   post:
  *     tags: [Auth]
- *     summary: Cadastra um visitante ou criador no Tech Hub
+ *     summary: Cadastra um visitante ou criador no TecHub
  *     description: Exige nome por compatibilidade com a tabela herdada. accountType aceita visitor ou creator; creator exige e-mail institucional. super_admin nunca é criado por esta rota. A resposta contém message e user, sem JWT; o acesso depende da confirmação por e-mail em até 24 horas.
  *     requestBody:
  *       required: true
@@ -97,6 +107,54 @@ router.post('/verify-email', authLimiter, authController.verifyEmail);
  *         description: Serviço de contas ou e-mail indisponível
  */
 router.post('/resend-verification', authLimiter, authController.resendVerification);
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Solicita um link de redefinição de senha
+ *     description: Resposta igual para e-mail cadastrado ou ausente. O link expira em 1 hora; uma nova solicitação invalida o anterior. Limite de 5 solicitações por IP em 15 minutos.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ForgotPasswordInput' }
+ *     responses:
+ *       200:
+ *         description: Solicitação recebida; não revela se a conta existe
+ *       400:
+ *         description: E-mail inválido
+ *       429:
+ *         description: Limite de solicitações excedido
+ *       503:
+ *         description: Banco ou envio de e-mail indisponível
+ */
+router.post('/forgot-password', forgotPasswordLimiter, authController.forgotPassword);
+
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Troca a senha com um token de uso único
+ *     description: Não inicia sessão. Após o sucesso, os JWTs anteriores são invalidados e a pessoa deve fazer login novamente. Um bloqueio de login por tentativas erradas continua até o prazo terminar.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ResetPasswordInput' }
+ *     responses:
+ *       200:
+ *         description: Senha redefinida; faça login com a nova senha
+ *       400:
+ *         description: Dados inválidos ou link inválido, expirado ou já usado
+ *       429:
+ *         description: Limite de tentativas por IP excedido
+ *       503:
+ *         description: Banco indisponível
+ */
+router.post('/reset-password', resetPasswordLimiter, authController.resetPassword);
 
 /**
  * @openapi

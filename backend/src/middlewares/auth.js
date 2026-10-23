@@ -2,6 +2,11 @@ const { verifyToken } = require('../utils/jwt');
 const { User } = require('../models');
 const { ROLES } = require('../constants/roles');
 
+function sessionIsCurrent(payload, user) {
+  // JWTs emitidos antes desta feature equivalem à versão inicial (zero).
+  return (payload.authVersion ?? 0) === Number(user.authVersion || 0);
+}
+
 // Autentica a requisição pelo token Bearer e disponibiliza o usuário em req.user e req.userId.
 async function authenticate(req, res, next) {
   try {
@@ -28,6 +33,9 @@ async function authenticate(req, res, next) {
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(401).json({ message: 'Usuário não encontrado.' });
+    }
+    if (!sessionIsCurrent(payload, user)) {
+      return res.status(401).json({ message: 'Sessão inválida. Entre novamente.' });
     }
     if (!user.emailVerifiedAt) {
       return res.status(403).json({ message: 'Confirme seu e-mail antes de acessar a plataforma.' });
@@ -59,7 +67,7 @@ async function optionalAuthenticate(req, res, next) {
 
     const userId = payload.sub || payload.id;
     const user = userId ? await User.findByPk(userId) : null;
-    if (user && user.emailVerifiedAt) {
+    if (user && user.emailVerifiedAt && sessionIsCurrent(payload, user)) {
       req.user = user;
       req.userId = user.id;
     }

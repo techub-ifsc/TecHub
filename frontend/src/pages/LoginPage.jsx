@@ -207,13 +207,7 @@ export default function LoginPage() {
         </div>
 
         <div className="login-form__forgot-password">
-          <button
-            type="button"
-            disabled
-            title="A recuperação de senha estará disponível em breve"
-          >
-            Esqueceu a senha?
-          </button>
+          <Link to="/forgot-password">Esqueceu a senha?</Link>
         </div>
 
         {accessMessage && (

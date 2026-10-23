@@ -1,6 +1,6 @@
 # Features de Cadastro e Login
 
-Este documento registra as entregas de cadastro e login do Tech Hub. Cada seção descreve o comportamento **na data daquela entrega**; a Feature 2 substitui o fluxo provisório da Feature 1. O guia `auth-prototype.md` reúne o estado atual do backend.
+Este documento registra as entregas de cadastro e login do TecHub. Cada seção descreve o comportamento **na data daquela entrega**; a Feature 2 substitui o fluxo provisório da Feature 1. O guia `auth-prototype.md` reúne o estado atual do backend.
 
 ## Feature 1 — Mensagem correta após o cadastro
 
@@ -122,7 +122,7 @@ Resposta `200`: `{ "message": "E-mail confirmado. Você já pode fazer login." }
 
 No `.env` local do backend, a equipe deve informar `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` e `EMAIL_VERIFICATION_URL`. O PRD não escolhe um provedor. O servidor SMTP precisa entregar mensagens reais aos domínios institucionais, e a URL deve apontar para a página do frontend. Em produção, a URL deve ser HTTPS. Não coloque senhas SMTP no Git.
 
-A migração foi criada, **mas não executada no Neon compartilhado**. A equipe de banco deve revisá-la, fazer backup, aprovar sua execução e combinar a ordem de deploy: aplicar a migração antes de subir o backend novo. Ela preserva usuários antigos como confirmados. Sem as colunas novas, o backend novo não deve ser publicado. O rollback remove o estado de confirmação e exige aprovação/backup.
+Na entrega original, a migração ainda aguardava a equipe de banco. Em 22/10/2026, uma consulta somente leitura com `sequelize-cli db:migrate:status` mostrou `20261013000002-add-email-verification.js` como `up` no banco configurado localmente. Ela preserva usuários antigos como confirmados. Outros ambientes ainda precisam ser verificados antes de publicar o backend; o rollback remove o estado de confirmação e exige aprovação/backup.
 
 O frontend precisa criar a página `/verify-email`, ler `token` da URL, chamar `POST /api/auth/verify-email`, mostrar sucesso/erro e oferecer o reenvio. Também deve tratar o novo `403` no login e não dizer que a conta pode entrar imediatamente após o cadastro. Nenhuma tela do frontend foi alterada nesta feature.
 
@@ -174,7 +174,7 @@ O model `User` ganhou `failedLoginAttempts` (inteiro, padrão `0`) e `lockedUnti
 
 As gravações desse estado usam `silent: true` no Sequelize para não alterar `updatedAt` do perfil apenas porque alguém tentou fazer login. O hash da senha e os demais dados do usuário não mudam quando uma tentativa falha.
 
-**A migration foi criada, mas não executada no Neon compartilhado.** A equipe de banco deve revisar, fazer backup e aplicá-la antes de publicar este backend. Como esta branch parte de `feature/confirmacao-email`, a migration da confirmação de e-mail (`20261013000002`) vem antes da migration de bloqueio (`20261013000003`). Sem ambas as estruturas, não publique esta branch como backend ativo. O bloqueio não depende de SMTP para contar falhas, mas esta branch também contém a Feature 2.
+Na entrega original, a migration ainda aguardava aplicação. Em 22/10/2026, uma consulta somente leitura com `sequelize-cli db:migrate:status` mostrou `20261013000003-add-login-lockout.js` como `up` no banco configurado localmente. Em outros ambientes, a equipe de banco deve revisá-la e aplicá-la antes de publicar este backend. A migration da confirmação de e-mail (`20261013000002`) vem antes da migration de bloqueio (`20261013000003`). O bloqueio não depende de SMTP para contar falhas, mas esta branch também contém a Feature 2.
 
 ### Arquivos e motivo de cada alteração
 
@@ -190,3 +190,7 @@ As gravações desse estado usam `silent: true` no Sequelize para não alterar `
 ### Como verificar sem alterar o banco real
 
 Na pasta `backend`, com dependências instaladas e variáveis de ambiente de teste definidas, execute `npm.cmd test` no PowerShell. Os testes de autenticação simulam o armazenamento e o envio de e-mail: **não enviam SMTP real nem aplicam migrations no Neon**. Para testar com PostgreSQL real, primeiro peça à equipe de banco a revisão das migrations e use um banco de teste separado. Depois, cadastre e confirme uma conta de teste, envie cinco senhas erradas a `POST /api/auth/login`, tente a senha correta uma sexta vez e confira `429` e `Retry-After`. Não use contas reais para esse experimento, pois elas seriam bloqueadas por 15 minutos.
+
+## Feature 4 — Redefinição de senha
+
+A recuperação de acesso acrescenta `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`, link de 1 hora com token de uso único armazenado como hash, reaproveitamento da política de senha do cadastro e invalidação dos JWTs anteriores após o sucesso. O e-mail de confirmação de cadastro também ganhou um layout HTML mais agradável, com versão em texto simples; a marca exibida no backend passou a ser **TecHub**. O passo a passo, os arquivos, o contrato com o frontend, a migration e as limitações estão em [redefinicao-senha.md](redefinicao-senha.md).

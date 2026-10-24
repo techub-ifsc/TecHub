@@ -95,6 +95,28 @@
   color: var(--tc-green) !important;
 }
 
+.site-header__nav-item--chat {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.site-header__chat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background-color: var(--tc-green, #85CE5A);
+  color: #111111;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .site-header__nav-item:disabled,
 .site-header__login:disabled {
   cursor: not-allowed;

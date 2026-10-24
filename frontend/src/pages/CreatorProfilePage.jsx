@@ -8,6 +8,7 @@ import { fetchAllPublicProjects } from "../api/creators";
 import { fetchPublicProfile } from "../api/userProfile";
 import { byFrequency, findCreator, getCreatorColor, getInitials } from "../utils/creators";
 import { descriptionToPlainText } from "../utils/richText";
+import SendMessageButton from "../components/chat/SendMessageButton";
 import "./CreatorProfilePage.css";
 
 // Todo o IFSC do TecHub é o Câmpus Lages; o perfil ainda não guarda o câmpus.
@@ -313,15 +314,23 @@ export default function CreatorProfilePage() {
                   {profileInfo.course}
                 </p>
 
-                <button
-                  type="button"
-                  className="creator-profile-address"
-                  onClick={handleCopyProfile}
-                  aria-label="Copiar endereço do perfil"
-                >
-                  <span>{profileInfo.profileSlug}</span>
-                  <i className="fa-regular fa-copy" aria-hidden="true" />
-                </button>
+                <div className="creator-profile-hero__actions">
+                  <button
+                    type="button"
+                    className="creator-profile-address"
+                    onClick={handleCopyProfile}
+                    aria-label="Copiar endereço do perfil"
+                  >
+                    <span>{profileInfo.profileSlug}</span>
+                    <i className="fa-regular fa-copy" aria-hidden="true" />
+                  </button>
+
+                  <SendMessageButton
+                    creatorId={id}
+                    creatorName={profileInfo.name}
+                    isOwner={isOwner}
+                  />
+                </div>
 
                 <span
                   className="creator-profile-copy-feedback"

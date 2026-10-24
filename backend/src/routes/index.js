@@ -5,6 +5,7 @@ const projectRoutes = require('./projectRoutes');
 const mediaRoutes = require('./mediaRoutes');
 const adminRoutes = require('./adminRoutes');
 const userProfileRoutes = require('./userProfileRoutes');
+const chatRoutes = require('./chatRoutes');
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use('/projects', projectRoutes);
 router.use('/media', mediaRoutes);
 router.use('/admin', adminRoutes);
 router.use('/users', userProfileRoutes);
+router.use('/chat', chatRoutes);
 
 module.exports = router;

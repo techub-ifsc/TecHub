@@ -85,7 +85,14 @@ export default function LoginPage() {
       );
 
       window.setTimeout(() => {
-        navigate("/");
+        const from = location.state?.from;
+        if (from?.pathname) {
+          navigate(from.pathname + (from.search || ""));
+        } else if (typeof from === "string") {
+          navigate(from);
+        } else {
+          navigate("/");
+        }
       }, 700);
     } catch (error) {
       setErrors({

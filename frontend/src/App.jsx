@@ -1,14 +1,15 @@
 import { Route, Routes, useLocation } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
+import PrivateRoute from "./components/PrivateRoute";
 import CreatorRoute from "./components/CreatorRoute";
 import CreatorProfileRoute from "./components/CreatorProfileRoute";
-import PrivateRoute from "./components/PrivateRoute";
 import EmptyState from "./components/EmptyState";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import { ChatProvider } from "./context/ChatContext";
 
+import AccountPage from "./pages/AccountPage";
 import CreatorProfilePage from "./pages/CreatorProfilePage";
 import CreatorsPage from "./pages/CreatorsPage";
 import HomePage from "./pages/HomePage";
@@ -49,6 +50,7 @@ export default function App() {
 
             <Route element={<PrivateRoute />}>
               <Route path="/mensagens" element={<MessagesPage />} />
+              <Route path="/conta" element={<AccountPage />} />
             </Route>
 
             <Route element={<CreatorRoute />}>

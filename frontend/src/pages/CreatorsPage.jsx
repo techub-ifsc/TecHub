@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { fetchAllPublicProjects } from "../api/creators";
 import CustomSelect from "../components/CustomSelect";
+import Pagination from "../components/Pagination";
 import Spinner from "../components/Spinner";
 import { buildCreatorsFromProjects } from "../utils/creators";
+import { readSessionState, writeSessionState } from "../utils/sessionState";
 
 import "./CreatorsPage.css";
 
@@ -14,14 +16,33 @@ const COURSES = [
   "Técnico em Desenvolvimento de Sistemas",
 ];
 
+const ITEMS_PER_PAGE = 8;
+
+// Filtros e página ficam guardados na aba: ao abrir um perfil e voltar, a lista continua igual.
+const FILTERS_KEY = "techub:criadores:filtros";
+const DEFAULT_FILTERS = { search: "", course: "", technology: "", page: 1 };
+
+function readSavedFilters() {
+  const saved = readSessionState(FILTERS_KEY, DEFAULT_FILTERS);
+  return {
+    search: typeof saved.search === "string" ? saved.search : "",
+    course: typeof saved.course === "string" ? saved.course : "",
+    technology: typeof saved.technology === "string" ? saved.technology : "",
+    page: Number.isInteger(saved.page) && saved.page > 0 ? saved.page : 1,
+  };
+}
+
 export default function CreatorsPage() {
   const [creators, setCreators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [search, setSearch] = useState("");
-  const [course, setCourse] = useState("");
-  const [technology, setTechnology] = useState("");
+  const [savedFilters] = useState(readSavedFilters);
+  const [search, setSearch] = useState(savedFilters.search);
+  const [course, setCourse] = useState(savedFilters.course);
+  const [technology, setTechnology] = useState(savedFilters.technology);
+  const [currentPage, setCurrentPage] = useState(savedFilters.page);
+  const previousFiltersRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +97,34 @@ export default function CreatorsPage() {
       return matchesSearch && matchesCourse && matchesTechnology;
     });
   }, [creators, search, course, technology]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCreators.length / ITEMS_PER_PAGE)
+  );
+
+  const visibleCreators = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCreators.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredCreators, currentPage]);
+
+  // Mudar um filtro volta para a primeira página; ao montar (filtros restaurados) mantém a página guardada.
+  useEffect(() => {
+    const filtersKey = JSON.stringify([search, course, technology]);
+    if (previousFiltersRef.current !== null && previousFiltersRef.current !== filtersKey) {
+      setCurrentPage(1);
+    }
+    previousFiltersRef.current = filtersKey;
+  }, [search, course, technology]);
+
+  useEffect(() => {
+    writeSessionState(FILTERS_KEY, { search, course, technology, page: currentPage });
+  }, [search, course, technology, currentPage]);
+
+  // A página guardada pode não existir mais (menos criadores que antes): vai para a última.
+  useEffect(() => {
+    if (!loading && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [loading, currentPage, totalPages]);
 
   // Limpa todos os filtros incluindo a tecnologia
   function clearFilters() {
@@ -192,7 +241,7 @@ export default function CreatorsPage() {
           className="creators-page__grid"
           aria-label="Criadores encontrados"
         >
-          {filteredCreators.map((creator) => (
+          {visibleCreators.map((creator) => (
             <Link
               to={`/criadores/${creator.id}`}
               className="creator-card"
@@ -270,6 +319,18 @@ export default function CreatorsPage() {
             <p>Os criadores aparecem aqui quando têm um projeto aprovado.</p>
           )}
         </section>
+      )}
+
+      {!loading && !error && filteredCreators.length > ITEMS_PER_PAGE && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredCreators.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+          itemLabel="criadores"
+          ariaLabel="Paginação dos criadores"
+        />
       )}
     </main>
   );

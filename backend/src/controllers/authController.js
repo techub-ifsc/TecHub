@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
@@ -14,6 +15,16 @@ const { isCreatorEmailAllowed, getCreatorAllowedDomains } = require('../config/c
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
+
+// Resposta única para e-mail inexistente, senha errada e conta bloqueada: nenhuma delas
+// pode revelar se o e-mail tem conta. O aviso do bloqueio vale para todas.
+const LOGIN_FAILED = {
+  message: 'E-mail ou senha inválidos. Após 5 tentativas erradas, o acesso fica bloqueado por 15 minutos.',
+};
+
+// Hash bcrypt (custo 12, o mesmo das senhas) de um valor aleatório descartado. Comparar
+// contra ele quando não há senha a conferir faz o login levar o mesmo tempo em todos os casos.
+const DUMMY_PASSWORD_HASH = '$2a$12$eebuUR6KfLKcK1dORmwuh.JHjRByE7m96sEH/e4wAhwx2ubum8ju.';
 
 // Mantém o formato de erro existente sem registrar SQL ou valores de credenciais.
 function handleAuthError(err, res, next) {
@@ -100,7 +111,7 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const data = loginSchema.parse(req.body);
-    const genericError = { message: 'E-mail ou senha inválidos.' };
+    const genericError = LOGIN_FAILED;
 
     // A linha da conta fica bloqueada enquanto lemos e atualizamos o contador.
     // Assim, tentativas simultâneas não perdem incrementos umas das outras.
@@ -110,21 +121,18 @@ async function login(req, res, next) {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      if (!user) return { status: 401, body: genericError };
+      if (!user) {
+        await bcrypt.compare(data.password, DUMMY_PASSWORD_HASH);
+        return { status: 401, body: genericError };
+      }
 
+      // Bloqueada: a senha não é conferida (nem a certa libera) e a resposta é a mesma
+      // de uma senha errada, para o bloqueio não confirmar que o e-mail existe.
       const now = new Date();
       const lockedUntil = user.lockedUntil && new Date(user.lockedUntil);
       if (lockedUntil && lockedUntil > now) {
-        const retryAfterSeconds = Math.max(1, Math.ceil((lockedUntil - now) / 1000));
-        const minutes = Math.ceil(retryAfterSeconds / 60);
-        return {
-          status: 429,
-          retryAfterSeconds,
-          body: {
-            message: `Conta temporariamente bloqueada. Tente novamente em ${minutes} minuto${minutes === 1 ? '' : 's'}.`,
-            retryAfterSeconds,
-          },
-        };
+        await bcrypt.compare(data.password, DUMMY_PASSWORD_HASH);
+        return { status: 401, body: genericError };
       }
 
       // Quando os 15 minutos terminam, a próxima tentativa inicia uma nova contagem.
@@ -159,9 +167,6 @@ async function login(req, res, next) {
       return { status: 200, body: { user: user.toSafeJSON(), token } };
     });
 
-    if (result.retryAfterSeconds) {
-      res.set('Retry-After', String(result.retryAfterSeconds));
-    }
     return res.status(result.status).json(result.body);
   } catch (err) {
     handleAuthError(err, res, next);
@@ -169,23 +174,45 @@ async function login(req, res, next) {
 }
 
 // Token aleatório de uso único. O banco armazena somente o hash SHA-256.
+// Serve para a primeira confirmação e para a troca de e-mail pedida no perfil.
 async function verifyEmail(req, res, next) {
   try {
     const { token } = verifyEmailSchema.parse(req.body);
     const tokenHash = crypto.createHash('sha256').update(token.toLowerCase()).digest('hex');
-    const [updated] = await User.update({
-      emailVerifiedAt: new Date(),
-      emailVerificationTokenHash: null,
-      emailVerificationExpiresAt: null,
-    }, {
-      where: {
-        emailVerificationTokenHash: tokenHash,
-        emailVerificationExpiresAt: { [Op.gt]: new Date() },
-        emailVerifiedAt: null,
-      },
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: {
+          emailVerificationTokenHash: tokenHash,
+          emailVerificationExpiresAt: { [Op.gt]: new Date() },
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user || (!user.pendingEmail && user.emailVerifiedAt)) return 'invalid';
+
+      user.emailVerificationTokenHash = null;
+      user.emailVerificationExpiresAt = null;
+      let outcome = 'verified';
+      if (user.pendingEmail) {
+        // Outra conta pode ter passado a usar o endereço depois do pedido.
+        const taken = await User.findOne({ where: { email: user.pendingEmail }, transaction });
+        outcome = taken ? 'taken' : 'changed';
+        if (!taken) user.email = user.pendingEmail;
+        user.pendingEmail = null;
+      }
+      if (outcome !== 'taken') user.emailVerifiedAt = new Date();
+      await user.save({ transaction });
+      return outcome;
     });
-    if (!updated) {
+
+    if (result === 'invalid') {
       return res.status(400).json({ message: 'Link inválido, expirado ou já utilizado.' });
+    }
+    if (result === 'taken') {
+      return res.status(409).json({ message: 'Este e-mail passou a ser usado por outra conta. Nada foi alterado.' });
+    }
+    if (result === 'changed') {
+      return res.json({ message: 'Novo e-mail confirmado. Use-o no próximo login.' });
     }
     return res.json({ message: 'E-mail confirmado. Você já pode fazer login.' });
   } catch (err) {
@@ -324,9 +351,9 @@ async function updateProfile(req, res, next) {
       } catch {
         return mailUnavailable(res);
       }
+      // O e-mail atual continua valendo (login e sessão) até o novo ser confirmado.
       verification = newVerification();
-      user.email = data.email;
-      user.emailVerifiedAt = null;
+      user.pendingEmail = data.email.toLowerCase();
       user.emailVerificationTokenHash = verification.tokenHash;
       user.emailVerificationExpiresAt = verification.expiresAt;
     }
@@ -343,17 +370,21 @@ async function updateProfile(req, res, next) {
 
     if (verification) {
       try {
-        await mailService.sendVerificationEmail(user.email, verification.token);
+        await mailService.sendVerificationEmail(user.pendingEmail, verification.token);
       } catch (error) {
         console.error('Falha no envio após troca de e-mail:', error.code || 'erro SMTP');
         return res.status(503).json({
-          message: 'E-mail alterado, mas a confirmação não foi enviada. Solicite um novo link.',
+          message: 'O link de confirmação do novo e-mail não foi enviado. Seu e-mail atual não mudou; tente de novo mais tarde.',
         });
       }
     }
 
     // Trocar a senha invalida os tokens anteriores; a sessão atual recebe um token novo.
-    res.json({ user: user.toSafeJSON(), ...(data.password && { token: signSessionToken(user) }) });
+    res.json({
+      user: user.toSafeJSON(),
+      ...(verification && { message: 'Enviamos um link para o novo e-mail. A troca vale depois da confirmação.' }),
+      ...(data.password && { token: signSessionToken(user) }),
+    });
   } catch (err) {
     next(err);
   }

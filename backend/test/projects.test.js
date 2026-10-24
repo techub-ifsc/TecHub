@@ -41,12 +41,16 @@ describe('rotas de projetos', () => {
     };
 
     t.mock.method(User, 'findByPk', async (id) => users.get(id) || null);
+    t.mock.method(User, 'findAll', async ({ where }) =>
+      [].concat(where.id).map((id) => users.get(id)).filter((user) => user && (!where.role || user.role === where.role))
+    );
     t.mock.method(sequelize, 'transaction', async (callback) => {
       const transaction = { LOCK: { UPDATE: 'UPDATE' }, commit: async () => {}, rollback: async () => {} };
       return typeof callback === 'function' ? callback(transaction) : transaction;
     });
     t.mock.method(Project, 'create', async (data) => {
       calls.projectCreate += 1;
+      calls.projectData = data;
       return Project.build({ ...data, id: randomUUID() });
     });
     t.mock.method(ProjectTechnology, 'destroy', async () => 0);
@@ -115,6 +119,25 @@ describe('rotas de projetos', () => {
     const res = await request('POST', '/', createUser('creator'), validProject);
     assert.equal(res.status, 201);
     assert.equal(calls.mediaCreate[0][0].url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  });
+
+  test('fase não escolhida vira null, porque o banco só aceita fase maior que zero', async () => {
+    const creator = createUser('creator');
+    const res = await request('POST', '/', creator, { ...validProject, semester: 0 });
+    assert.equal(res.status, 201);
+    assert.equal(calls.projectData.semester, null);
+    assert.equal((await res.json()).project.semester, null);
+  });
+
+  test('rascunho salva como draft e sem fase', async () => {
+    const creator = createUser('creator');
+    for (const body of [{}, { title: 'Rascunho', semester: 0 }]) {
+      const res = await request('POST', '/draft', creator, body);
+      assert.equal(res.status, 201);
+      const { project } = await res.json();
+      assert.equal(project.approvalStatus, 'draft');
+      assert.equal(project.semester, null);
+    }
   });
 
   test('visitante não pode editar projeto', async () => {
@@ -252,6 +275,34 @@ describe('rotas de projetos', () => {
     ]);
   });
 
+  test('colaborador precisa ser criador; o dono e repetições são ignorados', async (t) => {
+    const owner = createUser('creator');
+    const visitor = createUser('visitor');
+    const colleague = createUser('creator');
+
+    for (const collaborators of [[visitor.id], [{ userId: randomUUID() }]]) {
+      const res = await request('POST', '/', owner, { ...validProject, collaborators });
+      assert.equal(res.status, 400, JSON.stringify(collaborators));
+    }
+    assert.equal(calls.projectCreate, 0);
+
+    const res = await request('POST', '/', owner, {
+      ...validProject,
+      collaborators: [owner.id, colleague.id, { userId: colleague.id, contribution: 'Front' }],
+    });
+    assert.equal(res.status, 201);
+    assert.deepEqual(
+      calls.collaboratorCreate.map(({ userId, contribution }) => ({ userId, contribution })),
+      [{ userId: colleague.id, contribution: null }]
+    );
+
+    const project = Project.build({ id: randomUUID(), title: 'Projeto', ownerId: owner.id });
+    t.mock.method(project, 'update', async () => project);
+    t.mock.method(Project, 'findByPk', async () => project);
+    const denied = await request('PUT', `/${project.id}`, owner, { collaborators: [visitor.id] });
+    assert.equal(denied.status, 400);
+  });
+
   test('busca nomes reais de colaboradores com autenticação', async (t) => {
     const creator = createUser('creator');
     let options;
@@ -264,6 +315,26 @@ describe('rotas de projetos', () => {
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { users: [{ id: creator.id, name: 'Colega' }] });
     assert.deepEqual(options.attributes, ['id', 'name']);
+  });
+
+  test('% e _ digitados na busca são literais, não curingas do LIKE', async (t) => {
+    const creator = createUser('creator');
+    let options;
+    t.mock.method(User, 'findAll', async (query) => {
+      options = query;
+      return [];
+    });
+    t.mock.method(Project, 'findAndCountAll', async (query) => {
+      options = query;
+      return { count: 0, rows: [] };
+    });
+    const { Op } = require('sequelize');
+
+    assert.equal((await request('GET', '/collaborators/search?q=a__', creator)).status, 200);
+    assert.equal(options.where.name[Op.iLike], '%a\\_\\_%');
+
+    assert.equal((await request('GET', '/?search=50%25')).status, 200);
+    assert.equal(options.where.title[Op.iLike], '%50\\%%');
   });
 
   test('recusa links externos que não sejam http(s)', async () => {

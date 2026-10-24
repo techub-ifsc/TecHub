@@ -281,6 +281,24 @@ export default function LoggedHeader() {
                     </>
                   )}
 
+                  <Link
+                    to="/conta"
+                    className="logged-header__profile-edit"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      closeMenu();
+                    }}
+                    role="menuitem"
+                  >
+                    <i className="fa-solid fa-gear" aria-hidden="true" />
+                    Minha conta
+                  </Link>
+
+                  <div
+                    className="logged-header__divider"
+                    aria-hidden="true"
+                  />
+
                   <button
                     type="button"
                     className="logged-header__logout"

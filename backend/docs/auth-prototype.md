@@ -87,7 +87,7 @@ Erros principais:
 
 `GET /api/auth/me` exige `Authorization: Bearer <JWT>` e devolve os dados seguros do usuário.
 
-`PATCH /api/auth/me` exige a senha atual. Um usuário `creator` não pode trocar seu e-mail por um endereço fora do domínio institucional, pois isso permitiria contornar a regra do cadastro. Trocar o e-mail não muda automaticamente o perfil, mas exige nova confirmação e bloqueia o JWT antigo até ela acontecer.
+`PATCH /api/auth/me` exige a senha atual. Um usuário `creator` não pode trocar seu e-mail por um endereço fora do domínio institucional, pois isso permitiria contornar a regra do cadastro. Trocar o e-mail não muda automaticamente o perfil: o endereço novo fica pendente e só substitui o atual quando o link enviado a ele é aberto. Enquanto isso, a conta e a sessão seguem com o e-mail atual.
 
 ## Migração do banco
 

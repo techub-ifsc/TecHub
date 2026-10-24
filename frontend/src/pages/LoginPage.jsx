@@ -227,6 +227,11 @@ export default function LoginPage() {
             {accessMessage}
           </p>
         )}
+        {errors.general && (
+          <p className="login-form__alert" role="alert">
+            {errors.general}
+          </p>
+        )}
         {successMessage && (
           <p className="login-form__success" role="status">
             {successMessage}

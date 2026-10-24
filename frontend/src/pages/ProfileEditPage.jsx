@@ -121,12 +121,16 @@ function graduationOptions(now = new Date()) {
   return options;
 }
 
-// Mesmas regras do backend para foto (até 3 MB) e capa (até 5 MB).
+// Mesmas regras do backend para foto (até 3 MB), capa e currículo (até 4 MB).
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const IMAGE_LIMITS = {
   profile: { bytes: 3 * 1024 * 1024, label: "A foto de perfil", size: "3 MB" },
-  banner: { bytes: 5 * 1024 * 1024, label: "A foto de capa", size: "5 MB" },
+  banner: { bytes: 4 * 1024 * 1024, label: "A foto de capa", size: "4 MB" },
 };
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
+// A Vercel recusa requisições acima de 4,5 MB: os arquivos de um mesmo salvamento,
+// somados, precisam caber nesse limite.
+const MAX_FILES_PER_SAVE_BYTES = 4 * 1024 * 1024;
 
 const GRADUATION_PATTERN = /^\d{4}\/[12]$/;
 
@@ -507,7 +511,7 @@ export default function ProfileEditPage() {
     const limits = { 'Ciência da Computação': 8, 'Técnico em Informática para Internet': 4, 'Técnico em Desenvolvimento de Sistemas': 4 };
     if (form.course && !Object.prototype.hasOwnProperty.call(limits, form.course)) validationErrors.course = 'Selecione um curso válido.';
     if (form.graduation && !GRADUATION_PATTERN.test(form.graduation)) validationErrors.graduation = 'Selecione uma previsão de término válida.';
-    if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > 5 * 1024 * 1024 || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 5 MB.';
+    if (portfolioFile && (portfolioFile.type !== 'application/pdf' || portfolioFile.size > MAX_RESUME_BYTES || !portfolioFile.size)) validationErrors.resume = 'Selecione PDF de até 4 MB.';
 
     return validationErrors;
   }
@@ -606,6 +610,12 @@ export default function ProfileEditPage() {
       setFeedbackMessage('Revise os campos destacados antes de salvar.');
       return;
     }
+    const filesSize = [portfolioFile, profilePhoto, bannerImage].reduce((total, file) => total + (file?.size || 0), 0);
+    if (filesSize > MAX_FILES_PER_SAVE_BYTES) {
+      setFeedbackType('error');
+      setFeedbackMessage('Juntos, os arquivos escolhidos passam de 4 MB. Salve um de cada vez.');
+      return;
+    }
     setSaving(true);
     setUploadProgress(0);
     clearFeedback();
@@ -695,7 +705,7 @@ export default function ProfileEditPage() {
 
                     <label
                       className="profile-edit-image-button"
-                      title="Alterar imagem de capa (JPG, PNG ou WEBP, até 5 MB)"
+                      title="Alterar imagem de capa (JPG, PNG ou WEBP, até 4 MB)"
                     >
                       <input
                         type="file"
@@ -1022,8 +1032,8 @@ export default function ProfileEditPage() {
                           accept=".pdf,application/pdf"
                           onChange={(event) => {
                             const f = event.target.files?.[0] || null;
-                            if (f && (f.type !== 'application/pdf' || !f.size || f.size > 5 * 1024 * 1024)) {
-                              setFeedbackType('error'); setFeedbackMessage('Selecione um arquivo PDF de até 5 MB.');
+                            if (f && (f.type !== 'application/pdf' || !f.size || f.size > MAX_RESUME_BYTES)) {
+                              setFeedbackType('error'); setFeedbackMessage('Selecione um arquivo PDF de até 4 MB.');
                               event.target.value = ''; return;
                             }
                             setPortfolioFile(f);

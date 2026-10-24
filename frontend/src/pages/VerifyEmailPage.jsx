@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { resendVerification, verifyEmail } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 import { isValidVerificationToken } from "../utils/emailVerification";
 import { validateRecoveryEmail } from "../utils/passwordResetValidation";
 
@@ -14,11 +15,13 @@ const LOGIN_MESSAGE = "E-mail confirmado! Agora entre com sua senha.";
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isAuthenticated, refreshUser } = useAuth();
   const token = searchParams.get("token") || "";
   const validToken = isValidVerificationToken(token);
   const requestedKey = useRef("");
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState(validToken ? "verifying" : "invalid");
+  const [successMessage, setSuccessMessage] = useState("");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [resendError, setResendError] = useState("");
@@ -39,8 +42,10 @@ export default function VerifyEmailPage() {
     setStatus("verifying");
 
     verifyEmail(token)
-      .then(() => {
-        if (requestedKey.current === key) setStatus("success");
+      .then((data) => {
+        if (requestedKey.current !== key) return;
+        setSuccessMessage(data?.message || "");
+        setStatus("success");
       })
       .catch((error) => {
         if (requestedKey.current !== key) return;
@@ -48,8 +53,13 @@ export default function VerifyEmailPage() {
       });
   }, [token, validToken, attempt]);
 
+  // Troca de e-mail confirmada com a sessão aberta: atualiza a conta e fica logado.
   useEffect(() => {
-    if (status !== "success") return undefined;
+    if (status === "success" && isAuthenticated) refreshUser().catch(() => {});
+  }, [status, isAuthenticated, refreshUser]);
+
+  useEffect(() => {
+    if (status !== "success" || isAuthenticated) return undefined;
     const timer = window.setTimeout(() => {
       navigate("/login", {
         replace: true,
@@ -57,7 +67,7 @@ export default function VerifyEmailPage() {
       });
     }, 3000);
     return () => window.clearTimeout(timer);
-  }, [status, navigate]);
+  }, [status, isAuthenticated, navigate]);
 
   async function handleResend(event) {
     event.preventDefault();
@@ -108,8 +118,17 @@ export default function VerifyEmailPage() {
           <div className="password-page__result" role="status" aria-live="polite">
             <i className="fa-solid fa-circle-check" aria-hidden="true" />
             <h2>E-mail confirmado!</h2>
-            <p>Sua conta está ativa. Você será levado ao login para entrar com sua senha.</p>
-            {linkToLogin}
+            {isAuthenticated ? (
+              <>
+                <p>{successMessage || "E-mail confirmado."}</p>
+                <Link className="password-page__primary-link" to="/conta" replace>Ir para minha conta</Link>
+              </>
+            ) : (
+              <>
+                <p>Sua conta está ativa. Você será levado ao login para entrar com sua senha.</p>
+                {linkToLogin}
+              </>
+            )}
           </div>
         )}
 

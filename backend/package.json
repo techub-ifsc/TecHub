@@ -10,6 +10,7 @@
     "test": "node scripts/run-tests.js",
     "test:chat": "node scripts/run-tests.js test/chat.test.js",
     "admin:create": "node scripts/create-super-admin.cjs",
+    "audit:prod": "node scripts/check-audit.cjs",
     "db:create": "sequelize-cli db:create",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",

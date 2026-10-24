@@ -12,12 +12,12 @@ class User extends Model {
   // Retorna uma representação do usuário sem incluir sua senha.
   toSafeJSON() {
     const {
-      id, name, email, role, emailVerifiedAt,
+      id, name, email, pendingEmail, role, emailVerifiedAt,
       github_url, linkedin_url, resume_url, avatar_url, banner_url,
       bio, major, expected_graduation, createdAt, updatedAt,
     } = this;
     return {
-      id, name, email, role, emailVerifiedAt,
+      id, name, email, pendingEmail, role, emailVerifiedAt,
       github_url, linkedin_url, resume_url, avatar_url, banner_url,
       bio, major, expected_graduation, createdAt, updatedAt,
     };
@@ -63,6 +63,8 @@ User.init(
     emailVerifiedAt: { type: DataTypes.DATE, allowNull: true },
     emailVerificationTokenHash: { type: DataTypes.STRING(64), allowNull: true },
     emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true },
+    // E-mail novo aguardando confirmação; o token de confirmação acima vale para ele.
+    pendingEmail: { type: DataTypes.STRING(255), allowNull: true },
     passwordResetTokenHash: { type: DataTypes.STRING(64), allowNull: true },
     passwordResetExpiresAt: { type: DataTypes.DATE, allowNull: true },
     authVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },

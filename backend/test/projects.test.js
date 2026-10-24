@@ -266,6 +266,26 @@ describe('rotas de projetos', () => {
     assert.deepEqual(options.attributes, ['id', 'name']);
   });
 
+  test('% e _ digitados na busca são literais, não curingas do LIKE', async (t) => {
+    const creator = createUser('creator');
+    let options;
+    t.mock.method(User, 'findAll', async (query) => {
+      options = query;
+      return [];
+    });
+    t.mock.method(Project, 'findAndCountAll', async (query) => {
+      options = query;
+      return { count: 0, rows: [] };
+    });
+    const { Op } = require('sequelize');
+
+    assert.equal((await request('GET', '/collaborators/search?q=a__', creator)).status, 200);
+    assert.equal(options.where.name[Op.iLike], '%a\\_\\_%');
+
+    assert.equal((await request('GET', '/?search=50%25')).status, 200);
+    assert.equal(options.where.title[Op.iLike], '%50\\%%');
+  });
+
   test('recusa links externos que não sejam http(s)', async () => {
     const creator = createUser('creator');
     for (const link of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {

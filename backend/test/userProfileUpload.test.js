@@ -154,6 +154,17 @@ describe('PUT /users/me com fotos', () => {
     assert.equal(uploads.find((u) => u.publicId.includes('banner_')).options.format, 'webp');
   });
 
+  test('limita os salvamentos do perfil por usuário', async () => {
+    const user = creator();
+    for (let i = 0; i < 40; i += 1) {
+      assert.equal((await saveProfile(user)).status, 200, `envio ${i + 1}`);
+    }
+    const blocked = await saveProfile(user);
+    assert.equal(blocked.status, 429);
+    assert.equal((await blocked.json()).message, 'Muitas alterações no perfil. Tente novamente mais tarde.');
+    assert.equal((await saveProfile(creator())).status, 200, 'outro usuário não é afetado');
+  });
+
   test('recusa formato não permitido, arquivo disfarçado e foto acima de 3 MB', async () => {
     const user = creator();
     const bigJpeg = Buffer.concat([JPEG, Buffer.alloc(MAX_AVATAR_BYTES)]);

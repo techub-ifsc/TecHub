@@ -108,7 +108,8 @@ const createProjectSchema = z.object({
     .min(0, 'O semestre não pode ser negativo')
     .optional()
     .nullable()
-    .default(0),
+    // A tela manda 0 quando nenhuma fase foi escolhida; o banco só aceita fase > 0.
+    .transform((value) => value || null),
 
   technologies: z
     .array(z.string().trim().min(1, 'O nome da tecnologia não pode ser vazio').refine(hasNoHtml, NO_HTML_MESSAGE))

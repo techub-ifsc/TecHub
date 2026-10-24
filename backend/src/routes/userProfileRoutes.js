@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const { authenticate } = require('../middlewares/auth');
 const { getMe, getPublicProfile, updateMe, MAX_PROFILE_FILE_BYTES } = require('../controllers/userProfileController');
 const { ApiError } = require('../middlewares/errorHandler');
@@ -24,6 +25,16 @@ const upload = multer({
     }
     callback(null, true);
   },
+});
+// Cada salvamento pode subir até três arquivos ao Cloudinary; o limite por usuário
+// é o mesmo das assinaturas de mídia dos projetos.
+const profileUpdateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user.id,
+  message: { message: 'Muitas alterações no perfil. Tente novamente mais tarde.' },
 });
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 
@@ -50,14 +61,14 @@ router.get(`/:id(${UUID})`, getPublicProfile);
 
 router.use(authenticate);
 router.get('/me', getMe);
-router.put('/me', (req, res, next) => {
+router.put('/me', profileUpdateLimiter, (req, res, next) => {
   upload.fields([
     { name: 'resume', maxCount: 1 },
     { name: 'avatar', maxCount: 1 },
     { name: 'banner', maxCount: 1 },
   ])(req, res, err => {
     if (err) return next(err.code === 'LIMIT_FILE_SIZE'
-      ? new ApiError(400, 'Cada arquivo deve ter no máximo 5 MB.')
+      ? new ApiError(400, 'Cada arquivo deve ter no máximo 4 MB.')
       : (err.status ? err : new ApiError(400, 'Arquivo ou formulário inválido.')));
     next();
   });

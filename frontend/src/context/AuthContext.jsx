@@ -87,8 +87,9 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Retorna o usuário e a mensagem da API (a troca de e-mail avisa que falta confirmar).
   const updateProfile = useCallback(async (payload) => {
-    const { user: updatedUser, token } = await updateProfileApi(payload);
+    const { user: updatedUser, token, message } = await updateProfileApi(payload);
     // Trocar a senha invalida o token anterior; guarda o novo para a sessão continuar.
     if (token) {
       localStorage.setItem("token", token);
@@ -96,7 +97,15 @@ export function AuthProvider({ children }) {
     }
     localStorage.setItem("techub_user", JSON.stringify(updatedUser));
     setUser(updatedUser);
-    return updatedUser;
+    return { user: updatedUser, message };
+  }, []);
+
+  // Relê a conta na API, por exemplo depois de confirmar um e-mail novo.
+  const refreshUser = useCallback(async () => {
+    const currentUser = await fetchCurrentUser();
+    localStorage.setItem("techub_user", JSON.stringify(currentUser));
+    setUser(currentUser);
+    return currentUser;
   }, []);
 
   return (
@@ -108,6 +117,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         updateProfile,
+        refreshUser,
         isAuthenticated: Boolean(user),
         isCreator: user?.role === "creator",
         isAdmin: user?.role === "super_admin",

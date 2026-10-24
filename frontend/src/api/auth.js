@@ -46,8 +46,9 @@ export async function fetchCurrentUser() {
   return data.user;
 }
 
-// Envia as alterações do perfil. Retorna o usuário e, se a senha mudou, o token novo.
+// Envia as alterações da conta (sempre com a senha atual). Retorna o usuário, a mensagem
+// e, se a senha mudou, o token novo.
 export async function updateProfile(payload) {
-  const { data } = await axiosClient.patch('/auth/me', payload);
+  const { data } = await axiosClient.patch('/auth/me', payload, { keepSessionOn401: true });
   return data;
 }

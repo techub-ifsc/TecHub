@@ -15,7 +15,8 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // A troca de dados da conta responde 401 para senha atual errada: a sessão continua válida.
+    if (error.response?.status === 401 && !error.config?.keepSessionOn401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }

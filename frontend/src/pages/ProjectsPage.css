@@ -626,70 +626,6 @@
   cursor: pointer;
 }
 
-.projects-pagination {
-  margin-top: 2.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.875rem;
-}
-
-.projects-pagination__buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-}
-
-.projects-pagination__buttons button {
-  min-width: 36px;
-  height: 36px;
-  padding: 0 0.5rem;
-  display: grid;
-  place-items: center;
-  appearance: none;
-  background: #18191a !important;
-  border: 1px solid #404245 !important;
-  border-radius: 8px;
-  box-shadow: none !important;
-  color: #ffffff !important;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.projects-pagination__buttons button:hover:not(:disabled) {
-  border-color: var(--tc-green) !important;
-  color: var(--tc-green) !important;
-}
-
-.projects-pagination__buttons button.is-current {
-  background: var(--tc-green) !important;
-  border-color: var(--tc-green) !important;
-  color: #111111 !important;
-}
-
-.projects-pagination__buttons button:disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
-}
-
-.projects-pagination__buttons span {
-  padding: 0 0.25rem;
-  color: #a0a4a8;
-}
-
-.projects-pagination p {
-  margin: 0;
-  color: #a0a4a8;
-  font-size: 0.8rem;
-}
-
-.projects-pagination strong {
-  color: #ffffff;
-}
-
 .projects-page button:focus-visible,
 .projects-page input:focus-visible,
 .projects-page select:focus-visible {
@@ -748,11 +684,6 @@
 
   .projects-page__grid {
     grid-template-columns: 1fr;
-  }
-
-  .projects-pagination__buttons {
-    max-width: 100%;
-    flex-wrap: wrap;
   }
 }
 

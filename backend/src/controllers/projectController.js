@@ -12,6 +12,9 @@ const { APPROVAL_STATUS } = require('../constants/approvalStatus');
 const Project = require('../models/Project');
 const sequelize = require('../config/database');
 
+// Título gravado quando o rascunho é salvo sem nome; não vale como título no envio.
+const UNTITLED_DRAFT = 'Projeto sem título';
+
 const LIST_INCLUDE = [
   {
     model: User,
@@ -53,6 +56,38 @@ function formatListItem(project) {
     technologies: (json.technologies || []).map((t) => t.name),
     coverUrl: media?.[0]?.url ?? null,
   };
+}
+
+// Colaborador precisa ser um criador cadastrado; o dono e as repetições ficam de fora.
+async function resolveCollaborators(collaborators, ownerId, transaction) {
+  const contributionByUser = new Map();
+  for (const item of collaborators || []) {
+    const userId = typeof item === 'string' ? item : item.userId;
+    if (userId === ownerId || contributionByUser.has(userId)) continue;
+    contributionByUser.set(userId, typeof item === 'string' ? null : (item.contribution || null));
+  }
+  if (!contributionByUser.size) return [];
+
+  const creators = await User.findAll({
+    where: { id: [...contributionByUser.keys()], role: ROLES.CREATOR },
+    attributes: ['id'],
+    transaction,
+  });
+  if (creators.length !== contributionByUser.size) {
+    throw new ApiError(400, 'Só criadores cadastrados podem ser colaboradores.');
+  }
+  return [...contributionByUser].map(([userId, contribution]) => ({ userId, contribution }));
+}
+
+async function replaceCollaborators(projectId, collaborators, ownerId, transaction) {
+  const records = await resolveCollaborators(collaborators, ownerId, transaction);
+  await ProjectCollaborator.destroy({ where: { projectId }, transaction });
+  if (records.length) {
+    await ProjectCollaborator.bulkCreate(
+      records.map((item) => ({ projectId, ...item })),
+      { transaction }
+    );
+  }
 }
 
 function isProjectInsider(project, user) {
@@ -177,8 +212,9 @@ async function create(req, res, next) {
       req.body.status = 'Concluído';
     }
     const data = createProjectSchema.parse(req.body);
-    const { technologies, collaborators, media = [], ...projectData } = data;
+    const { technologies, collaborators: requested, media = [], ...projectData } = data;
     const ownerId = req.user?.id || req.userId;
+    const collaborators = await resolveCollaborators(requested, ownerId, transaction);
 
     const project = await Project.create(
       {
@@ -198,19 +234,11 @@ async function create(req, res, next) {
       await ProjectTechnology.bulkCreate(techRecords, { transaction });
     }
 
-    if (Array.isArray(collaborators) && collaborators.length > 0) {
-      const collaboratorRecords = collaborators.map((item) => {
-        const isObject = typeof item === 'object' && item !== null;
-        const targetUserId = isObject ? item.userId : item;
-        return {
-          projectId: project.id,
-          project_id: project.id,
-          userId: targetUserId,
-          user_id: targetUserId,
-          contribution: isObject ? (item.contribution || null) : null,
-        };
-      });
-      await ProjectCollaborator.bulkCreate(collaboratorRecords, { transaction });
+    if (collaborators.length > 0) {
+      await ProjectCollaborator.bulkCreate(
+        collaborators.map((item) => ({ projectId: project.id, ...item })),
+        { transaction }
+      );
     }
 
     let mediaRecords = [];
@@ -228,7 +256,7 @@ async function create(req, res, next) {
       project: {
         ...project.toJSON(),
         technologies: technologies || [],
-        collaborators: collaborators || [],
+        collaborators,
         media: (mediaRecords || []).map((m) => ({
           id: m.id,
           url: m.url,
@@ -268,7 +296,8 @@ async function update(req, res, next) {
         throw new ApiError(403, 'Apenas o proprietário pode gerenciar colaboradores.');
       }
 
-      if (project.approvalStatus !== APPROVAL_STATUS.PENDING) {
+      // Rascunho continua rascunho: só o envio (POST /:id/submit) o leva à moderação, já completo.
+      if (project.approvalStatus !== APPROVAL_STATUS.PENDING && project.approvalStatus !== APPROVAL_STATUS.DRAFT) {
         projectData.approvalStatus = APPROVAL_STATUS.PENDING;
         projectData.submittedAt = new Date();
       }
@@ -284,17 +313,7 @@ async function update(req, res, next) {
         }
       }
       if (collaborators !== undefined) {
-        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
-        if (collaborators.length) {
-          await ProjectCollaborator.bulkCreate(
-            collaborators.map((item) => ({
-              projectId: id,
-              userId: typeof item === 'string' ? item : item.userId,
-              contribution: typeof item === 'string' ? null : (item.contribution || null),
-            })),
-            { transaction }
-          );
-        }
+        await replaceCollaborators(id, collaborators, project.ownerId, transaction);
       }
       
       if (media !== undefined) {
@@ -380,11 +399,12 @@ async function createDraft(req, res, next) {
   const transaction = await sequelize.transaction();
   try {
     const ownerId = req.user?.id || req.userId;
-    const { technologies, collaborators, media = [], ...projectData } = draftProjectSchema.parse(req.body);
+    const { technologies, collaborators: requested, media = [], ...projectData } = draftProjectSchema.parse(req.body);
+    const collaborators = await resolveCollaborators(requested, ownerId, transaction);
 
     // Se o título estiver vazio, define um padrão para o banco aceitar
     if (!projectData.title || projectData.title.trim() === '') {
-      projectData.title = 'Projeto sem título';
+      projectData.title = UNTITLED_DRAFT;
     }
 
     const project = await Project.create({
@@ -397,14 +417,11 @@ async function createDraft(req, res, next) {
       const techRecords = technologies.map((tech) => ({ projectId: project.id, project_id: project.id, name: tech.trim() }));
       await ProjectTechnology.bulkCreate(techRecords, { transaction });
     }
-    if (Array.isArray(collaborators) && collaborators.length > 0) {
-      const colabRecords = collaborators.map((item) => ({
-        projectId: project.id,
-        project_id: project.id,
-        userId: typeof item === 'object' ? item.userId : item,
-        contribution: typeof item === 'object' ? (item.contribution || null) : null,
-      }));
-      await ProjectCollaborator.bulkCreate(colabRecords, { transaction });
+    if (collaborators.length > 0) {
+      await ProjectCollaborator.bulkCreate(
+        collaborators.map((item) => ({ projectId: project.id, ...item })),
+        { transaction }
+      );
     }
     if (Array.isArray(media) && media.length > 0) {
       const mediaRecords = media.map((item) => ({ ...item, projectId: project.id, project_id: project.id }));
@@ -445,7 +462,7 @@ async function updateDraft(req, res, next) {
 
       const { technologies, collaborators, media, ...projectData } = draftProjectSchema.parse(req.body);
       if (!projectData.title || projectData.title.trim() === '') {
-        projectData.title = 'Projeto sem título';
+        projectData.title = UNTITLED_DRAFT;
       }
 
       await project.update(projectData, { transaction });
@@ -457,12 +474,7 @@ async function updateDraft(req, res, next) {
         }
       }
       if (collaborators !== undefined) {
-        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
-        if (collaborators.length) {
-          await ProjectCollaborator.bulkCreate(collaborators.map((item) => ({
-            projectId: id, project_id: id, userId: typeof item === 'string' ? item : item.userId, contribution: typeof item === 'string' ? null : (item.contribution || null),
-          })), { transaction });
-        }
+        await replaceCollaborators(id, collaborators, project.ownerId, transaction);
       }
       if (media !== undefined) {
         await ProjectMedia.destroy({ where: { projectId: id }, transaction });
@@ -476,38 +488,63 @@ async function updateDraft(req, res, next) {
   }
 }
 
+// Campos já salvos no rascunho, no formato do corpo da requisição; vazios ficam de fora.
+function draftToBody(project) {
+  const json = project.toJSON();
+  const body = {
+    title: json.title === UNTITLED_DRAFT ? null : json.title,
+    description: json.description,
+    major: json.major,
+    semester: json.semester,
+    githubURL: json.githubURL,
+    liveURL: json.liveURL,
+    status: json.status,
+    technologies: (json.technologies || []).map((t) => t.name),
+    collaborators: (json.collaborators || []).map(({ userId, contribution }) => ({
+      userId,
+      ...(contribution && { contribution }),
+    })),
+    media: (json.media || []).map(({ url, mediaType, isCover }) => ({ url, mediaType, isCover })),
+  };
+  return Object.fromEntries(Object.entries(body).filter(([, value]) => value != null));
+}
+
 async function submitDraft(req, res, next) {
   try {
     const { id } = req.params;
+    if (!z.string().uuid().safeParse(id).success) {
+      throw new ApiError(404, 'Rascunho não encontrado.');
+    }
     const userId = req.user?.id || req.userId;
-    const data = updateProjectSchema.parse(req.body); // Aqui roda a validação rígida final exigida
-    
+
     const result = await sequelize.transaction(async (transaction) => {
-      const project = await Project.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      const project = await Project.findByPk(id, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+        include: [
+          { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
+          { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },
+          { model: ProjectMedia, as: 'media', attributes: ['url', 'mediaType', 'isCover'] },
+        ],
+      });
       if (!project) throw new ApiError(404, 'Rascunho não encontrado.');
       if (project.ownerId !== userId) throw new ApiError(403, 'Apenas o dono pode submeter este rascunho.');
       if (project.approvalStatus !== APPROVAL_STATUS.DRAFT) throw new ApiError(400, 'Este projeto não é mais um rascunho.');
-      
+
+      // O corpo substitui o que estava salvo, e o resultado precisa estar
+      // completo como um projeto novo antes de ir para a moderação.
+      const data = createProjectSchema.parse({ ...draftToBody(project), ...req.body });
       const { technologies, collaborators, media, ...projectData } = data;
       projectData.approvalStatus = APPROVAL_STATUS.PENDING; // Muda de Rascunho para Pendente
       projectData.submittedAt = new Date();
 
       await project.update(projectData, { transaction });
-      
-      if (technologies !== undefined) {
-        await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
-        if (technologies.length) await ProjectTechnology.bulkCreate(technologies.map((name) => ({ projectId: id, project_id: id, name: name.trim() })), { transaction });
-      }
-      if (collaborators !== undefined) {
-        await ProjectCollaborator.destroy({ where: { projectId: id }, transaction });
-        if (collaborators.length) await ProjectCollaborator.bulkCreate(collaborators.map((item) => ({
-          projectId: id, project_id: id, userId: typeof item === 'string' ? item : item.userId, contribution: typeof item === 'string' ? null : (item.contribution || null),
-        })), { transaction });
-      }
-      if (media !== undefined) {
-        await ProjectMedia.destroy({ where: { projectId: id }, transaction });
-        await ProjectMedia.bulkCreate(media.map((item) => ({ ...item, projectId: id, project_id: id })), { transaction });
-      }
+
+      await ProjectTechnology.destroy({ where: { projectId: id }, transaction });
+      if (technologies.length) await ProjectTechnology.bulkCreate(technologies.map((name) => ({ projectId: id, project_id: id, name: name.trim() })), { transaction });
+      await replaceCollaborators(id, collaborators, project.ownerId, transaction);
+      await ProjectMedia.destroy({ where: { projectId: id }, transaction });
+      await ProjectMedia.bulkCreate(media.map((item) => ({ ...item, projectId: id, project_id: id })), { transaction });
       return project;
     });
     return res.status(200).json({ message: 'Rascunho submetido para moderação.', project: result });

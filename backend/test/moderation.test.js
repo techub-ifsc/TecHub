@@ -203,10 +203,11 @@ describe('moderação de projetos', () => {
       assert.deepEqual(calls.findAll[0].order, [['submitted_at', 'DESC']]);
 
       const all = await request('GET', '/admin/projects', admin);
-      assert.deepEqual(calls.findAll[1].where, {});
+      assert.deepEqual(calls.findAll[1].where, { approvalStatus: { [Op.ne]: 'draft' } });
       assert.deepEqual((await all.json()).totals, { pending: 0, approved: 0, rejected: 1 });
 
       assert.equal((await request('GET', '/admin/projects?status=publicado', admin)).status, 400);
+      assert.equal((await request('GET', '/admin/projects?status=draft', admin)).status, 400);
       assert.equal(calls.findAll.length, 2);
     });
   });
@@ -270,6 +271,16 @@ describe('moderação de projetos', () => {
       assert.equal((await request('PATCH', `/admin/projects/${project.id}/reject`, admin, { reviewNotes })).status, 400);
       assert.equal((await request('PATCH', `/admin/projects/${project.id}/approve`, admin, { reviewNotes })).status, 400);
       assert.equal(calls.update.length, 0);
+    });
+
+    test('rascunho não pode ser aprovado nem rejeitado', async (t) => {
+      const admin = createUser('super_admin');
+      const draft = createProject(t, { approvalStatus: 'draft' });
+
+      assert.equal((await request('PATCH', `/admin/projects/${draft.id}/approve`, admin)).status, 400);
+      assert.equal((await request('PATCH', `/admin/projects/${draft.id}/reject`, admin, { reviewNotes: 'Motivo.' })).status, 400);
+      assert.equal(calls.update.length, 0);
+      assert.equal(draft.approvalStatus, 'draft');
     });
 
     test('projeto inexistente ou id inválido responde 404', async () => {
@@ -389,6 +400,63 @@ describe('moderação de projetos', () => {
       assert.equal(res.status, 200);
       assert.deepEqual(calls.update.pop(), { title: 'Novo título' });
       assert.equal(project.approvalStatus, 'pending');
+    });
+
+    test('editar um rascunho pela rota comum não o envia à moderação', async (t) => {
+      const draft = createProject(t, { approvalStatus: 'draft' });
+      const res = await request('PUT', `/projects/${draft.id}`, users.get(draft.ownerId), { title: 'Novo título' });
+      assert.equal(res.status, 200);
+      assert.deepEqual(calls.update.pop(), { title: 'Novo título' });
+      assert.equal(draft.approvalStatus, 'draft');
+    });
+
+    test('rascunho incompleto não vai para a moderação', async (t) => {
+      const draft = createProject(t, { approvalStatus: 'draft', title: 'Projeto sem título' });
+      const owner = users.get(draft.ownerId);
+
+      for (const body of [{}, { title: 'Só o título' }]) {
+        const res = await request('POST', `/projects/${draft.id}/submit`, owner, body);
+        assert.equal(res.status, 400, JSON.stringify(body));
+      }
+      assert.equal(calls.update.length, 0);
+      assert.equal(draft.approvalStatus, 'draft');
+    });
+
+    test('envio do rascunho completa o que falta com o que já estava salvo', async (t) => {
+      const owner = createUser('creator', 'Autora');
+      const draft = Project.build(
+        {
+          id: randomUUID(),
+          title: 'Título salvo',
+          description: 'Descrição salva',
+          ownerId: owner.id,
+          approvalStatus: 'draft',
+          technologies: [{ name: 'React' }],
+          collaborators: [],
+          media: [{ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', mediaType: 'video', isCover: false }],
+        },
+        {
+          include: [
+            { model: ProjectTechnology, as: 'technologies' },
+            { model: ProjectCollaborator, as: 'collaborators' },
+            { model: ProjectMedia, as: 'media' },
+          ],
+        }
+      );
+      t.mock.method(draft, 'update', async (values) => {
+        calls.update.push(values);
+        draft.set(values);
+        return draft;
+      });
+      projects.set(draft.id, draft);
+
+      const res = await request('POST', `/projects/${draft.id}/submit`, owner, { title: 'Título final' });
+      assert.equal(res.status, 200);
+      const [values] = calls.update;
+      assert.equal(values.title, 'Título final');
+      assert.equal(values.description, 'Descrição salva');
+      assert.equal(values.approvalStatus, 'pending');
+      assert.equal(draft.approvalStatus, 'pending');
     });
 
     test('"meus projetos" exige login e traz os do autor e os de colaboração, em qualquer situação', async (t) => {

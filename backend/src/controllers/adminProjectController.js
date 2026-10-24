@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { Op } = require('sequelize');
 const Project = require('../models/Project');
 const ProjectTechnology = require('../models/ProjectTechnology');
 const ProjectCollaborator = require('../models/ProjectCollaborator');
@@ -12,9 +13,10 @@ const { approveProjectSchema, rejectProjectSchema } = require('../validators/pro
 // Mesmo teto usado hoje pelas listagens do frontend; paginar quando o volume crescer.
 const MAX_PROJECTS = 100;
 
+// Rascunhos ainda não foram enviados: ficam fora da moderação.
 const listQuerySchema = z.object({
   status: z
-    .enum(Object.values(APPROVAL_STATUS), {
+    .enum([APPROVAL_STATUS.PENDING, APPROVAL_STATUS.APPROVED, APPROVAL_STATUS.REJECTED], {
       errorMap: () => ({ message: 'status deve ser pending, approved ou rejected' }),
     })
     .optional(),
@@ -26,7 +28,7 @@ async function buildModerationList(status) {
 
   const [projects, pending, approved, rejected] = await Promise.all([
     Project.findAll({
-      where: status ? { approvalStatus: status } : {},
+      where: { approvalStatus: status || { [Op.ne]: APPROVAL_STATUS.DRAFT } },
       include: [
         // A moderação vê o e-mail do autor para poder contatá-lo.
         { model: User, as: 'author', attributes: ['id', 'name', 'email'] },
@@ -99,6 +101,9 @@ async function review(req, res, next, { approvalStatus, schema, message }) {
 
     const project = await Project.findByPk(id);
     if (!project) throw new ApiError(404, 'Projeto não encontrado.');
+    if (project.approvalStatus === APPROVAL_STATUS.DRAFT) {
+      throw new ApiError(400, 'Rascunhos ainda não foram enviados à moderação.');
+    }
 
     await project.update({
       approvalStatus,

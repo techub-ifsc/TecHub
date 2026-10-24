@@ -6,7 +6,7 @@ const ProjectCollaborator = require('../models/ProjectCollaborator');
 const ProjectMedia = require('../models/ProjectMedia');
 const User = require('../models/User');
 const { ApiError } = require('../middlewares/errorHandler');
-const { likeOperator } = require('../utils/db');
+const { likeOperator, containsPattern } = require('../utils/db');
 const { ROLES } = require('../constants/roles');
 const { APPROVAL_STATUS } = require('../constants/approvalStatus');
 const Project = require('../models/Project');
@@ -105,7 +105,7 @@ async function list(req, res, next) {
     if (major) where.major = major;
     if (status) where.status = status;
     if (search) {
-      where.title = { [Op.iLike]: `%${search}%` };
+      where.title = { [Op.iLike]: containsPattern(search) };
     }
 
     const { count, rows: projects } = await Project.findAndCountAll({
@@ -354,7 +354,7 @@ async function searchCollaborators(req, res, next) {
     if (query.length < 2) return res.json({ users: [] });
     if (query.length > 100) throw new ApiError(400, 'Pesquisa muito longa.');
     const users = await User.findAll({
-      where: { role: ROLES.CREATOR, name: { [likeOperator()]: `%${query}%` } },
+      where: { role: ROLES.CREATOR, name: { [likeOperator()]: containsPattern(query) } },
       attributes: ['id', 'name'],
       limit: 10,
       order: [['name', 'ASC']],

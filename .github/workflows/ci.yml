@@ -39,8 +39,9 @@ jobs:
           DB_NAME: ci
           DB_HOST: localhost
           JWT_SECRET: segredo-usado-apenas-nos-testes-do-ci
-      # Falha se alguma dependência de produção tiver alerta alto ou crítico.
-      - run: npm audit --omit=dev --audit-level=high
+      # Falha se alguma dependência de produção tiver alerta alto ou crítico, exceto as
+      # exceções justificadas em scripts/check-audit.cjs.
+      - run: npm run audit:prod
 
   frontend:
     runs-on: ubuntu-latest

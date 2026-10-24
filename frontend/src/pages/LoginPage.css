@@ -237,6 +237,22 @@
   text-align: center;
 }
 
+/* Erro do envio (senha errada, conta bloqueada, e-mail não confirmado) */
+
+.login-form__alert {
+  margin: 0;
+  padding: 0.75rem;
+
+  background: rgb(255 107 107 / 10%);
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+
+  color: #ff8f8f;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
 /* Área das ações */
 
 .login-form__actions {

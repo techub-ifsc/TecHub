@@ -6,9 +6,11 @@ const { ApiError } = require('../middlewares/errorHandler');
 const { User } = require('../models');
 const { ROLES } = require('../constants/roles');
 
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+// A Vercel recusa requisições acima de 4,5 MB antes de chegarem à API; 4 MB deixa
+// folga para o resto do formulário.
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
-const MAX_BANNER_BYTES = 5 * 1024 * 1024;
+const MAX_BANNER_BYTES = 4 * 1024 * 1024;
 // Maior limite entre os arquivos; o multer barra antes de ler o resto.
 const MAX_PROFILE_FILE_BYTES = Math.max(MAX_RESUME_BYTES, MAX_AVATAR_BYTES, MAX_BANNER_BYTES);
 
@@ -39,7 +41,7 @@ const PROFILE_FILES = {
     removeFlag: 'remove_resume',
     resourceType: 'raw',
     isValid: pdfLooksValid,
-    invalidMessage: 'O currículo deve ser PDF válido de até 5 MB.',
+    invalidMessage: 'O currículo deve ser PDF válido de até 4 MB.',
     uploadOptions: (userId) => ({
       folder: 'techub/resumes',
       public_id: `resume_${userId}_${Date.now()}.pdf`,
@@ -68,7 +70,7 @@ const PROFILE_FILES = {
     removeFlag: 'remove_banner',
     resourceType: 'image',
     isValid: (file) => imageLooksValid(file, MAX_BANNER_BYTES),
-    invalidMessage: 'A foto de capa deve ser JPG, PNG ou WEBP de até 5 MB.',
+    invalidMessage: 'A foto de capa deve ser JPG, PNG ou WEBP de até 4 MB.',
     // Reduzida para no máximo 1600x900 e comprimida, para a página do criador abrir rápido.
     uploadOptions: (userId) => ({
       folder: `techub/users/${userId}`,

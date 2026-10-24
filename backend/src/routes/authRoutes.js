@@ -60,7 +60,7 @@ router.post('/register', authLimiter, authController.register);
  * /auth/verify-email:
  *   post:
  *     tags: [Auth]
- *     summary: Confirma o e-mail com token de uso único válido por 24 horas
+ *     summary: Confirma o e-mail (ou o novo e-mail pedido no perfil) com token de uso único válido por 24 horas
  *     requestBody:
  *       required: true
  *       content:
@@ -75,6 +75,8 @@ router.post('/register', authLimiter, authController.register);
  *         description: E-mail confirmado; usuário pode fazer login
  *       400:
  *         description: Token inválido, expirado ou já usado
+ *       409:
+ *         description: O novo e-mail passou a ser usado por outra conta; nada foi alterado
  *       429:
  *         description: Limite de requisições por IP excedido
  */
@@ -217,7 +219,7 @@ router.get('/me', authenticate, authController.me);
  * /auth/me:
  *   patch:
  *     tags: [Auth]
- *     summary: Atualiza nome, e-mail e/ou senha do usuário autenticado
+ *     summary: Atualiza nome e/ou senha; um e-mail novo fica em pendingEmail até ser confirmado pelo link
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
@@ -238,7 +240,7 @@ router.get('/me', authenticate, authController.me);
  *       409:
  *         description: E-mail já cadastrado
  *       503:
- *         description: Falha de envio ao alterar e-mail
+ *         description: O link para o novo e-mail não foi enviado; o e-mail atual não mudou
  */
 router.patch('/me', authLimiter, authenticate, authController.updateProfile);
 

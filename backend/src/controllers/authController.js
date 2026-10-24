@@ -174,23 +174,45 @@ async function login(req, res, next) {
 }
 
 // Token aleatório de uso único. O banco armazena somente o hash SHA-256.
+// Serve para a primeira confirmação e para a troca de e-mail pedida no perfil.
 async function verifyEmail(req, res, next) {
   try {
     const { token } = verifyEmailSchema.parse(req.body);
     const tokenHash = crypto.createHash('sha256').update(token.toLowerCase()).digest('hex');
-    const [updated] = await User.update({
-      emailVerifiedAt: new Date(),
-      emailVerificationTokenHash: null,
-      emailVerificationExpiresAt: null,
-    }, {
-      where: {
-        emailVerificationTokenHash: tokenHash,
-        emailVerificationExpiresAt: { [Op.gt]: new Date() },
-        emailVerifiedAt: null,
-      },
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: {
+          emailVerificationTokenHash: tokenHash,
+          emailVerificationExpiresAt: { [Op.gt]: new Date() },
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user || (!user.pendingEmail && user.emailVerifiedAt)) return 'invalid';
+
+      user.emailVerificationTokenHash = null;
+      user.emailVerificationExpiresAt = null;
+      let outcome = 'verified';
+      if (user.pendingEmail) {
+        // Outra conta pode ter passado a usar o endereço depois do pedido.
+        const taken = await User.findOne({ where: { email: user.pendingEmail }, transaction });
+        outcome = taken ? 'taken' : 'changed';
+        if (!taken) user.email = user.pendingEmail;
+        user.pendingEmail = null;
+      }
+      if (outcome !== 'taken') user.emailVerifiedAt = new Date();
+      await user.save({ transaction });
+      return outcome;
     });
-    if (!updated) {
+
+    if (result === 'invalid') {
       return res.status(400).json({ message: 'Link inválido, expirado ou já utilizado.' });
+    }
+    if (result === 'taken') {
+      return res.status(409).json({ message: 'Este e-mail passou a ser usado por outra conta. Nada foi alterado.' });
+    }
+    if (result === 'changed') {
+      return res.json({ message: 'Novo e-mail confirmado. Use-o no próximo login.' });
     }
     return res.json({ message: 'E-mail confirmado. Você já pode fazer login.' });
   } catch (err) {
@@ -329,9 +351,9 @@ async function updateProfile(req, res, next) {
       } catch {
         return mailUnavailable(res);
       }
+      // O e-mail atual continua valendo (login e sessão) até o novo ser confirmado.
       verification = newVerification();
-      user.email = data.email;
-      user.emailVerifiedAt = null;
+      user.pendingEmail = data.email.toLowerCase();
       user.emailVerificationTokenHash = verification.tokenHash;
       user.emailVerificationExpiresAt = verification.expiresAt;
     }
@@ -348,17 +370,21 @@ async function updateProfile(req, res, next) {
 
     if (verification) {
       try {
-        await mailService.sendVerificationEmail(user.email, verification.token);
+        await mailService.sendVerificationEmail(user.pendingEmail, verification.token);
       } catch (error) {
         console.error('Falha no envio após troca de e-mail:', error.code || 'erro SMTP');
         return res.status(503).json({
-          message: 'E-mail alterado, mas a confirmação não foi enviada. Solicite um novo link.',
+          message: 'O link de confirmação do novo e-mail não foi enviado. Seu e-mail atual não mudou; tente de novo mais tarde.',
         });
       }
     }
 
     // Trocar a senha invalida os tokens anteriores; a sessão atual recebe um token novo.
-    res.json({ user: user.toSafeJSON(), ...(data.password && { token: signSessionToken(user) }) });
+    res.json({
+      user: user.toSafeJSON(),
+      ...(verification && { message: 'Enviamos um link para o novo e-mail. A troca vale depois da confirmação.' }),
+      ...(data.password && { token: signSessionToken(user) }),
+    });
   } catch (err) {
     next(err);
   }

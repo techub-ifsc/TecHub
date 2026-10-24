@@ -80,7 +80,7 @@ O RF-01-2 pede envio automático de link após o cadastro, validade de 24 horas,
 3. A página de confirmação do frontend deve ler o parâmetro `token` e enviá-lo em JSON a `POST /api/auth/verify-email`. A API valida o hash e a expiração, marca a conta como confirmada e apaga o token; outro uso do mesmo link retorna `400`.
 4. Antes da confirmação, `POST /api/auth/login` retorna `403` mesmo para senha correta. Um JWT antigo também não passa por `authenticate` ou `optionalAuthenticate` quando o e-mail está pendente.
 5. `POST /api/auth/resend-verification` recebe `{ "email": "maria@example.com" }`. Para contas pendentes, cria outro token de 24 horas e invalida o anterior. A resposta é genérica para não informar se o e-mail existe.
-6. Se uma pessoa autenticada mudar o e-mail em `PATCH /api/auth/me`, a conta volta ao estado pendente e precisa confirmar o novo endereço. O JWT anterior deixa de acessar rotas protegidas até a confirmação.
+6. Se uma pessoa autenticada mudar o e-mail em `PATCH /api/auth/me`, o novo endereço fica em `pendingEmail` e recebe o link de confirmação. Até o link ser aberto, o login e a sessão continuam com o e-mail atual; um erro de digitação no endereço novo não tranca a conta. Ao confirmar, o e-mail é trocado (ou nada muda, com 409, se outra conta tiver passado a usar o endereço).
 
 Resposta de cadastro:
 

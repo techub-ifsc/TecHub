@@ -48,6 +48,11 @@ beforeEach(async (t) => {
     passwordChangeNotices.push(email);
   });
   t.mock.method(User, 'findOne', async ({ where }) => {
+    if (where.emailVerificationTokenHash) {
+      return [...rows.values()].find((user) =>
+        user.emailVerificationTokenHash === where.emailVerificationTokenHash
+        && user.emailVerificationExpiresAt > new Date()) || null;
+    }
     if (where.passwordResetTokenHash) {
       return [...rows.values()].find((user) =>
         user.passwordResetTokenHash === where.passwordResetTokenHash
@@ -56,16 +61,6 @@ beforeEach(async (t) => {
     return [...rows.values()].find((user) => user.email === where.email) || null;
   });
   t.mock.method(User, 'findByPk', async (id) => rows.get(id) || null);
-  t.mock.method(User, 'update', async (values, { where }) => {
-    const user = [...rows.values()].find((item) =>
-      item.emailVerificationTokenHash === where.emailVerificationTokenHash
-      && item.emailVerifiedAt === null
-      && item.emailVerificationExpiresAt > new Date());
-    if (!user) return [0];
-    Object.assign(user, values);
-    rows.set(user.id, user);
-    return [1];
-  });
   t.mock.method(User, 'create', async (data) => {
     const user = User.build(data);
     await user.validate();
@@ -457,18 +452,45 @@ test('falha SMTP após gravar a conta permite reenvio sem criar duplicata', asyn
   assert.equal((await confirmLatestEmail()).status, 200);
 });
 
-test('troca de e-mail requer nova confirmação e invalida o JWT anterior', async () => {
+test('troca de e-mail só vale depois de confirmar o novo endereço, sem trancar a conta', async () => {
   await request('/register', account());
   await confirmLatestEmail();
   const login = await request('/login', { email: account().email, password: account().password });
   const change = await request('/me', {
-    email: 'nova@example.com', currentPassword: account().password,
+    email: 'Nova@example.com', currentPassword: account().password,
   }, login.body.token, 'PATCH');
   assert.equal(change.status, 200);
-  assert.equal(change.body.user.emailVerifiedAt, null);
-  assert.equal((await request('/me', undefined, login.body.token)).status, 403);
-  assert.equal((await confirmLatestEmail()).status, 200);
+  assert.equal(change.body.user.email, account().email);
+  assert.equal(change.body.user.pendingEmail, 'nova@example.com');
+  assert.ok(change.body.user.emailVerifiedAt);
+  assert.equal(sentEmails.at(-1).email, 'nova@example.com');
+
+  // Antes da confirmação, nada muda para a pessoa: sessão e login com o e-mail atual.
+  assert.equal((await request('/me', undefined, login.body.token)).status, 200);
+  assert.equal((await request('/login', { email: account().email, password: account().password })).status, 200);
+  assert.equal((await request('/login', { email: 'nova@example.com', password: account().password })).status, 401);
+
+  const confirmed = await confirmLatestEmail();
+  assert.equal(confirmed.status, 200);
+  assert.equal((await confirmLatestEmail()).status, 400);
+  assert.equal((await request('/me', undefined, login.body.token)).body.user.email, 'nova@example.com');
   assert.equal((await request('/login', { email: 'nova@example.com', password: account().password })).status, 200);
+  assert.equal((await request('/login', { email: account().email, password: account().password })).status, 401);
+});
+
+test('troca de e-mail não acontece se outra conta passou a usar o endereço', async () => {
+  await request('/register', account());
+  await confirmLatestEmail();
+  const login = await request('/login', { email: account().email, password: account().password });
+  await request('/me', { email: 'disputado@example.com', currentPassword: account().password }, login.body.token, 'PATCH');
+  const changeLink = sentEmails.at(-1);
+
+  await request('/register', { ...account(), email: 'disputado@example.com' });
+  const result = await request('/verify-email', { token: changeLink.token });
+  assert.equal(result.status, 409);
+  const me = await request('/me', undefined, login.body.token);
+  assert.equal(me.body.user.email, account().email);
+  assert.equal(me.body.user.pendingEmail, null);
 });
 
 test('recuperação usa resposta genérica, token com hash e prazo de 1 hora', async () => {

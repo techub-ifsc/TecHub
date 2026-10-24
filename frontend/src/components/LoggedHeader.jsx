@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import { useChat } from "../context/ChatContext";
 import ConfirmationModal from "./ConfirmationModal";
 import "./Header.css";
 import "./LoggedHeader.css";
@@ -19,6 +20,7 @@ export default function LoggedHeader() {
   const accountMenuRef = useRef(null);
 
   const { user, logout } = useAuth();
+  const { unreadCount } = useChat();
   const navigate = useNavigate();
 
   const isCreator = user?.role === "creator";
@@ -145,6 +147,27 @@ export default function LoggedHeader() {
               onClick={closeMenu}
             >
               Criadores
+            </NavLink>
+
+            <NavLink
+              to="/mensagens"
+              className={({ isActive }) =>
+                `site-header__nav-item site-header__nav-item--chat${
+                  isActive ? " is-active" : ""
+                }`
+              }
+              onClick={closeMenu}
+            >
+              <i className="fa-regular fa-comment-dots" aria-hidden="true" />
+              <span>Mensagens</span>
+              {unreadCount > 0 && (
+                <span
+                  className="site-header__chat-badge"
+                  title={`${unreadCount} mensagem(ns) não lida(s)`}
+                >
+                  {unreadCount}
+                </span>
+              )}
             </NavLink>
 
             {isCreator && (

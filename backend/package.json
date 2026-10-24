@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test test/auth.test.js test/mail.test.js test/media.test.js test/projects.test.js test/moderation.test.js test/userProfileValidation.test.js test/userProfileUpload.test.js test/security.test.js",
+    "test": "node scripts/run-tests.js",
+    "test:chat": "node scripts/run-tests.js test/chat.test.js",
     "admin:create": "node scripts/create-super-admin.cjs",
     "audit:prod": "node scripts/check-audit.cjs",
     "db:create": "sequelize-cli db:create",
@@ -36,12 +37,14 @@
     "pg-hstore": "^2.3.4",
     "sanitize-html": "^2.17.0",
     "sequelize": "^6.37.3",
+    "socket.io": "^4.8.4",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",
-    "sequelize-cli": "^6.6.2"
+    "sequelize-cli": "^6.6.2",
+    "socket.io-client": "^4.8.4"
   }
 }

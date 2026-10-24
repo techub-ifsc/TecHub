@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import PrivateRoute from "./components/PrivateRoute";
@@ -7,6 +7,7 @@ import CreatorProfileRoute from "./components/CreatorProfileRoute";
 import EmptyState from "./components/EmptyState";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
+import { ChatProvider } from "./context/ChatContext";
 
 import AccountPage from "./pages/AccountPage";
 import CreatorProfilePage from "./pages/CreatorProfilePage";
@@ -16,6 +17,7 @@ import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import MessagesPage from "./pages/MessagesPage";
 import NewProjectPage from "./pages/NewProjectPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
@@ -26,79 +28,85 @@ import EditProjectPage from "./pages/EditProjectPage";
 import ProjectDraftsPage from "./pages/ProjectDraftsPage";
 
 export default function App() {
+  const location = useLocation();
+  const isMessagesPage = location.pathname.startsWith("/mensagens");
+
   return (
-    <div className="app-shell">
-      <Header />
+    <ChatProvider>
+      <div className="app-shell">
+        <Header />
 
-      <main className="app-content">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
+        <main className="app-content">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
 
-          <Route path="/projetos" element={<ProjectsPage />} />
+            <Route path="/projetos" element={<ProjectsPage />} />
 
-          <Route
-            path="/projetos/:id"
-            element={<ProjectDetailsPage />}
-          />
-          <Route path="/criadores" element={<CreatorsPage />} />
-
-          <Route element={<CreatorRoute />}>
-            <Route path="/meus-rascunhos" element={<ProjectDraftsPage />} />
-            <Route path="/meus-rascunhos/:draftId/editar" element={<NewProjectPage />} />
             <Route
-              path="/projeto/novo"
-              element={<NewProjectPage />}
+              path="/projetos/:id"
+              element={<ProjectDetailsPage />}
             />
-            <Route
-              path="/projetos/:id/editar"
-              element={<EditProjectPage />}
-            />
-          </Route>
+            <Route path="/criadores" element={<CreatorsPage />} />
 
-          <Route element={<PrivateRoute />}>
-            <Route path="/conta" element={<AccountPage />} />
-          </Route>
+            <Route element={<PrivateRoute />}>
+              <Route path="/mensagens" element={<MessagesPage />} />
+              <Route path="/conta" element={<AccountPage />} />
+            </Route>
 
-          <Route element={<CreatorProfileRoute />}>
-            <Route
-              path="/criadores/:id/editar"
-              element={<ProfileEditPage />}
-            />
-          </Route>
-
-          <Route
-            path="/criadores/:id"
-            element={<CreatorProfilePage />}
-          />
-
-          <Route path="/cadastro" element={<SignUpPage />} />
-
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-
-          <Route element={<AdminRoute />}>
-            <Route
-              path="/admin/projetos/pendentes"
-              element={<ProjectValidationPage />}
-            />
-          </Route>
-
-          <Route
-            path="*"
-            element={
-              <EmptyState
-                icon="compass"
-                title="Página não encontrada"
-                description="Verifique o endereço e tente novamente."
+            <Route element={<CreatorRoute />}>
+              <Route path="/meus-rascunhos" element={<ProjectDraftsPage />} />
+              <Route path="/meus-rascunhos/:draftId/editar" element={<NewProjectPage />} />
+              <Route
+                path="/projeto/novo"
+                element={<NewProjectPage />}
               />
-            }
-          />
-        </Routes>
-      </main>
+              <Route
+                path="/projetos/:id/editar"
+                element={<EditProjectPage />}
+              />
+            </Route>
 
-      <Footer />
-    </div>
+            <Route element={<CreatorProfileRoute />}>
+              <Route
+                path="/criadores/:id/editar"
+                element={<ProfileEditPage />}
+              />
+            </Route>
+
+            <Route
+              path="/criadores/:id"
+              element={<CreatorProfilePage />}
+            />
+
+            <Route path="/cadastro" element={<SignUpPage />} />
+
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+            <Route element={<AdminRoute />}>
+              <Route
+                path="/admin/projetos/pendentes"
+                element={<ProjectValidationPage />}
+              />
+            </Route>
+
+            <Route
+              path="*"
+              element={
+                <EmptyState
+                  icon="compass"
+                  title="Página não encontrada"
+                  description="Verifique o endereço e tente novamente."
+                />
+              }
+            />
+          </Routes>
+        </main>
+
+        {!isMessagesPage && <Footer />}
+      </div>
+    </ChatProvider>
   );
 }

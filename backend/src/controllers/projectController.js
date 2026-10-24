@@ -520,7 +520,8 @@ async function submitDraft(req, res, next) {
     const result = await sequelize.transaction(async (transaction) => {
       const project = await Project.findByPk(id, {
         transaction,
-        lock: transaction.LOCK.UPDATE,
+        // Só a linha do projeto: o PostgreSQL não aceita FOR UPDATE no lado opcional de um LEFT JOIN.
+        lock: { level: transaction.LOCK.UPDATE, of: Project },
         include: [
           { model: ProjectTechnology, as: 'technologies', attributes: ['name'] },
           { model: ProjectCollaborator, as: 'collaborators', attributes: ['userId', 'contribution'] },

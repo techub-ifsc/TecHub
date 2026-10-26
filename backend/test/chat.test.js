@@ -383,4 +383,42 @@ describe('módulo de chat do backend', () => {
     socketB.disconnect();
     socketB.close();
   });
+
+  test('socket recusa sessão encerrada e conta sem e-mail confirmado, e derruba socket aberto', async () => {
+    const connect = (token) => new Promise((resolve) => {
+      const socket = Client(baseUrl, { auth: { token }, transports: ['websocket'], forceNew: true, reconnection: false });
+      activeClients.push(socket);
+      socket.on('connect', () => resolve({ socket, error: null }));
+      socket.on('connect_error', (err) => resolve({ socket, error: err.message }));
+    });
+
+    const user = fakeUser();
+    const other = fakeUser();
+    users.set(user.id, user);
+    users.set(other.id, other);
+    const conv = await Conversation.create({ user1_id: user.id, user2_id: other.id, updated_at: new Date() });
+
+    const open = await connect(tokenFor(user));
+    assert.equal(open.error, null);
+
+    // Sair de todos os aparelhos (ou trocar a senha) muda a versão da sessão.
+    user.authVersion = 1;
+    const closed = new Promise((resolve) => open.socket.on('disconnect', resolve));
+    const ack = await new Promise((resolve) => open.socket.emit(
+      'send_message',
+      { conversationId: conv.id, content: 'depois de sair' },
+      resolve,
+    ));
+    assert.equal(ack.error, 'Sessão inválida. Entre novamente.');
+    await closed;
+    assert.equal([...messages.values()].some((m) => m.content === 'depois de sair'), false);
+
+    const stale = await connect(signToken({ sub: user.id, role: user.role, authVersion: 0 }));
+    assert.equal(stale.error, 'Sessão inválida. Entre novamente.');
+
+    const unverified = fakeUser({ emailVerifiedAt: null });
+    users.set(unverified.id, unverified);
+    const pending = await connect(tokenFor(unverified));
+    assert.equal(pending.error, 'Confirme seu e-mail antes de acessar a plataforma.');
+  });
 });

@@ -99,4 +99,4 @@ function authorize(...roles) {
   };
 }
 
-module.exports = { authenticate, optionalAuthenticate, authorize };
+module.exports = { authenticate, optionalAuthenticate, authorize, sessionIsCurrent };

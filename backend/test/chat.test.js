@@ -121,7 +121,11 @@ describe('módulo de chat do backend', () => {
 
     mock.method(Message, 'findAll', async (options) => {
       const convId = options?.where?.conversation_id;
-      return Array.from(messages.values()).filter((m) => m.conversation_id === convId);
+      const list = Array.from(messages.values()).filter((m) => m.conversation_id === convId);
+      const [, direction = 'ASC'] = options?.order?.[0] || [];
+      list.sort((a, b) => (direction === 'DESC' ? b.created_at - a.created_at : a.created_at - b.created_at));
+      const offset = options?.offset || 0;
+      return list.slice(offset, options?.limit ? offset + options.limit : undefined);
     });
     mock.method(Message, 'findOne', async (options) => {
       const convId = options?.where?.conversation_id;
@@ -322,6 +326,41 @@ describe('módulo de chat do backend', () => {
     const listData = await listRes.json();
     assert.equal(listData.length, 1);
     assert.equal(listData[0].text, 'Olá Bob, tudo bem com você?');
+  });
+
+  test('GET de mensagens traz as 50 mais recentes em ordem cronológica', async () => {
+    const userA = fakeUser({ name: 'Alice Silva' });
+    const userB = fakeUser({ name: 'Bob Souza' });
+    users.set(userA.id, userA);
+    users.set(userB.id, userB);
+
+    const conv = await Conversation.create({ user1_id: userA.id, user2_id: userB.id, updated_at: new Date() });
+    const start = Date.now() - 60 * 60 * 1000;
+    for (let i = 1; i <= 60; i += 1) {
+      const record = await Message.create({
+        conversation_id: conv.id,
+        sender_id: userA.id,
+        recipient_id: userB.id,
+        content: `mensagem ${i}`,
+        read_at: null,
+      });
+      record.created_at = new Date(start + i * 1000);
+    }
+
+    const res = await fetch(`${baseUrl}/api/chat/conversations/${conv.id}/messages`, {
+      headers: { Authorization: `Bearer ${tokenFor(userB)}` },
+    });
+    assert.equal(res.status, 200);
+    const list = await res.json();
+    assert.equal(list.length, 50);
+    assert.equal(list[0].content, 'mensagem 11');
+    assert.equal(list[49].content, 'mensagem 60');
+
+    const older = await fetch(`${baseUrl}/api/chat/conversations/${conv.id}/messages?offset=50`, {
+      headers: { Authorization: `Bearer ${tokenFor(userB)}` },
+    });
+    const olderList = await older.json();
+    assert.deepEqual(olderList.map((m) => m.content), Array.from({ length: 10 }, (_, i) => `mensagem ${i + 1}`));
   });
 
   test('comunicação em tempo real via Socket.io com autenticação e evento send_message', async () => {

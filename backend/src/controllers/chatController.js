@@ -147,12 +147,14 @@ async function getMessages(req, res, next) {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
 
-    const messages = await Message.findAll({
+    // Pega as mais recentes (offset conta a partir da última) e devolve em ordem cronológica.
+    const latestFirst = await Message.findAll({
       where: { conversation_id: conversationId },
-      order: [['created_at', 'ASC']],
+      order: [['created_at', 'DESC']],
       limit,
       offset,
     });
+    const messages = latestFirst.reverse();
 
     const formattedMessages = messages.map((m) => ({
       id: m.id,

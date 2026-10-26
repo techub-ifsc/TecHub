@@ -21,9 +21,12 @@ import {
   getConversations as getLocalConversations,
   getTotalUnreadCount as getLocalTotalUnreadCount,
   markAsRead as markAsReadLocal,
+  mergePolledMessages,
 } from "../services/chatService";
 
 const ChatContext = createContext(null);
+
+const POLL_INTERVAL_MS = 5000;
 
 export function ChatProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
@@ -243,6 +246,45 @@ export function ChatProvider({ children }) {
       active = false;
     };
   }, [activeConversationId, userId]);
+
+  // Sem o WebSocket (na Vercel não existe servidor de socket), busca as novidades na API
+  // de tempos em tempos, só com a aba visível.
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+
+    let active = true;
+
+    async function poll() {
+      if (getSocket()?.connected || document.visibilityState !== "visible") return;
+
+      const isServerConversation =
+        activeConversationId &&
+        !activeConversationId.startsWith("draft_") &&
+        !activeConversationId.startsWith("conv_");
+
+      if (isServerConversation) {
+        try {
+          const msgs = await fetchConversationMessages(activeConversationId);
+          if (active && Array.isArray(msgs)) {
+            setActiveMessages((prev) => mergePolledMessages(prev, msgs));
+          }
+        } catch {
+          // Tenta de novo na próxima rodada
+        }
+      }
+
+      if (active) refresh();
+    }
+
+    const timer = setInterval(poll, POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", poll);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", poll);
+    };
+  }, [isAuthenticated, userId, activeConversationId, refresh]);
 
   // Conversa ativa selecionada com suas mensagens atualizadas
   const activeConversation = useMemo(() => {

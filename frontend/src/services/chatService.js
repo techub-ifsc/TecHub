@@ -191,3 +191,20 @@ export function getTotalUnreadCount(userId) {
   const conversations = getConversations(userId);
   return conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
 }
+
+// Junta a lista que veio da API com a da tela: mantém as mensagens ainda sendo enviadas
+// (temp_) e devolve a mesma lista quando nada mudou, para não redesenhar à toa.
+export function mergePolledMessages(current, fromServer) {
+  const pending = current.filter(
+    (m) =>
+      typeof m.id === "string" &&
+      m.id.startsWith("temp_") &&
+      !fromServer.some((s) => String(s.senderId) === String(m.senderId) && s.content === m.content)
+  );
+  const next = [...fromServer, ...pending];
+
+  const unchanged =
+    next.length === current.length &&
+    next.every((m, i) => m.id === current[i].id && Boolean(m.read) === Boolean(current[i].read));
+  return unchanged ? current : next;
+}

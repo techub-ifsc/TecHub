@@ -11,6 +11,7 @@ import {
   getTotalUnreadCount,
   getConversations,
   saveConversations,
+  mergePolledMessages,
 } from "../src/services/chatService.js";
 
 // Mock localStorage para os testes em Node.js
@@ -110,4 +111,26 @@ test("criação de nova conversa e envio de mensagem com persistência", () => {
   // Ao marcar como lida, remove as não lidas desta conversa
   markAsRead(userId, createdConv.id);
   assert.equal(getTotalUnreadCount(userId), 0);
+});
+
+test("busca periódica junta mensagens novas sem perder as que ainda estão sendo enviadas", () => {
+  const sent = { id: "m1", senderId: "a", content: "oi", read: false };
+  const pending = { id: "temp_1", senderId: "a", content: "tudo bem?", read: false };
+  const reply = { id: "m2", senderId: "b", content: "oi!", read: false };
+
+  // Chegou resposta nova e a mensagem pendente ainda não foi salva: entra a resposta, fica a pendente
+  assert.deepEqual(mergePolledMessages([sent, pending], [sent, reply]), [sent, reply, pending]);
+
+  // A pendente já foi salva no servidor: some a cópia temporária
+  const saved = { id: "m3", senderId: "a", content: "tudo bem?", read: false };
+  assert.deepEqual(mergePolledMessages([sent, pending], [sent, saved]), [sent, saved]);
+
+  // Nada mudou: devolve a mesma lista (não redesenha)
+  const current = [sent, reply];
+  assert.equal(mergePolledMessages(current, [{ ...sent }, { ...reply }]), current);
+
+  // Mensagem foi lida do outro lado: atualiza
+  const read = mergePolledMessages(current, [{ ...sent, read: true }, reply]);
+  assert.notEqual(read, current);
+  assert.equal(read[0].read, true);
 });

@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const sanitizeHtml = require('sanitize-html');
-const { verifyToken } = require('../utils/jwt');
+const { verifyToken, isTokenForCurrentPassword } = require('../utils/jwt');
+const { sessionIsCurrent } = require('../middlewares/auth');
 const { User, Conversation, Message } = require('../models');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,6 +15,20 @@ function sanitizeMessageContent(content) {
     allowedAttributes: {},
   });
 }
+
+// Mesmas regras da API: o token precisa ser da sessão e da senha atuais (sair e trocar
+// a senha encerram as sessões antigas).
+function tokenIsCurrent(payload, user) {
+  return sessionIsCurrent(payload, user) && isTokenForCurrentPassword(payload, user);
+}
+
+// Um socket já aberto continua valendo só enquanto a sessão dele for a atual.
+async function socketSessionIsCurrent(socket) {
+  const user = await User.findByPk(socket.userId);
+  return Boolean(user && tokenIsCurrent(socket.tokenPayload, user));
+}
+
+const SESSION_ENDED = { error: 'Sessão inválida. Entre novamente.' };
 
 function initSocket(server, customOptions = {}) {
   const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -64,9 +79,16 @@ function initSocket(server, customOptions = {}) {
       if (!user) {
         return next(new Error('Usuário não encontrado'));
       }
+      if (!tokenIsCurrent(payload, user)) {
+        return next(new Error('Sessão inválida. Entre novamente.'));
+      }
+      if (!user.emailVerifiedAt) {
+        return next(new Error('Confirme seu e-mail antes de acessar a plataforma.'));
+      }
 
       socket.user = user;
       socket.userId = user.id;
+      socket.tokenPayload = payload;
       next();
     } catch (err) {
       next(err);
@@ -82,6 +104,11 @@ function initSocket(server, customOptions = {}) {
     // Evento de envio de mensagem em tempo real
     socket.on('send_message', async (data, callback) => {
       try {
+        if (!(await socketSessionIsCurrent(socket))) {
+          if (typeof callback === 'function') callback(SESSION_ENDED);
+          return socket.disconnect(true);
+        }
+
         const { conversationId, recipientId, content } = data || {};
         const cleanContent = sanitizeMessageContent(content);
 
@@ -192,6 +219,11 @@ function initSocket(server, customOptions = {}) {
     // Evento de marcação de leitura em tempo real
     socket.on('mark_read', async (data, callback) => {
       try {
+        if (!(await socketSessionIsCurrent(socket))) {
+          if (typeof callback === 'function') callback(SESSION_ENDED);
+          return socket.disconnect(true);
+        }
+
         const { conversationId } = data || {};
         if (!conversationId || !UUID_REGEX.test(conversationId)) return;
 

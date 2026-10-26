@@ -52,6 +52,6 @@
 
 .admin-blocked__back:hover,
 .admin-blocked__back:focus-visible {
-  border-color: var(--tc-green, #78dc50);
-  color: var(--tc-green, #78dc50);
+  border-color: var(--tc-green, #85ce5a);
+  color: var(--tc-green, #85ce5a);
 }

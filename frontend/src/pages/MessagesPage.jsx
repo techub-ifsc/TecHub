@@ -21,9 +21,16 @@ export default function MessagesPage() {
     sendMessage,
     searchQuery,
     setSearchQuery,
+    hasOlderMessages,
+    loadingOlderMessages,
+    loadOlderMessages,
   } = useChat();
 
   const [loadingRecipient, setLoadingRecipient] = useState(false);
+
+  // Ao sair da página, fecha a conversa: senão ela continua "aberta" e as mensagens que chegam
+  // nela são marcadas como lidas sem a pessoa ter visto.
+  useEffect(() => () => selectConversation(null), [selectConversation]);
 
   // Efeito para tratar o parâmetro de URL ?with=<creatorId> ou ?userId=<creatorId>
   useEffect(() => {
@@ -135,6 +142,9 @@ export default function MessagesPage() {
           activeConversation={activeConversation}
           onBack={handleBack}
           onSendMessage={sendMessage}
+          hasOlderMessages={hasOlderMessages}
+          loadingOlderMessages={loadingOlderMessages}
+          onLoadOlderMessages={loadOlderMessages}
         />
       </div>
     </div>

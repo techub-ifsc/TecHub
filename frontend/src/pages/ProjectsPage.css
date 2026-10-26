@@ -54,7 +54,7 @@
 
 .projects-page__search:focus-within {
   border-color: var(--tc-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .projects-page__search input {
@@ -148,7 +148,7 @@
 
 .projects-page__select-group select:focus {
   border-color: var(--tc-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .projects-page__select-group select:disabled {
@@ -185,7 +185,7 @@
 
 .projects-page button.projects-page__tag-button.is-open {
   border-color: var(--tc-green) !important;
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%) !important;
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%) !important;
 }
 
 .projects-page__tag-button svg {
@@ -395,7 +395,7 @@
 }
 
 .project-card:hover {
-  border-color: var(--tc-green, #78dc50);
+  border-color: var(--tc-green, #85ce5a);
   box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
   color: inherit;
   text-decoration: none;
@@ -403,8 +403,8 @@
 }
 
 .project-card:focus-visible {
-  border-color: var(--tc-green, #78dc50);
-  outline: 3px solid rgb(120 220 80 / 28%);
+  border-color: var(--tc-green, #85ce5a);
+  outline: 3px solid rgb(133 206 90 / 28%);
   outline-offset: 3px;
 }
 
@@ -629,7 +629,7 @@
 .projects-page button:focus-visible,
 .projects-page input:focus-visible,
 .projects-page select:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 35%);
+  outline: 3px solid rgb(133 206 90 / 35%);
   outline-offset: 2px;
 }
 
@@ -745,10 +745,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  background-color: rgb(120 220 80 / 9%);
-  border: 1px solid var(--tc-green, #78dc50);
+  background-color: rgb(133 206 90 / 9%);
+  border: 1px solid var(--tc-green, #85ce5a);
   border-radius: 8px;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 700;
@@ -759,7 +759,7 @@
 }
 
 .project-card:hover .project-card__details {
-  background-color: var(--tc-green, #78dc50);
+  background-color: var(--tc-green, #85ce5a);
   color: #111111;
 }
 
@@ -791,8 +791,8 @@
 }
 
 .projects-page__search:focus-within {
-  border-color: var(--tc-green, #78dc50);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  border-color: var(--tc-green, #85ce5a);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 /* Busca interna do seletor de tecnologias */
@@ -822,8 +822,8 @@
 }
 
 .projects-page__tag-search:focus-within {
-  border-bottom-color: rgb(120 220 80 / 55%);
-  color: var(--tc-green, #78dc50);
+  border-bottom-color: rgb(133 206 90 / 55%);
+  color: var(--tc-green, #85ce5a);
 }
 
 /* Remove o botão de limpeza nativo dos inputs de busca */
@@ -857,5 +857,5 @@
 }
 
 .projects-page__tag-options::-webkit-scrollbar-thumb:hover {
-  background: var(--tc-green, #78dc50);
+  background: var(--tc-green, #85ce5a);
 }

@@ -90,8 +90,8 @@
 }
 
 .site-header__nav-item.is-active {
-  background: rgb(120 220 80 / 10%) !important;
-  border-color: rgb(120 220 80 / 25%) !important;
+  background: rgb(133 206 90 / 10%) !important;
+  border-color: rgb(133 206 90 / 25%) !important;
   color: var(--tc-green) !important;
 }
 
@@ -179,7 +179,7 @@
 
 .site-header a:focus-visible,
 .site-header button:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 40%);
+  outline: 3px solid rgb(133 206 90 / 40%);
   outline-offset: 2px;
 }
 

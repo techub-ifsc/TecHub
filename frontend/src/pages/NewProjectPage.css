@@ -121,7 +121,7 @@
 .project-input:focus,
 .project-select:focus {
   border-color: var(--new-project-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .project-input.is-invalid,
@@ -189,7 +189,7 @@
 
 .description-container:focus-within {
   border-color: var(--new-project-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .description-container.is-invalid {
@@ -321,7 +321,7 @@
 
 .tags-container:focus-within {
   border-color: var(--new-project-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .tags-container.is-invalid {
@@ -638,7 +638,7 @@
 
 .upload-area:hover,
 .upload-area.drag-over {
-  background-color: rgb(120 220 80 / 5%);
+  background-color: rgb(133 206 90 / 5%);
   border-color: var(--new-project-green);
 }
 
@@ -866,12 +866,12 @@
 }
 
 .new-project-card button.status-button:hover {
-  background: rgb(120 220 80 / 4%) !important;
+  background: rgb(133 206 90 / 4%) !important;
   border-color: #5a615d !important;
 }
 
 .new-project-card button.status-button.active {
-  background: rgb(120 220 80 / 7%) !important;
+  background: rgb(133 206 90 / 7%) !important;
   border-color: var(--new-project-green) !important;
 }
 
@@ -910,7 +910,7 @@
 }
 
 .form-feedback.success {
-  background-color: rgb(120 220 80 / 10%);
+  background-color: rgb(133 206 90 / 10%);
   border: 1px solid var(--new-project-green);
   color: #9bea7b;
 }
@@ -997,7 +997,7 @@
 .new-project-page select:focus-visible,
 .new-project-page label:focus-visible,
 .description-editor:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 38%);
+  outline: 3px solid rgb(133 206 90 / 38%);
   outline-offset: 2px;
 }
 
@@ -1223,7 +1223,7 @@
   background: var(--new-project-green) !important;
   border-color: var(--new-project-green) !important;
   color: #101210 !important;
-  box-shadow: 0 0 0 2px rgb(120 220 80 / 18%) !important;
+  box-shadow: 0 0 0 2px rgb(133 206 90 / 18%) !important;
 }
 
 .new-project-card button.project-toolbar-button.is-active:hover {

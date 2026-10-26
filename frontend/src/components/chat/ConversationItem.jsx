@@ -7,7 +7,9 @@ export default function ConversationItem({ conversation, isActive, onSelect }) {
   const currentUserId = user?.id;
 
   const { participant, messages, unreadCount, updatedAt } = conversation;
-  const lastMessage = messages?.length ? messages[messages.length - 1] : null;
+  // A API manda só a última mensagem; o modo local (sem servidor) guarda a lista inteira.
+  const lastMessage =
+    conversation.lastMessage || (messages?.length ? messages[messages.length - 1] : null);
 
   const isFromMe = lastMessage && String(lastMessage.senderId) === String(currentUserId);
   const timeDisplay = formatConversationDate(lastMessage?.createdAt || updatedAt);

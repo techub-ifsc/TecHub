@@ -646,6 +646,32 @@
   line-height: 1.45;
 }
 
+.chat-message-list__older {
+  align-self: center;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--chat-border);
+  color: #e2e8f0;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.chat-message-list__older:hover:not(:disabled) {
+  background-color: rgba(133, 206, 90, 0.12);
+  border-color: var(--chat-green);
+  color: var(--chat-green);
+}
+
+.chat-message-list__older:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
 /* Divisor de data */
 .chat-date-divider {
   display: flex;

@@ -8,6 +8,7 @@ import EmptyState from "./components/EmptyState";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import { ChatProvider } from "./context/ChatContext";
+import ChatNotifier from "./components/chat/ChatNotifier";
 
 import AccountPage from "./pages/AccountPage";
 import CreatorProfilePage from "./pages/CreatorProfilePage";
@@ -106,6 +107,7 @@ export default function App() {
         </main>
 
         {!isMessagesPage && <Footer />}
+        <ChatNotifier />
       </div>
     </ChatProvider>
   );

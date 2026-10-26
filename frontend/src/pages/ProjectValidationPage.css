@@ -2,7 +2,7 @@
   min-height: calc(100vh - 60px);
   padding: 3rem 2rem 4rem;
   background:
-    radial-gradient(circle at top right, rgb(120 220 80 / 7%), transparent 30rem),
+    radial-gradient(circle at top right, rgb(133 206 90 / 7%), transparent 30rem),
     #17181a;
   color: #f4f5f6;
 }
@@ -48,8 +48,8 @@
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  background: rgb(120 220 80 / 8%);
-  border: 1px solid rgb(120 220 80 / 22%);
+  background: rgb(133 206 90 / 8%);
+  border: 1px solid rgb(133 206 90 / 22%);
   border-radius: 14px;
 }
 
@@ -109,7 +109,7 @@
 }
 
 .validation-page__stat-icon.is-approved {
-  background: rgb(120 220 80 / 12%);
+  background: rgb(133 206 90 / 12%);
   color: var(--tc-green);
 }
 
@@ -141,8 +141,8 @@
 }
 
 .validation-page__filters button.is-active {
-  background: rgb(120 220 80 / 10%);
-  border-color: rgb(120 220 80 / 35%);
+  background: rgb(133 206 90 / 10%);
+  border-color: rgb(133 206 90 / 35%);
   color: var(--tc-green);
 }
 
@@ -201,7 +201,7 @@
 }
 
 .validation-list__item.is-selected {
-  background: rgb(120 220 80 / 7%);
+  background: rgb(133 206 90 / 7%);
   box-shadow: inset 3px 0 var(--tc-green);
 }
 
@@ -258,7 +258,7 @@
 }
 
 .validation-status.is-approved {
-  background: rgb(120 220 80 / 12%);
+  background: rgb(133 206 90 / 12%);
   color: var(--tc-green);
 }
 
@@ -354,8 +354,8 @@
 
 .validation-details__technologies span {
   padding: 0.4rem 0.65rem;
-  background: rgb(120 220 80 / 8%);
-  border: 1px solid rgb(120 220 80 / 20%);
+  background: rgb(133 206 90 / 8%);
+  border: 1px solid rgb(133 206 90 / 20%);
   border-radius: 7px;
   color: var(--tc-green);
   font-size: 0.75rem;
@@ -505,7 +505,7 @@
 }
 
 .validation-page__eyebrow {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .validation-page__pending-summary {
@@ -515,7 +515,7 @@
 }
 
 .validation-page__pending-summary strong {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .validation-page__stats article {
@@ -552,13 +552,13 @@
 }
 
 .validation-page .validation-list__item.is-selected {
-  background: rgb(120 220 80 / 9%) !important;
-  box-shadow: inset 3px 0 var(--tc-green, #78dc50) !important;
+  background: rgb(133 206 90 / 9%) !important;
+  box-shadow: inset 3px 0 var(--tc-green, #85ce5a) !important;
 }
 
 .validation-list__project-icon {
   background: #2d3033;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .validation-details {
@@ -580,8 +580,8 @@
 }
 
 .validation-details__technologies span {
-  background: rgb(120 220 80 / 10%);
-  border-color: rgb(120 220 80 / 55%);
+  background: rgb(133 206 90 / 10%);
+  border-color: rgb(133 206 90 / 55%);
   border-radius: 999px;
   color: #9bea7b;
 }
@@ -609,16 +609,16 @@
 }
 
 .validation-page .validation-page__filters button:hover {
-  background: rgb(120 220 80 / 6%) !important;
-  border-color: var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+  background: rgb(133 206 90 / 6%) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
   transform: translateY(-1px);
 }
 
 .validation-page .validation-page__filters button.is-active {
-  background: rgb(120 220 80 / 12%) !important;
-  border-color: var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+  background: rgb(133 206 90 / 12%) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 /* Link para o GitHub */
@@ -638,9 +638,9 @@
 }
 
 .validation-page .validation-details__github:hover {
-  background: rgb(120 220 80 / 7%);
-  border-color: var(--tc-green, #78dc50);
-  color: var(--tc-green, #78dc50);
+  background: rgb(133 206 90 / 7%);
+  border-color: var(--tc-green, #85ce5a);
+  color: var(--tc-green, #85ce5a);
   transform: translateY(-1px);
 }
 
@@ -668,14 +668,14 @@
 }
 
 .validation-page button.validation-details__approve {
-  background: var(--tc-green, #78dc50) !important;
-  border: 1px solid var(--tc-green, #78dc50) !important;
+  background: var(--tc-green, #85ce5a) !important;
+  border: 1px solid var(--tc-green, #85ce5a) !important;
   color: #111111 !important;
 }
 
 .validation-page button.validation-details__approve:hover {
-  background: var(--tc-green-hover, #8aec64) !important;
-  border-color: var(--tc-green-hover, #8aec64) !important;
+  background: var(--tc-green-hover, #97d870) !important;
+  border-color: var(--tc-green-hover, #97d870) !important;
 }
 
 .validation-page button.validation-details__reject {
@@ -698,7 +698,7 @@
 }
 
 .validation-status.is-approved {
-  background: rgb(120 220 80 / 12%);
+  background: rgb(133 206 90 / 12%);
   color: #9bea7b;
 }
 
@@ -708,7 +708,7 @@
 }
 
 .validation-page__stat-icon.is-approved {
-  background: rgb(120 220 80 / 12%);
+  background: rgb(133 206 90 / 12%);
   color: #9bea7b;
 }
 
@@ -719,7 +719,7 @@
 
 .validation-page button:focus-visible,
 .validation-page a:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -754,10 +754,10 @@
 }
 
 .validation-page button.validation-list__item.is-selected {
-  background: rgb(120 220 80 / 8%) !important;
-  border-color: rgb(120 220 80 / 24%) !important;
+  background: rgb(133 206 90 / 8%) !important;
+  border-color: rgb(133 206 90 / 24%) !important;
   border-radius: 8px !important;
-  box-shadow: inset 3px 0 var(--tc-green, #78dc50) !important;
+  box-shadow: inset 3px 0 var(--tc-green, #85ce5a) !important;
 }
 
 .validation-list__items {
@@ -863,9 +863,9 @@
 }
 
 .validation-page .validation-page__filters button.is-active {
-  background: rgb(120 220 80 / 12%) !important;
-  border-color: rgb(120 220 80 / 45%) !important;
-  color: var(--tc-green, #78dc50) !important;
+  background: rgb(133 206 90 / 12%) !important;
+  border-color: rgb(133 206 90 / 45%) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 /* Área de lista e detalhes */
@@ -891,7 +891,7 @@
 }
 
 .validation-list__item.is-selected {
-  background: rgb(120 220 80 / 8%) !important;
+  background: rgb(133 206 90 / 8%) !important;
 }
 
 /* Responsividade do painel */
@@ -1017,10 +1017,10 @@
 }
 
 .validation-page .validation-page__filters button.is-active {
-  background: rgb(120 220 80 / 12%) !important;
+  background: rgb(133 206 90 / 12%) !important;
   box-shadow:
-    inset 0 -3px var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+    inset 0 -3px var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 @media (max-width: 800px) {
@@ -1088,7 +1088,7 @@
 }
 
 .validation-page__stats article:nth-child(2) strong {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .validation-page__stats article:nth-child(3) strong {
@@ -1135,9 +1135,9 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #79e651;
-  background: rgb(121 230 81 / 8%);
-  border: 1px solid rgb(121 230 81 / 32%);
+  color: #85ce5a;
+  background: rgb(133 206 90 / 8%);
+  border: 1px solid rgb(133 206 90 / 32%);
   border-radius: 8px;
   font-size: 0.92rem;
   font-weight: 700;
@@ -1167,9 +1167,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #79e651;
-  background: rgb(121 230 81 / 10%);
-  border: 1px solid rgb(121 230 81 / 35%);
+  color: #85ce5a;
+  background: rgb(133 206 90 / 10%);
+  border: 1px solid rgb(133 206 90 / 35%);
   border-radius: 50%;
   font-size: 0.9rem;
   font-weight: 800;
@@ -1208,8 +1208,8 @@
 }
 
 .validation-details__links a:hover {
-  background: rgb(121 230 81 / 7%);
-  border-color: #79e651;
+  background: rgb(133 206 90 / 7%);
+  border-color: #85ce5a;
   transform: translateY(-2px);
 }
 
@@ -1220,8 +1220,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #79e651;
-  background: rgb(121 230 81 / 10%);
+  color: #85ce5a;
+  background: rgb(133 206 90 / 10%);
   border-radius: 8px;
   font-size: 1.05rem;
 }
@@ -1273,9 +1273,9 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  color: #79e651;
+  color: #85ce5a;
   background:
-    linear-gradient(135deg, rgb(121 230 81 / 12%), transparent 55%),
+    linear-gradient(135deg, rgb(133 206 90 / 12%), transparent 55%),
     #181a1c;
   border-bottom: 1px solid #393c40;
   font-size: 2rem;
@@ -1443,15 +1443,15 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: rgb(120 220 80 / 8%);
-  border: 1px solid rgb(120 220 80 / 25%);
+  background: rgb(133 206 90 / 8%);
+  border: 1px solid rgb(133 206 90 / 25%);
   border-radius: 10px;
   color: #c9f2b8;
   font-size: 0.85rem;
 }
 
 .validation-page__feedback i {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 /* Prazo de análise (SLA) */
@@ -1545,8 +1545,8 @@
 .validation-review-result {
   margin-top: 1.5rem;
   padding: 1rem;
-  background: rgb(120 220 80 / 6%);
-  border: 1px solid rgb(120 220 80 / 22%);
+  background: rgb(133 206 90 / 6%);
+  border: 1px solid rgb(133 206 90 / 22%);
   border-radius: 10px;
 }
 
@@ -1590,7 +1590,7 @@ a.validation-details__media {
 }
 
 a.validation-details__media:hover {
-  border-color: var(--tc-green, #78dc50);
+  border-color: var(--tc-green, #85ce5a);
 }
 
 .validation-page button.validation-list__retry {
@@ -1608,8 +1608,8 @@ a.validation-details__media:hover {
 }
 
 .validation-page button.validation-list__retry:hover {
-  border-color: var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 /* Campo de parecer dentro do modal de decisão */
@@ -1647,8 +1647,8 @@ a.validation-details__media:hover {
 }
 
 .validation-review textarea:focus {
-  border-color: var(--tc-green, #78dc50);
-  outline: 3px solid rgb(120 220 80 / 18%);
+  border-color: var(--tc-green, #85ce5a);
+  outline: 3px solid rgb(133 206 90 / 18%);
 }
 
 .validation-review textarea[aria-invalid="true"] {
@@ -1672,8 +1672,8 @@ a.validation-details__media:hover {
 .validation-details__collaborator small {
   padding: 0.15rem 0.5rem;
   color: var(--tc-green);
-  background: rgb(120 220 80 / 10%);
-  border: 1px solid rgb(120 220 80 / 30%);
+  background: rgb(133 206 90 / 10%);
+  border: 1px solid rgb(133 206 90 / 30%);
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 700;

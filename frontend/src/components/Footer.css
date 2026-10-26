@@ -64,17 +64,17 @@ body,
 }
 
 .site-footer__brand:hover {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .site-footer__brand:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 35%);
+  outline: 3px solid rgb(133 206 90 / 35%);
   outline-offset: 4px;
   border-radius: 4px;
 }
 
 .site-footer__symbol {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-family: monospace;
   font-size: 1.5rem;
   font-weight: 800;

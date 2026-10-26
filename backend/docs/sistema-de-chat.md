@@ -78,7 +78,7 @@ GET /api/chat/conversations
 GET /api/chat/conversations/:conversationId/messages?limit=50&offset=0
 ```
 
-- **200**: Lista de mensagens ordenadas cronologicamente (`created_at ASC`). Marca automaticamente as mensagens pendentes recebidas como lidas (`read_at = NOW()`).
+- **200**: As `limit` mensagens mais recentes (padrão 50, máximo 100), em ordem cronológica. `offset` pula as mais recentes, para carregar as anteriores. Marca automaticamente as mensagens pendentes recebidas como lidas (`read_at = NOW()`).
 - **403**: Usuário não participa da conversa informada.
 - **404**: Conversa inexistente ou ID com formato UUID inválido.
 

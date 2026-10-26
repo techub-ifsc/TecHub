@@ -7,6 +7,9 @@ export default function ChatWindow({
   activeConversation,
   onBack,
   onSendMessage,
+  hasOlderMessages,
+  loadingOlderMessages,
+  onLoadOlderMessages,
 }) {
   if (!activeConversation) {
     return (
@@ -21,7 +24,13 @@ export default function ChatWindow({
   return (
     <main className="chat-window chat-window--active">
       <ChatHeader participant={participant} onBack={onBack} />
-      <MessageList messages={messages} participant={participant} />
+      <MessageList
+        messages={messages}
+        participant={participant}
+        hasOlderMessages={hasOlderMessages}
+        loadingOlderMessages={loadingOlderMessages}
+        onLoadOlderMessages={onLoadOlderMessages}
+      />
       <MessageInput
         participantName={participant?.name || "Criador"}
         onSendMessage={onSendMessage}

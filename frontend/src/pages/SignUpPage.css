@@ -151,7 +151,7 @@
 
 .signup-form__field input:focus {
   border-color: var(--tc-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .signup-form__field input.is-invalid {
@@ -184,7 +184,7 @@
   margin: 0;
   padding: 0.75rem;
 
-  background: rgb(120 220 80 / 10%);
+  background: rgb(133 206 90 / 10%);
   border: 1px solid var(--tc-green);
   border-radius: 8px;
 

@@ -191,3 +191,54 @@ export function getTotalUnreadCount(userId) {
   const conversations = getConversations(userId);
   return conversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
 }
+
+const isPendingMessage = (m) => typeof m.id === "string" && m.id.startsWith("temp_");
+
+// Junta a lista que veio da API com a da tela: mantém as mensagens anteriores já carregadas
+// pelo botão e as que ainda estão sendo enviadas (temp_), e devolve a mesma lista quando
+// nada mudou, para não redesenhar à toa.
+export function mergePolledMessages(current, fromServer) {
+  const serverIds = new Set(fromServer.map((m) => m.id));
+  const oldestFromServer = fromServer.length ? new Date(fromServer[0].createdAt) : null;
+  const olderLoaded = oldestFromServer
+    ? current.filter(
+        (m) => !isPendingMessage(m) && !serverIds.has(m.id) && new Date(m.createdAt) < oldestFromServer
+      )
+    : [];
+  const pending = current.filter(
+    (m) =>
+      isPendingMessage(m) &&
+      !fromServer.some((s) => String(s.senderId) === String(m.senderId) && s.content === m.content)
+  );
+  const next = [...olderLoaded, ...fromServer, ...pending];
+
+  const unchanged =
+    next.length === current.length &&
+    next.every((m, i) => m.id === current[i].id && Boolean(m.read) === Boolean(current[i].read));
+  return unchanged ? current : next;
+}
+
+// Quantas mensagens da conversa já vieram do servidor (serve de offset para buscar as anteriores).
+export function countLoadedMessages(messages) {
+  return messages.filter((m) => !isPendingMessage(m)).length;
+}
+
+// Coloca as mensagens anteriores no começo, sem repetir as que já estão na tela.
+export function prependOlderMessages(current, older) {
+  const ids = new Set(current.map((m) => m.id));
+  return [...older.filter((m) => !ids.has(m.id)), ...current];
+}
+
+// Acha a conversa cuja última mensagem é nova (diferente da vista antes), veio da outra pessoa
+// e ainda não foi lida. `lastSeen` é um Map conversa → id da última mensagem.
+export function findIncomingMessage(conversations, lastSeen, currentUserId) {
+  return (
+    conversations.find(
+      (c) =>
+        c.lastMessage &&
+        c.lastMessage.id !== lastSeen.get(c.id) &&
+        String(c.lastMessage.senderId) !== String(currentUserId) &&
+        !c.lastMessage.read
+    ) || null
+  );
+}

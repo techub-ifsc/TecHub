@@ -158,7 +158,6 @@ export default function LoggedHeader() {
               }
               onClick={closeMenu}
             >
-              <i className="fa-regular fa-comment-dots" aria-hidden="true" />
               <span>Mensagens</span>
               {unreadCount > 0 && (
                 <span

@@ -32,9 +32,9 @@
 }
 
 .confirmation-modal__icon.is-primary {
-  background: rgb(120 220 80 / 12%);
-  border: 1px solid rgb(120 220 80 / 35%);
-  color: var(--tc-green, #78dc50);
+  background: rgb(133 206 90 / 12%);
+  border: 1px solid rgb(133 206 90 / 35%);
+  color: var(--tc-green, #85ce5a);
 }
 
 .confirmation-modal__icon.is-danger {
@@ -97,19 +97,19 @@
 }
 
 .confirmation-modal button.confirmation-modal__cancel:hover {
-  border-color: var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 .confirmation-modal button.confirmation-modal__confirm.is-primary {
-  background: var(--tc-green, #78dc50) !important;
-  border: 1px solid var(--tc-green, #78dc50) !important;
+  background: var(--tc-green, #85ce5a) !important;
+  border: 1px solid var(--tc-green, #85ce5a) !important;
   color: #111111 !important;
 }
 
 .confirmation-modal button.confirmation-modal__confirm.is-primary:hover {
-  background: var(--tc-green-hover, #8aec64) !important;
-  border-color: var(--tc-green-hover, #8aec64) !important;
+  background: var(--tc-green-hover, #97d870) !important;
+  border-color: var(--tc-green-hover, #97d870) !important;
 }
 
 .confirmation-modal button.confirmation-modal__confirm.is-danger {

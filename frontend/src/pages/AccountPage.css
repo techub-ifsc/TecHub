@@ -37,9 +37,9 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 0.875rem;
-  border: 1px solid rgb(120 220 80 / 35%);
+  border: 1px solid rgb(133 206 90 / 35%);
   border-radius: 8px;
-  background: rgb(120 220 80 / 8%);
+  background: rgb(133 206 90 / 8%);
 }
 
 .account-page__notice i {
@@ -58,9 +58,9 @@
 .account-page__success {
   margin: 0;
   padding: 0.75rem 0.875rem;
-  border: 1px solid rgb(120 220 80 / 45%);
+  border: 1px solid rgb(133 206 90 / 45%);
   border-radius: 8px;
-  background: rgb(120 220 80 / 10%);
+  background: rgb(133 206 90 / 10%);
   color: #b9f09d;
   font-size: 0.85rem;
   line-height: 1.5;

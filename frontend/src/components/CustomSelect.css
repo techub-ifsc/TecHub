@@ -37,9 +37,9 @@
 
 .custom-select.is-open .custom-select__trigger,
 .custom-select__trigger:focus-visible {
-  border-color: var(--tc-green, #78dc50) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
   outline: 0;
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%) !important;
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%) !important;
 }
 
 .custom-select__value,
@@ -70,7 +70,7 @@
 .custom-select.is-open
   .custom-select__trigger
   > i {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   transform: rotate(180deg);
 }
 
@@ -132,14 +132,14 @@
 
 .custom-select
   .custom-select__option.is-selected {
-  background-color: rgb(120 220 80 / 10%) !important;
-  color: var(--tc-green, #78dc50) !important;
+  background-color: rgb(133 206 90 / 10%) !important;
+  color: var(--tc-green, #85ce5a) !important;
   font-weight: 700;
 }
 
 .custom-select__option i {
   flex-shrink: 0;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-size: 0.7rem;
 }
 

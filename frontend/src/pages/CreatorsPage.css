@@ -64,8 +64,8 @@
 }
 
 .creators-page__search:focus-within {
-  border-color: var(--tc-green, #78dc50);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  border-color: var(--tc-green, #85ce5a);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .creators-page__search i {
@@ -162,8 +162,8 @@
 }
 
 .creators-page__filter-grid select:focus {
-  border-color: var(--tc-green, #78dc50);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 12%);
+  border-color: var(--tc-green, #85ce5a);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 12%);
 }
 
 .creators-page__filter-grid select:disabled {
@@ -200,8 +200,8 @@
 }
 
 .creators-page__clear:hover:not(:disabled) {
-  border-color: var(--tc-green, #78dc50) !important;
-  color: var(--tc-green, #78dc50) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 .creators-page__clear:disabled {
@@ -248,7 +248,7 @@
 }
 
 .creator-card:hover {
-  border-color: var(--tc-green, #78dc50);
+  border-color: var(--tc-green, #85ce5a);
   box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
   color: inherit;
   text-decoration: none;
@@ -256,8 +256,8 @@
 }
 
 .creator-card:focus-visible {
-  border-color: var(--tc-green, #78dc50);
-  outline: 3px solid rgb(120 220 80 / 25%);
+  border-color: var(--tc-green, #85ce5a);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -348,9 +348,9 @@
 .creator-card__skills span {
   padding: 0.25rem 0.6rem;
   background: transparent;
-  border: 1px solid var(--tc-green, #78dc50);
+  border: 1px solid var(--tc-green, #85ce5a);
   border-radius: 999px;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.2;
@@ -365,10 +365,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  background-color: rgb(120 220 80 / 9%);
-  border: 1px solid var(--tc-green, #78dc50);
+  background-color: rgb(133 206 90 / 9%);
+  border: 1px solid var(--tc-green, #85ce5a);
   border-radius: 8px;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 700;
@@ -379,7 +379,7 @@
 }
 
 .creator-card:hover .creator-card__portfolio {
-  background-color: var(--tc-green, #78dc50);
+  background-color: var(--tc-green, #85ce5a);
   color: #111111;
 }
 
@@ -400,7 +400,7 @@
 
 .creators-page__empty i {
   margin-bottom: 1rem;
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
   font-size: 2.5rem;
 }
 
@@ -419,7 +419,7 @@
 .creators-page__empty button {
   padding: 0.7rem 1.2rem;
   appearance: none;
-  background: var(--tc-green, #78dc50) !important;
+  background: var(--tc-green, #85ce5a) !important;
   border: 0 !important;
   border-radius: 8px;
   box-shadow: none !important;

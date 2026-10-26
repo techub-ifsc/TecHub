@@ -7,7 +7,7 @@
   --profile-text: #ffffff;
   --profile-text-secondary: #b5b8bc;
   --profile-text-muted: #8f9499;
-  --profile-green: var(--tc-green, #78dc50);
+  --profile-green: var(--tc-green, #85ce5a);
   --profile-green-hover: #8ae667;
 
   min-height: calc(100vh - 60px);
@@ -112,7 +112,7 @@
 }
 
 .creator-profile-page .creator-profile-hero__edit:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 30%);
+  outline: 3px solid rgb(133 206 90 / 30%);
   outline-offset: 3px;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .creator-profile-page button.creator-profile-address:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -237,8 +237,8 @@
 .creator-profile-edit-feedback {
   margin: 0;
   padding: 0.8rem 1rem;
-  background-color: rgb(120 220 80 / 8%);
-  border-top: 1px solid rgb(120 220 80 / 25%);
+  background-color: rgb(133 206 90 / 8%);
+  border-top: 1px solid rgb(133 206 90 / 25%);
   color: #b9e9a7;
   font-size: 0.82rem;
   text-align: center;
@@ -333,7 +333,7 @@
 }
 
 .creator-profile-page .creator-profile-tabs button:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -370,7 +370,7 @@
 
 .creator-profile-project:focus-visible {
   border-color: var(--profile-green);
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -480,7 +480,7 @@
 
 .creator-profile-interests span {
   padding: 0.4rem 0.65rem;
-  background-color: rgb(120 220 80 / 10%);
+  background-color: rgb(133 206 90 / 10%);
   border: 1px solid var(--profile-green);
   border-radius: 999px;
   color: var(--profile-green);
@@ -517,14 +517,14 @@
 }
 
 .creator-profile-links a:hover {
-  background-color: rgb(120 220 80 / 7%);
+  background-color: rgb(133 206 90 / 7%);
   border-color: var(--profile-green);
   color: #ffffff;
   transform: translateX(2px);
 }
 
 .creator-profile-links a:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -563,7 +563,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background-color: rgb(120 220 80 / 12%);
+  background-color: rgb(133 206 90 / 12%);
   border: 1px solid var(--profile-green);
   border-radius: 999px;
   color: var(--profile-green);
@@ -619,7 +619,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background-color: rgb(120 220 80 / 10%);
+  background-color: rgb(133 206 90 / 10%);
   border: 1px solid var(--profile-green);
   border-radius: 999px;
   color: var(--profile-green);
@@ -634,7 +634,7 @@
   flex-shrink: 0;
   background-color: var(--profile-green);
   border-radius: 50%;
-  box-shadow: 0 0 8px rgb(120 220 80 / 60%);
+  box-shadow: 0 0 8px rgb(133 206 90 / 60%);
 }
 @media (max-width: 1100px) {
   .creator-profile-layout {

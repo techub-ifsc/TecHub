@@ -589,9 +589,9 @@ body {
 /* Todas as páginas apontam para estes valores. Para mudar a cor ou o
    arredondamento dos botões do site inteiro, altere aqui e só aqui. */
 :root {
-  --tc-green: #78dc50;
-  --tc-green-hover: #89e767;
-  --tc-green-active: #52c52d;
+  --tc-green: #85ce5a;
+  --tc-green-hover: #97d870;
+  --tc-green-active: #6fb848;
 
   --tc-btn-radius: 8px;
   --tc-btn-padding: 0.75rem 1rem;

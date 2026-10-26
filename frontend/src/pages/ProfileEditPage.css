@@ -7,7 +7,7 @@
   --profile-edit-text: #ffffff;
   --profile-edit-text-secondary: #b5b8bc;
   --profile-edit-text-muted: #858a90;
-  --profile-edit-green: var(--tc-green, #78dc50);
+  --profile-edit-green: var(--tc-green, #85ce5a);
   --profile-edit-green-hover: #8ae667;
   --profile-edit-error: #ff7168;
 
@@ -59,7 +59,7 @@
 }
 
 .profile-edit-page button.profile-edit-page__back:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 4px;
 }
 
@@ -244,7 +244,7 @@
 }
 
 .profile-edit-image-button:focus-within {
-  outline: 3px solid rgb(120 220 80 / 28%);
+  outline: 3px solid rgb(133 206 90 / 28%);
   outline-offset: 3px;
 }
 
@@ -318,7 +318,7 @@
 }
 
 .profile-edit-avatar:focus-within {
-  outline: 3px solid rgb(120 220 80 / 28%);
+  outline: 3px solid rgb(133 206 90 / 28%);
   outline-offset: 3px;
 }
 
@@ -429,7 +429,7 @@
 .profile-edit-field select:focus,
 .profile-edit-field textarea:focus {
   border-color: var(--profile-edit-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 11%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 11%);
 }
 
 .profile-edit-field input.is-invalid,
@@ -458,7 +458,7 @@
 
 .profile-edit-slug:focus-within {
   border-color: var(--profile-edit-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 11%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 11%);
 }
 
 .profile-edit-slug.is-invalid {
@@ -512,7 +512,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  background-color: rgb(120 220 80 / 10%);
+  background-color: rgb(133 206 90 / 10%);
   border: 1px solid var(--profile-edit-green);
   border-radius: 999px;
   color: var(--profile-edit-green);
@@ -551,12 +551,12 @@
 }
 
 .profile-edit-page .profile-edit-interests button:hover {
-  background-color: rgb(120 220 80 / 16%) !important;
+  background-color: rgb(133 206 90 / 16%) !important;
   color: #ffffff !important;
 }
 
 .profile-edit-page .profile-edit-interests button:hover {
-  background-color: rgb(120 220 80 / 16%) !important;
+  background-color: rgb(133 206 90 / 16%) !important;
   color: #ffffff !important;
 }
 
@@ -580,7 +580,7 @@
 
 .profile-edit-interest-input:focus-within {
   border-color: var(--profile-edit-green);
-  box-shadow: 0 0 0 3px rgb(120 220 80 / 11%);
+  box-shadow: 0 0 0 3px rgb(133 206 90 / 11%);
 }
 
 .profile-edit-interest-input.is-invalid {
@@ -652,7 +652,7 @@
 .profile-edit-page
   .profile-edit-interest-input
   button:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 28%);
+  outline: 3px solid rgb(133 206 90 / 28%);
   outline-offset: 2px;
 }
 
@@ -741,13 +741,13 @@
 }
 
 .profile-edit-file:hover {
-  background-color: rgb(120 220 80 / 6%);
+  background-color: rgb(133 206 90 / 6%);
   border-color: var(--profile-edit-green);
   color: #ffffff;
 }
 
 .profile-edit-file:focus-within {
-  outline: 3px solid rgb(120 220 80 / 20%);
+  outline: 3px solid rgb(133 206 90 / 20%);
   outline-offset: 2px;
 }
 
@@ -787,8 +787,8 @@
 }
 
 .profile-edit-feedback.success {
-  background-color: rgb(120 220 80 / 9%);
-  border: 1px solid rgb(120 220 80 / 38%);
+  background-color: rgb(133 206 90 / 9%);
+  border: 1px solid rgb(133 206 90 / 38%);
   color: #b9e9a7;
 }
 
@@ -859,7 +859,7 @@
 .profile-edit-page
   .profile-edit-actions
   button:focus-visible {
-  outline: 3px solid rgb(120 220 80 / 25%);
+  outline: 3px solid rgb(133 206 90 / 25%);
   outline-offset: 3px;
 }
 
@@ -1141,7 +1141,7 @@
 
 .profile-edit-project.is-editing {
   grid-column: 1 / -1;
-  border-color: rgb(120 220 80 / 45%);
+  border-color: rgb(133 206 90 / 45%);
 }
 
 .profile-edit-project__header {
@@ -1158,7 +1158,7 @@
   justify-content: center;
   flex-shrink: 0;
   color: var(--profile-edit-green);
-  background: rgb(120 220 80 / 10%);
+  background: rgb(133 206 90 / 10%);
   border-radius: 8px;
 }
 
@@ -1211,8 +1211,8 @@
 .profile-edit-project__technologies span {
   padding: 0.3rem 0.5rem;
   color: var(--profile-edit-green);
-  background: rgb(120 220 80 / 8%);
-  border: 1px solid rgb(120 220 80 / 28%);
+  background: rgb(133 206 90 / 8%);
+  border: 1px solid rgb(133 206 90 / 28%);
   border-radius: 6px;
   font-size: 0.64rem;
   font-weight: 700;
@@ -1256,7 +1256,7 @@
   button.profile-edit-project__save:hover {
   color: var(--profile-edit-green) !important;
   border-color: var(--profile-edit-green) !important;
-  background: rgb(120 220 80 / 8%) !important;
+  background: rgb(133 206 90 / 8%) !important;
 }
 
 .profile-edit-page

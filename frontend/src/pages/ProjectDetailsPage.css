@@ -21,7 +21,7 @@
 }
 
 .project-details-page__back:hover {
-  color: #78dc50;
+  color: #85ce5a;
 }
 
 .project-details-hero {
@@ -64,9 +64,9 @@
   height: 7px;
   margin-right: 0.4rem;
   display: inline-block;
-  background: #78dc50;
+  background: #85ce5a;
   border-radius: 50%;
-  box-shadow: 0 0 0 4px rgb(120 220 80 / 12%);
+  box-shadow: 0 0 0 4px rgb(133 206 90 / 12%);
 }
 
 .project-details-hero h1 {
@@ -113,14 +113,14 @@
 }
 
 .project-details-primary-button {
-  background: #78dc50;
-  border: 1px solid #78dc50;
+  background: #85ce5a;
+  border: 1px solid #85ce5a;
   color: #111111;
 }
 
 .project-details-primary-button:hover {
-  background: #8aec64;
-  border-color: #8aec64;
+  background: #97d870;
+  border-color: #97d870;
   color: #111111;
 }
 
@@ -131,8 +131,8 @@
 }
 
 .project-details-secondary-button:hover {
-  border-color: #78dc50;
-  color: #78dc50;
+  border-color: #85ce5a;
+  color: #85ce5a;
 }
 
 .project-details-layout {
@@ -221,9 +221,9 @@
   align-items: center;
   gap: 0.5rem;
   background: transparent;
-  border: 1px solid #78dc50;
+  border: 1px solid #85ce5a;
   border-radius: 9px;
-  color: #78dc50;
+  color: #85ce5a;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -233,7 +233,7 @@
 }
 
 .project-details-expand:hover {
-  background: rgb(120 220 80 / 10%);
+  background: rgb(133 206 90 / 10%);
 }
 
 .project-gallery {
@@ -298,8 +298,8 @@
 
 .project-details-tags span {
   padding: 0.4rem 0.7rem;
-  background: rgb(120 220 80 / 10%);
-  border: 1px solid rgb(120 220 80 / 55%);
+  background: rgb(133 206 90 / 10%);
+  border: 1px solid rgb(133 206 90 / 55%);
   border-radius: 999px;
   color: #9bea7b;
   font-size: 0.76rem;
@@ -411,8 +411,8 @@
 .project-lightbox__close:hover,
 .project-lightbox__arrow:hover {
   background: #2d312f;
-  border-color: #78dc50;
-  color: #78dc50;
+  border-color: #85ce5a;
+  color: #85ce5a;
 }
 
 @media (max-width: 900px) {
@@ -490,11 +490,11 @@
 }
 
 .project-details-page__back i {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .project-details-page__back:hover {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .project-details-hero__meta > span {
@@ -502,7 +502,7 @@
 }
 
 .project-details-hero__meta .project-details-status {
-  color: var(--tc-green, #78dc50) !important;
+  color: var(--tc-green, #85ce5a) !important;
 }
 
 .project-details-card h2,
@@ -535,7 +535,7 @@
 }
 
 .project-details-tags span {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 /* Corrige o formato das telas da galeria */
@@ -554,7 +554,7 @@
 }
 
 .project-details-page button.project-gallery__item:hover {
-  border-color: var(--tc-green, #78dc50) !important;
+  border-color: var(--tc-green, #85ce5a) !important;
   box-shadow: 0 8px 22px rgb(0 0 0 / 25%) !important;
   transform: translateY(-2px);
 }
@@ -702,7 +702,7 @@ a.project-collaborator:focus-visible {
 }
 
 a.project-collaborator:hover strong {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }
 
 .project-details-author {
@@ -713,5 +713,5 @@ a.project-collaborator:hover strong {
 }
 
 .project-details-author:hover {
-  color: var(--tc-green, #78dc50);
+  color: var(--tc-green, #85ce5a);
 }

@@ -6,6 +6,7 @@ import {
   registerUser,
   updateProfile as updateProfileApi,
 } from "../api/auth";
+import { userFromStorageChange } from "../utils/authSync";
 
 const AuthContext = createContext(null);
 
@@ -55,6 +56,17 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("user");
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  // Login, troca de conta ou saída em outra aba valem para esta também.
+  useEffect(() => {
+    function handleStorage(event) {
+      const nextUser = userFromStorageChange(event);
+      if (nextUser !== undefined) setUser(nextUser);
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const login = useCallback(async (credentials) => {

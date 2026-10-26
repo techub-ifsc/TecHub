@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -21,12 +22,16 @@ import {
   getConversations as getLocalConversations,
   getTotalUnreadCount as getLocalTotalUnreadCount,
   markAsRead as markAsReadLocal,
+  countLoadedMessages,
   mergePolledMessages,
+  prependOlderMessages,
 } from "../services/chatService";
 
 const ChatContext = createContext(null);
 
 const POLL_INTERVAL_MS = 5000;
+// Mesmo padrão da API: o histórico vem de 50 em 50, das mais recentes para as mais antigas.
+const MESSAGE_PAGE_SIZE = 50;
 
 export function ChatProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
@@ -39,12 +44,22 @@ export function ChatProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  // Fica true depois da primeira carga da lista; o aviso de mensagem nova só compara a partir daí.
+  const [conversationsReady, setConversationsReady] = useState(false);
+  const activeConversationIdRef = useRef(activeConversationId);
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   // Recarrega as conversas do usuário autenticado (da API ou fallback local)
   const refresh = useCallback(async () => {
     if (!isAuthenticated || !userId) {
       setConversations([]);
       setUnreadCount(0);
+      setConversationsReady(false);
       return;
     }
 
@@ -54,6 +69,7 @@ export function ChatProvider({ children }) {
         setConversations(data);
         const total = data.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
         setUnreadCount(total);
+        setConversationsReady(true);
         return;
       }
     } catch {
@@ -61,6 +77,7 @@ export function ChatProvider({ children }) {
       const list = getLocalConversations(userId);
       setConversations(list);
       setUnreadCount(getLocalTotalUnreadCount(userId));
+      setConversationsReady(true);
     }
   }, [isAuthenticated, userId]);
 
@@ -73,6 +90,7 @@ export function ChatProvider({ children }) {
       setActiveConversationId(null);
       setActiveMessages([]);
       setDraftParticipant(null);
+      setConversationsReady(false);
       return;
     }
 
@@ -171,7 +189,7 @@ export function ChatProvider({ children }) {
         });
 
         // Atualiza contador global de não lidas se a mensagem não for para o chat ativo
-        if (message.recipientId === userId) {
+        if (message.recipientId === userId && message.conversationId !== activeConversationId) {
           setUnreadCount((prev) => prev + 1);
         }
       });
@@ -194,6 +212,8 @@ export function ChatProvider({ children }) {
 
   // Carrega as mensagens ao selecionar uma conversa
   useEffect(() => {
+    setHasOlderMessages(false);
+
     if (!activeConversationId || !userId) {
       setActiveMessages([]);
       return;
@@ -217,6 +237,9 @@ export function ChatProvider({ children }) {
         const msgs = await fetchConversationMessages(activeConversationId);
         if (active && Array.isArray(msgs)) {
           setActiveMessages(msgs);
+          setHasOlderMessages(msgs.length >= MESSAGE_PAGE_SIZE);
+          // O servidor marcou a conversa como lida: atualiza o total de não lidas do menu
+          refresh();
         }
       } catch {
         // Fallback local
@@ -245,7 +268,7 @@ export function ChatProvider({ children }) {
     return () => {
       active = false;
     };
-  }, [activeConversationId, userId]);
+  }, [activeConversationId, userId, refresh]);
 
   // Sem o WebSocket (na Vercel não existe servidor de socket), busca as novidades na API
   // de tempos em tempos, só com a aba visível.
@@ -285,6 +308,29 @@ export function ChatProvider({ children }) {
       document.removeEventListener("visibilitychange", poll);
     };
   }, [isAuthenticated, userId, activeConversationId, refresh]);
+
+  // Busca as 50 mensagens anteriores às que já estão na tela
+  const loadOlderMessages = useCallback(async () => {
+    const convId = activeConversationId;
+    if (!convId || convId.startsWith("draft_") || convId.startsWith("conv_") || loadingOlderMessages) return;
+
+    setLoadingOlderMessages(true);
+    try {
+      const older = await fetchConversationMessages(convId, {
+        offset: countLoadedMessages(activeMessages),
+        limit: MESSAGE_PAGE_SIZE,
+      });
+      // Ignora a resposta se a pessoa já trocou de conversa
+      if (activeConversationIdRef.current === convId && Array.isArray(older)) {
+        setActiveMessages((prev) => prependOlderMessages(prev, older));
+        setHasOlderMessages(older.length >= MESSAGE_PAGE_SIZE);
+      }
+    } catch {
+      // Mantém o botão para tentar de novo
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }, [activeConversationId, activeMessages, loadingOlderMessages]);
 
   // Conversa ativa selecionada com suas mensagens atualizadas
   const activeConversation = useMemo(() => {
@@ -477,8 +523,12 @@ export function ChatProvider({ children }) {
     unreadCount,
     searchQuery,
     loadingMessages,
+    hasOlderMessages,
+    loadingOlderMessages,
+    conversationsReady,
     setSearchQuery,
     selectConversation,
+    loadOlderMessages,
     openConversationWithCreator,
     sendMessage,
     refreshConversations: refresh,

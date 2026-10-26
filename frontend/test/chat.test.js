@@ -12,6 +12,9 @@ import {
   getConversations,
   saveConversations,
   mergePolledMessages,
+  countLoadedMessages,
+  prependOlderMessages,
+  findIncomingMessage,
 } from "../src/services/chatService.js";
 
 // Mock localStorage para os testes em Node.js
@@ -133,4 +136,39 @@ test("busca periódica junta mensagens novas sem perder as que ainda estão send
   const read = mergePolledMessages(current, [{ ...sent, read: true }, reply]);
   assert.notEqual(read, current);
   assert.equal(read[0].read, true);
+});
+
+test("mensagens anteriores entram no começo e a busca periódica não as descarta", () => {
+  const at = (min) => new Date(Date.UTC(2026, 9, 26, 12, min)).toISOString();
+  const old1 = { id: "o1", senderId: "a", content: "antiga 1", createdAt: at(1) };
+  const old2 = { id: "o2", senderId: "b", content: "antiga 2", createdAt: at(2) };
+  const recent = { id: "r1", senderId: "a", content: "recente", createdAt: at(10) };
+  const pending = { id: "temp_9", senderId: "a", content: "enviando", createdAt: at(11) };
+
+  assert.equal(countLoadedMessages([recent, pending]), 1);
+
+  // Botão: as anteriores entram antes, sem repetir a que já estava na tela
+  const withOlder = prependOlderMessages([recent, pending], [old1, old2, recent]);
+  assert.deepEqual(withOlder.map((m) => m.id), ["o1", "o2", "r1", "temp_9"]);
+
+  // Busca periódica traz só as recentes: as anteriores já carregadas continuam
+  const reply = { id: "r2", senderId: "b", content: "resposta", createdAt: at(12) };
+  const merged = mergePolledMessages(withOlder, [recent, reply]);
+  assert.deepEqual(merged.map((m) => m.id), ["o1", "o2", "r1", "r2", "temp_9"]);
+});
+
+test("aviso de mensagem nova só dispara para mensagem recebida, nova e não lida", () => {
+  const me = "eu";
+  const conv = (id, lastMessage) => ({ id, participant: { id: `p_${id}` }, lastMessage });
+  const lastSeen = new Map([["c1", "m1"], ["c2", "m2"]]);
+
+  // Nada mudou
+  assert.equal(findIncomingMessage([conv("c1", { id: "m1", senderId: "x", read: false })], lastSeen, me), null);
+  // Mensagem nova, mas fui eu que mandei
+  assert.equal(findIncomingMessage([conv("c1", { id: "m9", senderId: me, read: false })], lastSeen, me), null);
+  // Mensagem nova já lida (ex.: em outra aba)
+  assert.equal(findIncomingMessage([conv("c1", { id: "m9", senderId: "x", read: true })], lastSeen, me), null);
+  // Mensagem nova recebida e não lida, inclusive em conversa que não existia antes
+  assert.equal(findIncomingMessage([conv("c2", { id: "m10", senderId: "x", read: false })], lastSeen, me)?.id, "c2");
+  assert.equal(findIncomingMessage([conv("c3", { id: "m11", senderId: "x", read: false })], lastSeen, me)?.id, "c3");
 });

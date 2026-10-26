@@ -1,0 +1,79 @@
+.chat-notice {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  width: min(360px, calc(100vw - 2rem));
+  border: 1px solid rgb(133 206 90 / 40%);
+  border-radius: 12px;
+  background: #1c1e21;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  animation: chat-notice-in 180ms ease-out;
+}
+
+.chat-notice__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.85rem 0 0.85rem 1rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-notice__title {
+  color: var(--tc-green);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.chat-notice__text {
+  max-width: 100%;
+  overflow: hidden;
+  color: #d4d7da;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-notice__close {
+  flex-shrink: 0;
+  padding: 0.85rem 1rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.chat-notice__close:hover {
+  color: #fff;
+}
+
+@keyframes chat-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-notice {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-notice {
+    animation: none;
+  }
+}

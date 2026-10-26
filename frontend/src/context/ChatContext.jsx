@@ -81,6 +81,9 @@ export function ChatProvider({ children }) {
     }
   }, [isAuthenticated, userId]);
 
+  // Trocou de conta (ou saiu): fecha a conexão da conta anterior antes de abrir a nova.
+  useEffect(() => () => disconnectSocket(), [userId]);
+
   // Inicializa socket e carrega conversas quando autenticado
   useEffect(() => {
     if (!isAuthenticated || !userId) {

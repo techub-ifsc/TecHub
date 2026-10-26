@@ -9,10 +9,13 @@ import GraduationIcon from "../assets/GraduationIcon.svg";
 import "./HomePage.css";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const canPublish =
     user?.role === "creator" || user?.role === "super_admin";
+
+  // Visitante já logado não publica: em vez de mandar para o login, leva aos criadores.
+  const isLoggedVisitor = isAuthenticated && !canPublish;
 
   const publishDestination = canPublish
     ? "/projeto/novo"
@@ -28,33 +31,39 @@ export default function HomePage() {
         />
         <h1 className="logo-title">TecHub</h1>
         <h1 className="home-hero__title">
-          Mostre o que você sabe
+          Mostre o que você sabe{" "}
           <br />
           construir, o mercado quer ver.
         </h1>
 
         <p className="home-hero__description">
-          Conecte seus projetos a recrutadores
+          Conecte seus projetos a recrutadores{" "}
           <br />
           através de um portfólio visual.
         </p>
 
         <div className="home-hero__actions">
-          <Link
-            to={publishDestination}
-            state={
-              canPublish
-                ? undefined
-                : {
-                    from: { pathname: "/projeto/novo" },
-                    accessMessage:
-                      "Apenas contas de criador podem publicar projetos.",
-                  }
-            }
-            className="home-hero__primary-button"
-          >
-            Publique seu projeto
-          </Link>
+          {isLoggedVisitor ? (
+            <Link to="/criadores" className="home-hero__primary-button">
+              Conheça os criadores
+            </Link>
+          ) : (
+            <Link
+              to={publishDestination}
+              state={
+                canPublish
+                  ? undefined
+                  : {
+                      from: { pathname: "/projeto/novo" },
+                      accessMessage:
+                        "Apenas contas de criador podem publicar projetos.",
+                    }
+              }
+              className="home-hero__primary-button"
+            >
+              Publique seu projeto
+            </Link>
+          )}
 
           <Link to="/projetos" className="home-hero__secondary-button">
             Explore projetos

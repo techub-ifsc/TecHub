@@ -544,7 +544,7 @@ function ProjectForm({ draftId, user }) {
       setFeedbackType("success");
       setFeedbackMessage("Projeto enviado para análise! Ele ficará público após a aprovação.");
       setSavedSnapshot(formSnapshot);
-      setTimeout(() => navigate("/meus-rascunhos", { state: { submitted: true } }), 1500);
+      setTimeout(() => navigate("/"), 1500);
 
     } catch (err) {
       setFeedbackType("error");

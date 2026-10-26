@@ -19,8 +19,9 @@ export default function CreatorProfileRoute() {
   const isProfileOwner =
     user?.role === "creator" && String(user?.id) === String(id);
 
+  // Quem não é o dono vê o perfil público, em vez de ir para o início sem explicação.
   if (!isProfileOwner) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={`/criadores/${id}`} replace />;
   }
 
   return <Outlet />;

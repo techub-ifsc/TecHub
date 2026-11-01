@@ -11,7 +11,7 @@
     "test": "node --test test/registrationPayload.test.js test/moderationSla.test.js test/passwordResetValidation.test.js test/emailVerification.test.js test/projectDrafts.test.js test/creators.test.js test/richText.test.js test/accountSettings.test.js test/chat.test.js test/authSync.test.js"
   },
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^1.21.0",
     "dompurify": "^3.4.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -23,7 +23,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "^6.2.6",
     "vite": "^5.4.6"
   }
 }
